@@ -1,0 +1,51 @@
+docker-build-master:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
+  script:
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$STABLE_IMAGE" .
+    - docker push "$STABLE_IMAGE"
+  only:
+    - master
+
+docker-build-testing:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
+  script:
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$CANARY_IMAGE" .
+    - docker push "$CANARY_IMAGE"
+  only:
+    - testing
+
+docker-build-tags:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
+  script:
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$TAG_IMAGE:$CI_COMMIT_TAG" .
+    - docker push "$TAG_IMAGE:$CI_COMMIT_TAG"
+  only:
+    - tags
+
+image: python:latest
+pages:
+  stage: deploy
+  only:
+    - master
+  script:
+    - pip install mkdocs-material
+    - cd docsbyice
+    - mkdocs build --site-dir ../public
+  artifacts:
+    paths:
+      - public

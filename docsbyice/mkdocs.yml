@@ -1,0 +1,39 @@
+site_name: PhantomBot IceVersion Dokumentation
+dev_addr: '127.0.0.1:8080'
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.keys
+theme:
+  name: material
+  language: de
+  font: false
+  features:
+    - navigation.sections
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+          icon: material/lightbulb-outline
+          name: Zum hellen Modus wechseln
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: light blue
+      accent: light blue
+      toggle:
+          icon: material/lightbulb
+          name: Zum dunklen Modus wechseln
+#  favicon: favicon.png
+#  logo: favicon.png
+
+site_author: "IceFlom"
+copyright: Copyright &copy; IceFlom
+#extra_css:
+#    - css/extra.css
+nav:
+  - Home: index.md
+  - Installation: installation.md
