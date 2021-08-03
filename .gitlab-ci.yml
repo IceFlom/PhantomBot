@@ -6,7 +6,7 @@ docker-build-master:
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$STABLE_IMAGE" .
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$STABLE_IMAGE" .
     - docker push "$STABLE_IMAGE"
   only:
     - master
@@ -19,7 +19,7 @@ docker-build-testing:
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$CANARY_IMAGE" .
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CANARY_IMAGE" .
     - docker push "$CANARY_IMAGE"
   only:
     - testing
@@ -32,7 +32,7 @@ docker-build-tags:
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --pull -t "$TAG_IMAGE:$CI_COMMIT_TAG" .
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$TAG_IMAGE:$CI_COMMIT_TAG" .
     - docker push "$TAG_IMAGE:$CI_COMMIT_TAG"
   only:
     - tags
