@@ -1,13 +1,15 @@
 # Dokumentation PhantomBot (IceVersion)
 
 Bei dem PhantomBot (IceVersion) handelt es sich um einen Fork des PhantomBot:
-* Offizielle Webseite: [https://phantombot.github.io/PhantomBot/](https://phantombot.github.io/PhantomBot)
-* Offizielles GitHub Repository: [https://github.com/PHantomBot/PhantomBot](https://github.com/PHantomBot/PhantomBot)
+
+* Offizielle Webseite: [https://phantombot.github.io/PhantomBot/](https://phantombot.github.io/PhantomBot){target=_blank}
+* Offizielles GitHub Repository: [https://github.com/PHantomBot/PhantomBot](https://github.com/PHantomBot/PhantomBot){target=_blank}
 
 Fork PhantomBot IceVersion:
-* Dokumentation: [https://iceflom.pages.iceflom.de/phantombot-iceversion](https://iceflom.pages.iceflom.de/phantombot-iceversion)
-* Repository: [https://git.iceflom.de/iceflom/phantombot-iceversion](https://git.iceflom.de/iceflom/phantombot-iceversion)
-* Docker Hub: [https://hub.docker.com/r/iceflom/phantombot-iceversion](https://hub.docker.com/r/iceflom/phantombot-iceversion)
+
+* Dokumentation: [https://iceflom.pages.iceflom.de/phantombot-iceversion](https://iceflom.pages.iceflom.de/phantombot-iceversion){target=_blank}
+* Repository: [https://git.iceflom.de/iceflom/phantombot-iceversion](https://git.iceflom.de/iceflom/phantombot-iceversion){target=_blank}
+* Docker Hub: [https://hub.docker.com/r/iceflom/phantombot-iceversion](https://hub.docker.com/r/iceflom/phantombot-iceversion){target=_blank}
 
 ## Ziele des Forks
 
