@@ -1,5 +1,5 @@
 site_name: PhantomBot IceVersion Dokumentation
-dev_addr: '127.0.0.1:8080'
+dev_addr: '0.0.0.0:8080'
 markdown_extensions:
   - admonition
   - attr_list
@@ -36,4 +36,4 @@ copyright: Copyright &copy; IceFlom
 #    - css/extra.css
 nav:
   - Home: index.md
-  - Installation: installation.md
+  - Installation: installation/installation.md
