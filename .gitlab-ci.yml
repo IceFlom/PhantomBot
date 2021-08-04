@@ -50,7 +50,8 @@ image: python:latest
 pages:
   stage: deploy
   only:
-    - master
+    refs:
+      - master
     changes:
       - docsbyice/*
   script:
