@@ -6,7 +6,6 @@ docker-build-master:
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
   script:
-    - docker buildx create --use
     - docker buildx build --platform linux/amd64 --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --push -t "$STABLE_IMAGE" .
     - docker buildx build --platform linux/arm64,linux/arm/v7 --build-arg TARGETPLATFORM="linux/arm64" --build-arg PROJECT_VERSION="3.5.0" --push -t "$STABLE_IMAGE" .
   only:
@@ -23,9 +22,8 @@ docker-build-testing:
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
   script:
-    - docker buildx create --use
     - docker buildx build --platform linux/amd64 --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --push -t "$CANARY_IMAGE" .
-    - docker buildx build --platform linux/arm64/v8,linux/arm/v7 --build-arg TARGETPLATFORM="linux/arm64" --build-arg PROJECT_VERSION="3.5.0" --push -t "$CANARY_IMAGE" .
+    - docker buildx build --platform linux/arm64,linux/arm/v7 --build-arg TARGETPLATFORM="linux/arm64" --build-arg PROJECT_VERSION="3.5.0" --push -t "$CANARY_IMAGE" .
   only:
     - testing
   except:
