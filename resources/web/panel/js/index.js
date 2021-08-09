@@ -17,7 +17,7 @@
 
 // Main socket and functions.
 $(function () {
-    if (!helpers.isLocalPanel()) {
+    if (!helpers.isLocalPanel() && false) {
         $.ajax(
                 {
                     type: 'GET',
