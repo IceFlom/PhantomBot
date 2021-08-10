@@ -1,0 +1,2 @@
+$.lang.register('discord.daily.success', 'dir wurden als tägliche Belohnung $1 gutgeschrieben.');
+$.lang.register('discord.daily.wait', 'seit deiner letzten Belohnung sind erst $1 vergangen. Du erhälst diese nur alle $2 Stunden.');
