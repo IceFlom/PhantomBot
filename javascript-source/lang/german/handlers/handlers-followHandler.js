@@ -13,10 +13,6 @@ $.lang.register('followhandler.set.followmessage.success', 'Follow-Nachricht ge�
 $.lang.register('followhandler.set.followmessage.usage', 'Verwendung: !followmessage [Nachricht] - Tags: (reward) (name)');
 $.lang.register('followhandler.set.followreward.success', 'Follow Belohnung geändert auf $1.');
 $.lang.register('followhandler.set.followreward.usage', 'Verwendung: !followreward [$1]. (Aktuell $2)');
-$.lang.register('followhandler.shoutout.usage', 'Verwendung: !$1 (streamer)');
-$.lang.register('followhandler.shoutout.offline', 'Hey! Gib $1 einen Follow auf $2! $1 spielte das letzte Mal $3!');
-$.lang.register('followhandler.shoutout.online', 'Hey! Gib $1 einen Follow auf $2! $1 spielt gerade $3!');
-$.lang.register('followhandler.shoutout.no.game', 'Hey! Gib $1 einen Follow auf $2!');
 $.lang.register('followhandler.followtoggle.on', 'Benachrichtigungen für neue Follower sind aktiviert.');
 $.lang.register('followhandler.followtoggle.off', 'Benachrichtigungen für neue Follower sind deaktiviert.');
 $.lang.register('followhandler.followtraintoggle.on', 'Follow Zug Benachrichtigungen sind aktiviert.');
@@ -30,3 +26,5 @@ $.lang.register('followhandler.set.followdelay.success', 'Follow-Verzögerung au
 $.lang.register('followhandler.follow.age.err.404', '$1 $2 folgt dem Kanal $3 nicht.');
 $.lang.register('followhandler.follow.age.time.days', '$1 $2 folgt dem Kanal $3 seit $4. ($5 Tage/n)');
 $.lang.register('followhandler.follow.age.time', '$1 $2 folgt dem Kanal $3 seit $4.');
+$.lang.register('followhandler.follow.age.datefmt', 'dd.MM.yyyy');
+$.lang.register('followhandler.follow.age.datefmt.404', 'Kein Follower');
