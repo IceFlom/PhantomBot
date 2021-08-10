@@ -8,10 +8,10 @@ Dieser Fork enthält, soweit möglich, Übersetzungen für die deutsche Sprache.
 
 ## Deutsche Sprache im Chat
 
-Im Standard antwortet der Bot im Chat auf Englisch. Die Sprache muss nach dem ersten Start des Bots umgestellt
-werden. Diese Einstellung wird in der Datenbank geischert und muss nur einmalig vorgenommen werden.
+Im Standard antwortet der Bot im Chat auf englisch. Die Sprache muss nach dem ersten Start des Bots umgestellt
+werden. Diese Einstellung wird in der Datenbank gesichert und muss nur einmalig vorgenommen werden.
 
-Zur Anpassung der Sprache folgenden Befehl im Twitch-Chat eingeben:
+Zur Anpassung der Sprache mit dem Streamer-Account folgenden Befehl im Twitch-Chat eingeben:
 ```
 !lang german
 ```
