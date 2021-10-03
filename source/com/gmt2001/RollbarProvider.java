@@ -33,6 +33,7 @@ import org.apache.commons.lang3.SystemUtils;
 import reactor.util.annotation.Nullable;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.RepoVersion;
+import tv.phantombot.twitch.api.TwitchValidate;
 
 /**
  *
@@ -45,8 +46,8 @@ public class RollbarProvider implements AutoCloseable {
     private static final String ENDPOINT = "@endpoint@";
     private static final List<String> APP_PACKAGES = Collections.unmodifiableList(Arrays.asList("tv.phantombot", "com.gmt2001", "com.illusionaryone", "com.scaniatv"));
     private static final List<String> SEND_VALUES = Collections.unmodifiableList(Arrays.asList("allownonascii", "baseport", "channel", "datastore", "debugon", "debuglog",
-            "ircdebug", "logtimezone", "msglimit30", "musicenable", "owner", "reactordebug", "reloadscripts", "rhinodebugger", "rollbarid", "twitch_tcp_nodelay",
-            "usehttps", "usemessagequeue", "user", "useeventsub", "userollbar", "webenable", "whisperlimit60", "wsdebug"));
+            "helixdebug", "ircdebug", "logtimezone", "msglimit30", "musicenable", "owner", "proxybypasshttps", "reactordebug", "reloadscripts", "rhinodebugger",
+            "rollbarid", "twitch_tcp_nodelay", "usehttps", "user", "useeventsub", "userollbar", "webenable", "whisperlimit60", "wsdebug"));
     private final Rollbar rollbar;
     private boolean enabled = false;
 
@@ -68,7 +69,7 @@ public class RollbarProvider implements AutoCloseable {
                         metadata.put("os.arch", System.getProperty("os.arch", "unknown"));
                         metadata.put("os.name", System.getProperty("os.name", "unknown"));
                         metadata.put("os.version", System.getProperty("os.version", "unknown"));
-                        return new Server.Builder().metadata(metadata).build();
+                        return new Server.Builder().root("/").metadata(metadata).build();
                     })
                     .person(() -> {
                         Map<String, Object> metadata = new HashMap<>();
@@ -76,6 +77,7 @@ public class RollbarProvider implements AutoCloseable {
                         if (PhantomBot.instance() != null) {
                             metadata.put("user", PhantomBot.instance().getBotName());
                             metadata.put("channel", PhantomBot.instance().getChannelName());
+                            metadata.put("owner", PhantomBot.instance().getProperties().getProperty("owner", PhantomBot.instance().getBotName()));
                             username = PhantomBot.instance().getProperties().getProperty("owner", PhantomBot.instance().getBotName());
                         }
 
@@ -88,6 +90,8 @@ public class RollbarProvider implements AutoCloseable {
                             metadata.put("phantombot.debugon", PhantomBot.getEnableDebugging() ? "true" : "false");
                             metadata.put("phantombot.debuglog", PhantomBot.getEnableDebuggingLogOnly() ? "true" : "false");
                             metadata.put("phantombot.rhinodebugger", PhantomBot.getEnableRhinoDebugger() ? "true" : "false");
+                            metadata.put("config.oauth.isuser", TwitchValidate.instance().getChatLogin().equalsIgnoreCase(PhantomBot.instance().getBotName()) ? "true" : "false");
+                            metadata.put("config.apioauth.iscaster", TwitchValidate.instance().getAPILogin().equalsIgnoreCase(PhantomBot.instance().getChannelName()) ? "true" : "false");
 
                             PhantomBot.instance().getProperties().keySet().stream().map(k -> (String) k).forEachOrdered(s -> {
                                 if (RollbarProvider.SEND_VALUES.contains(s)) {
@@ -110,23 +114,9 @@ public class RollbarProvider implements AutoCloseable {
                             }
 
                             if (error != null) {
-                                if (error.getClass().getName().startsWith("org.mozilla.javascript")
-                                        || (error.getStackTrace().length >= 4
-                                        && error.getStackTrace()[3].getClassName().startsWith("org.mozilla.javascript"))) {
-                                    return true;
-                                }
-
-                                if (error.getStackTrace()[0].getClassName().startsWith("reactor.core.publisher")) {
-                                    return true;
-                                }
-
                                 if (error.getClass().equals(java.lang.Exception.class)
                                         && error.getStackTrace()[0].getClassName().equals(reactor.netty.channel.ChannelOperations.class.getName())
                                         && error.getStackTrace()[0].getMethodName().equals("terminate")) {
-                                    return true;
-                                }
-
-                                if (error.getClass().equals(discord4j.common.close.CloseException.class)) {
                                     return true;
                                 }
 
@@ -135,9 +125,62 @@ public class RollbarProvider implements AutoCloseable {
                                         && error.getStackTrace()[0].getMethodName().equals("read0")) {
                                     return true;
                                 }
+
+                                if (error.getStackTrace()[0].getClassName().startsWith("reactor.core.publisher")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(discord4j.common.close.CloseException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_BUSY]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_CORRUPT]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_READONLY]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_CONSTRAINT]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_CANTOPEN]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("opening db")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.io.FileNotFoundException.class) && error.getMessage().startsWith("./logs")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.io.FileNotFoundException.class) && error.getMessage().startsWith("./config")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.nio.file.NoSuchFileException.class) && error.getMessage().equals("./web/panel/js/utils/gamesList.txt")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().equals("Connection reset by peer")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().equals("java.io.IOException: Connection reset by peer")) {
+                                    return true;
+                                }
                             }
 
-                            com.gmt2001.Console.debug.println("[ROLLBAR] " + level.name() + (custom != null && (Boolean) custom.getOrDefault("isUncaught", false) ? "[Uncaught]" : "") + (description != null && !description.isBlank() ? " (" + description + ")" : "") + " " + (error != null ? error.toString() : "Null"));
+                            com.gmt2001.Console.debug.println("[ROLLBAR] " + level.name() + (custom != null && (Boolean) custom.getOrDefault("isUncaught", false)
+                                    ? "[Uncaught]" : "") + (description != null && !description.isBlank() ? " (" + description + ")" : "") + " " + (error != null ? error.toString() : "Null"));
 
                             return false;
                         }
@@ -168,7 +211,11 @@ public class RollbarProvider implements AutoCloseable {
         if (RollbarProvider.ENDPOINT.length() > 0 && !RollbarProvider.ENDPOINT.equals("@endpoint@")
                 && RollbarProvider.ACCESS_TOKEN.length() > 0 && !RollbarProvider.ACCESS_TOKEN.equals("@access.token@")) {
             this.enabled = true;
+            com.gmt2001.Console.out.println();
             com.gmt2001.Console.out.println("Sending exceptions to Rollbar");
+            com.gmt2001.Console.out.println("You can disable this by adding the following to a new line in botlogin.txt and restarting: userollbar=false");
+            com.gmt2001.Console.out.println("If you got this from the official PhantomBot GitHub, you can submit GPDR delete requests to gpdr@phantombot.hopto.org");
+            com.gmt2001.Console.out.println();
         }
     }
 
@@ -342,11 +389,21 @@ public class RollbarProvider implements AutoCloseable {
     }
 
     private static String getId() {
+        String id = null;
         if (PhantomBot.instance() != null) {
-            return (String) PhantomBot.instance().getProperties().putIfAbsent("rollbarid", PhantomBot.instance().getProperties().getProperty("rollbarid", RollbarProvider::generateId));
+            id = PhantomBot.instance().getProperties().getProperty("rollbarid");
         }
 
-        return RollbarProvider.generateId();
+        if (id == null || id.isBlank()) {
+            id = RollbarProvider.generateId();
+
+            if (PhantomBot.instance() != null) {
+                PhantomBot.instance().getProperties().put("rollbarid", id);
+                PhantomBot.instance().saveProperties();
+            }
+        }
+
+        return id;
     }
 
     private static String generateId() {
