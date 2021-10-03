@@ -49,11 +49,14 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -185,6 +188,7 @@ public final class PhantomBot implements Listener {
     private WsAlertsPollsHandler alertsPollsHandler;
     private WsPanelHandler panelHandler;
     private WsYTHandler ytHandler;
+    private HTTPOAuthHandler oauthHandler;
 
     /* PhantomBot Information */
     private static PhantomBot instance;
@@ -367,7 +371,9 @@ public final class PhantomBot implements Listener {
 
         this.authflow = new TwitchAuthorizationCodeFlow(pbProperties.getProperty("clientid"), pbProperties.getProperty("clientsecret"));
         this.appflow = new TwitchClientCredentialsFlow(pbProperties.getProperty("clientid"), pbProperties.getProperty("clientsecret"));
-        if (this.authflow.checkAndRefreshTokens(pbProperties) || this.appflow.checkExpirationAndGetNewToken(pbProperties)) {
+        boolean authflowrefreshed = this.authflow.checkAndRefreshTokens(pbProperties);
+        boolean appflowrefreshed = this.appflow.checkExpirationAndGetNewToken(pbProperties);
+        if (authflowrefreshed || appflowrefreshed) {
             pbProperties = ConfigurationManager.getConfiguration();
         }
 
@@ -622,6 +628,24 @@ public final class PhantomBot implements Listener {
         return this.appflow;
     }
 
+    public void saveProperties() {
+        CaselessProperties outputProperties = new CaselessProperties() {
+            @Override
+            public synchronized Enumeration<Object> keys() {
+                return Collections.enumeration(new TreeSet<>(super.keySet()));
+            }
+        };
+
+        try {
+            try (FileOutputStream outputStream = new FileOutputStream("./config/botlogin.txt")) {
+                outputProperties.putAll(this.pbProperties);
+                outputProperties.store(outputStream, "PhantomBot Configuration File");
+            }
+        } catch (NullPointerException | IOException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
     public void reloadProperties() {
         this.pbProperties = ConfigurationManager.getConfiguration();
         this.clientId = this.pbProperties.getProperty("clientid", "");
@@ -680,6 +704,10 @@ public final class PhantomBot implements Listener {
      */
     public String getBotName() {
         return this.botName;
+    }
+
+    public HTTPOAuthHandler getHTTPOAuthHandler() {
+        return this.oauthHandler;
     }
 
     /**
@@ -816,7 +844,7 @@ public final class PhantomBot implements Listener {
             new HTTPNoAuthHandler().register();
             new HTTPAuthenticatedHandler(webOAuth, oauth.replace("oauth:", "")).register();
             new HTTPPanelAndYTHandler(panelUsername, panelPassword).register();
-            new HTTPOAuthHandler(panelUsername, panelPassword).register();
+            this.oauthHandler = (HTTPOAuthHandler) new HTTPOAuthHandler(panelUsername, panelPassword).register();
             if (this.getProperties().getPropertyAsBoolean("useeventsub", false)) {
                 EventSub.instance().register();
             }
@@ -1090,6 +1118,8 @@ public final class PhantomBot implements Listener {
         com.gmt2001.Console.out.print("\r\n");
         print("Closing the database...");
         dataStore.dispose();
+
+        this.saveProperties();
 
         try {
             RollbarProvider.instance().close();
