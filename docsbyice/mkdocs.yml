@@ -11,7 +11,8 @@ theme:
   language: de
   font: false
   features:
-    - navigation.sections
+    - navigation.indexes
+    #- navigation.sections
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
@@ -38,3 +39,6 @@ nav:
   - Home: index.md
   - Installation: installation/installation.md
   - Sprache: sprache/sprache.md
+  - Befehle:
+    - Allgemein: befehle/index.md
+    - Hi: befehle/hi.md
