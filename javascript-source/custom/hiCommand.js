@@ -19,6 +19,14 @@
     }
 
     /**
+     *
+     */
+    function toggleOnlineonly() {
+        onlineonly = !onlineonly;
+        $.setIniDbBoolean('hisettings', 'onlineonly', onlineonly);
+    }
+
+    /**
      * Begrüßung auslösen
      * Wenn Indiviualbegrüßung vorhanden, diese nutzen,
      * sonst DB-Tabelle prüfen, wenn vorhanden, diese nutzen,
@@ -117,7 +125,7 @@
         if (command.equalsIgnoreCase('hi')) {
 
             if (typeof subcommand === 'undefined') {
-                if (!$.isOnline($.channelName)) {
+                if (onlineonly && !$.isOnline($.channelName)) {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly'));
                     return;
                 }
@@ -125,13 +133,21 @@
                 return;
             }
             // Subcommand check
-            if (subcommand.equalsIgnoreCase("info")) {
+            if (subcommand.equalsIgnoreCase("help")) {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
             } else if (subcommand.equalsIgnoreCase("set")) {
                 setMessage(sender, args)
             } else if (subcommand.equalsIgnoreCase("test")) {
-                // Admin-Auslösung Command für anderen Benutzer
+                // Anderen Nutzer testen
                 doGreeting(args[1].toLowerCase());
+            } else if (subcommand.equalsIgnoreCase("onlineonly")) {
+                // Umschalten, ob Kanal online sein muss
+                toggleOnlineonly();
+                if (onlineonly) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.active'));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.inactive'));
+                }
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
             }
@@ -144,9 +160,10 @@
     $.bind('initReady', function() {
         if ($.bot.isModuleEnabled('./custom/hiCommand.js')) {
             $.registerChatCommand('./custom/hiCommand.js', 'hi', 7);
-            $.registerChatSubcommand('hi', 'info', 7);
+            $.registerChatSubcommand('hi', 'help', 7);
             $.registerChatSubcommand('hi', 'set', 7);
             $.registerChatSubcommand('hi', 'test', 1);
+            $.registerChatSubcommand('hi', 'onlineonly', 1);
         }
     });
     $.updateHi = updateHi;
