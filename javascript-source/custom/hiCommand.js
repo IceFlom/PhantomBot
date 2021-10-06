@@ -143,6 +143,7 @@
      * Save custom message for another user
      */
     function adminsetMessage(username, args) {
+        var fullMessage = "";
         // Build message
         for (var i = 1, len = args.length; i < len; i++) {
             fullMessage += args[i] + " ";
