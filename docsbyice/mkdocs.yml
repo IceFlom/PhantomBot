@@ -28,8 +28,6 @@ theme:
       toggle:
           icon: material/lightbulb
           name: Zum dunklen Modus wechseln
-#  favicon: favicon.png
-#  logo: favicon.png
 
 site_author: "IceFlom"
 copyright: Copyright &copy; IceFlom
