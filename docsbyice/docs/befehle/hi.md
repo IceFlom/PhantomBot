@@ -17,8 +17,8 @@ Die Ablagepfade sind relativ zum Phantombot-Hauptverzeichnis angegeben.
 
 Auch wenn die englische Chatausgabe nicht verwendet wird, sollte sie installiert werden, da englisch die "Fallback"-Sprache des Bots ist, wenn mal eine Übersetzung fehlt.
 
-| Skript                       | Ablagepfad | Beschreibung            |
-| ---------------------------- | ------------ | ----------------------- |
+| Skript                       | Ablagepfad | Beschreibung      |
+| ---------------------------- | ------------ | ----------------|
 | [hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/custom/hiCommand.js){target=_blank}                                    | scripts/custom/hicommand.js                     | Hauptskript. |
 | [german/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/lang/german/custom/custom-hiCommand.js){target=_blank}   | scripts/lang/german/custom/custom-hicommand.js  | Deutsche Sprachausgabe. |
 | [english/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/lang/english/custom/custom-hiCommand.js){target=_blank} | scripts/lang/english/custom/custom-hicommand.js | Englische Sprachausgabe. |
