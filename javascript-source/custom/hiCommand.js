@@ -19,11 +19,19 @@
     }
 
     /**
-     *
+     * Toggles the onlineonly variable and saves the current state in database
      */
     function toggleOnlineonly() {
         onlineonly = !onlineonly;
         $.setIniDbBoolean('hisettings', 'onlineonly', onlineonly);
+    }
+
+    /**
+     * Updates the cost to set a new custom message
+     */
+    function updateCost(costparam) {
+        cost = costparam
+        $.setIniDbBoolean('hisettings', 'cost', cost);
     }
 
     /**
@@ -135,11 +143,15 @@
             // Subcommand check
             if (subcommand.equalsIgnoreCase("help")) {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
+                if (cost > 0) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
+                }
             } else if (subcommand.equalsIgnoreCase("set")) {
                 setMessage(sender, args)
             } else if (subcommand.equalsIgnoreCase("test")) {
                 // Anderen Nutzer testen
-                doGreeting(args[1].toLowerCase());
+                var username = args[1].toLowerCase();
+                doGreeting(username);
             } else if (subcommand.equalsIgnoreCase("onlineonly")) {
                 // Umschalten, ob Kanal online sein muss
                 toggleOnlineonly();
@@ -147,6 +159,14 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.active'));
                 } else {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.inactive'));
+                }
+            } else if (subcommand.equalsIgnoreCase("cost")) {
+                var costvalue = args[1];
+                if (!isNaN(costvalue)) {
+                    updateCost(costvalue);
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.updated', $.getPointsString(cost)));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
                 }
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
@@ -164,6 +184,7 @@
             $.registerChatSubcommand('hi', 'set', 7);
             $.registerChatSubcommand('hi', 'test', 1);
             $.registerChatSubcommand('hi', 'onlineonly', 1);
+            $.registerChatSubcommand('hi', 'cost', 1);
         }
     });
     $.updateHi = updateHi;
