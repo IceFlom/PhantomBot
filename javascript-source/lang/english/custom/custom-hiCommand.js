@@ -6,3 +6,4 @@ $.lang.register('hicommand.cost.current', 'You have to pay $1 to save a new cust
 $.lang.register('hicommand.cost.updated', 'Updated the amount to pay for a new custom message: $1');
 $.lang.register('hicommand.notenoughpoints', '$1 is not enough, you need $2');
 $.lang.register('hicommand.saved', 'Saved. Your new message: $1');
+$.lang.register('hicommand.adminsaved', 'Saved. New message for $1: $2');

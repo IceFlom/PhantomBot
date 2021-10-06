@@ -140,6 +140,19 @@
     }
 
     /**
+     * Save custom message for another user
+     */
+    function adminsetMessage(username, args) {
+        // Build message
+        for (var i = 1, len = args.length; i < len; i++) {
+            fullMessage += args[i] + " ";
+        }
+        $.setIniDbString('himessages', username, fullMessage);
+        // write answer
+        $.say($.lang.get('hicommand.adminsaved', username, fullMessage));
+    }
+
+    /**
      * @event command
      */
     $.bind('command', function(event) {
@@ -188,6 +201,9 @@
                 }
             } else if (subcommand.equalsIgnoreCase("default")) {
                 setMessage(sender, true, args);
+            } else if (subcommand.equalsIgnoreCase("adminset")) {
+                var username = $.user.sanitize(args[1]).toLowerCase();
+                adminsetMessage(username, args);
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
             }
@@ -206,6 +222,7 @@
             $.registerChatSubcommand('hi', 'onlineonly', 1);
             $.registerChatSubcommand('hi', 'cost', 1);
             $.registerChatSubcommand('hi', 'default', 1);
+            $.registerChatSubcommand('hi', 'adminset', 1);
         }
     });
     $.updateHi = updateHi;
