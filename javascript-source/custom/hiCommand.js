@@ -88,10 +88,28 @@
         }
     }
 
+    function removePoints(username, amount) {
+        $.inidb.decr('points', username, amount);
+    }
+
+    function secureText(text) {
+        // remove line breaks (spam protection)
+        text = $.replace(text, '\n', ' ');
+        // add space after ! (security)
+        text = $.replace(text, '!', '! ');
+        // add space after / (security)
+        text = $.replace(text, '/', '/ ');
+        // no sound
+        text = $.replace(text, 'alert', '');
+        // no alert
+        text = $.replace(text, 'playsound', '');
+        return text;
+    }
+
     /**
      * Save custom message
      */
-    function setMessage(username, args) {
+    function setMessage(username, isDefault, args) {
         // Check points
         var senderPoints = $.getUserPoints(username),
             fullMessage = "";
@@ -103,20 +121,20 @@
         for (var i = 1, len = args.length; i < len; i++) {
             fullMessage += args[i] + " ";
         }
-        // remove line breaks (spam protection)
-        fullMessage = $.replace(fullMessage, '\n', ' ');
-        // add space after ! (security)
-        fullMessage = $.replace(fullMessage, '!', '! ');
-        // add space after / (security)
-        fullMessage = $.replace(fullMessage, '/', '/ ');
-        // no sound
-        fullMessage = $.replace(fullMessage, 'alert', '');
-        // no alert
-        fullMessage = $.replace(fullMessage, 'playsound', '');
-        // Save in db
-        $.setIniDbString('himessages', username, fullMessage);
-        // remove points
-        $.inidb.decr('points', username, cost);
+
+        // Usermessage
+        if (!isDefault) {
+            fullMessage = secureText(fullMessage);
+            // Save in db
+            $.setIniDbString('himessages', username, fullMessage);
+            // remove points
+            removePoints(username, cost);
+        // Default message
+        } else {
+            defaultMessage = fullMessage;
+            $.setIniDbString('hisettings', 'defaultmsg', fullMessage);
+        }
+
         // write answer
         $.say($.lang.get('hicommand.saved', fullMessage));
     }
@@ -147,7 +165,7 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
                 }
             } else if (subcommand.equalsIgnoreCase("set")) {
-                setMessage(sender, args)
+                setMessage(sender, false, args)
             } else if (subcommand.equalsIgnoreCase("test")) {
                 // Anderen Nutzer testen
                 var username = args[1].toLowerCase();
@@ -168,6 +186,8 @@
                 } else {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
                 }
+            } else if (subcommand.equalsIgnoreCase("default")) {
+                setMessage(sender, true, args);
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usage', $.getPointsString(cost)));
             }
@@ -185,6 +205,7 @@
             $.registerChatSubcommand('hi', 'test', 1);
             $.registerChatSubcommand('hi', 'onlineonly', 1);
             $.registerChatSubcommand('hi', 'cost', 1);
+            $.registerChatSubcommand('hi', 'default', 1);
         }
     });
     $.updateHi = updateHi;
