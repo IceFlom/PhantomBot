@@ -145,7 +145,7 @@
     function adminsetMessage(username, args) {
         var fullMessage = "";
         // Build message
-        for (var i = 1, len = args.length; i < len; i++) {
+        for (var i = 2, len = args.length; i < len; i++) {
             fullMessage += args[i] + " ";
         }
         $.setIniDbString('himessages', username, fullMessage);
