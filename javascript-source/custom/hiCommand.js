@@ -150,7 +150,7 @@
         }
         $.setIniDbString('himessages', username, fullMessage);
         // write answer
-        $.say($.lang.get('hicommand.adminsaved', username, fullMessage));
+        $.say($.lang.get('hicommand.adminsaved', $.resolveRank(username), fullMessage));
     }
 
     /**
