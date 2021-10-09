@@ -215,8 +215,8 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        if ($.bot.isModuleEnabled('./custom/hiCommand.js')) {
-            $.registerChatCommand('./custom/hiCommand.js', 'hi', 7);
+        if ($.bot.isModuleEnabled('./ice/hiCommand.js')) {
+            $.registerChatCommand('./ice/hiCommand.js', 'hi', 7);
             $.registerChatSubcommand('hi', 'help', 7);
             $.registerChatSubcommand('hi', 'set', 7);
             $.registerChatSubcommand('hi', 'test', 1);
