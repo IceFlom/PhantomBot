@@ -7,8 +7,8 @@
 (function() {
     var cost = $.getSetIniDbNumber('hisettings', 'cost', 0),
         defaultMessage = $.getSetIniDbString('hisettings', 'defaultmsg', ''),
-        onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false);
-
+        onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false),
+        userCanSetMsg = $.getSetIniDbBoolean('hisettings', 'usercansetmsg', true);
 
     /**
      * @function updateHi (reload settings)
@@ -17,6 +17,7 @@
         cost = $.getIniDbNumber('hisettings', 'cost');
         defaultMessage = $.getIniDbString('hisettings', 'defaultmsg');
         onlineonly = $.getIniDbNumber('hisettings', 'onlineonly');
+        userCanSetMsg = $.getIniDbBoolean('hisettings', 'usercansetmsg');
     }
 
     /**
@@ -25,6 +26,14 @@
     function toggleOnlineonly() {
         onlineonly = !onlineonly;
         $.setIniDbBoolean('hisettings', 'onlineonly', onlineonly);
+    }
+
+    /**
+     * Toggles the userCanSetMsg variable and saves the current state in database
+     */
+    function toggleUserCanSetMsg() {
+        userCanSetMsg = !userCanSetMsg;
+        $.setIniDbBoolean('hisettings', 'usercansetmsg', userCanSetMsg);
     }
 
     /**
@@ -180,18 +189,28 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
                 }
             } else if (subcommand.equalsIgnoreCase("set")) {
-                setMessage(sender, false, args)
+                if (userCanSetMsg) {
+                    setMessage(sender, false, args)
+                }
             } else if (subcommand.equalsIgnoreCase("test")) {
-                // Anderen Nutzer testen
+                // Test foreign user
                 var username = args[1].toLowerCase();
                 doGreeting(username);
             } else if (subcommand.equalsIgnoreCase("onlineonly")) {
-                // Umschalten, ob Kanal online sein muss
+                // Toggle if channel must be live for a message
                 toggleOnlineonly();
                 if (onlineonly) {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.active'));
                 } else {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.inactive'));
+                }
+            } else if (subcommand.equalsIgnoreCase("usermessage")) {
+                // Toggle if users can set their own message
+                toggleUserCanSetMsg();
+                if (userCanSetMsg) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usercansetmsg.active'));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usercansetmsg.inactive'));
                 }
             } else if (subcommand.equalsIgnoreCase("cost")) {
                 var costvalue = args[1];
@@ -222,6 +241,7 @@
             $.registerChatSubcommand('hi', 'set', 7);
             $.registerChatSubcommand('hi', 'test', 1);
             $.registerChatSubcommand('hi', 'onlineonly', 1);
+            $.registerChatSubcommand('hi', 'usermessage', 1);
             $.registerChatSubcommand('hi', 'cost', 1);
             $.registerChatSubcommand('hi', 'default', 1);
             $.registerChatSubcommand('hi', 'adminset', 1);

@@ -41,6 +41,7 @@ ob das Skript läuft.
 | `!hi set [text]`             | Benutzer     | Speichert den angegebenen Text für den Nutzer. |
 | `!hi test [name]`            | Admin        | Begrüßung des angegebenen Nutzers zu Testzwecken auslösen. |
 | `!hi onlineonly`             | Admin        | Umschalten, ob !hi nur dann etwas ausgeben soll, wenn der Kanal live ist. Standard: deaktiviert |
+| `!hi usermessage`            | Admin        | Umschalten, ob Nutzer eigene Nachrichten speichern können. Standard: aktiviert |
 | `!hi cost [zahl]`            | Admin        | Höhe der Kosten an Punkten, um einen eigenen Text zu speichern. Standard: 0 |
 | `!hi default [text]`         | Admin        | Standardbegrüßung speichern. Standard: keine |
 | `!hi adminset [name] [text]` | Admin        | Speichert den angegebenen Text für den angegebenen Nutzer. |
