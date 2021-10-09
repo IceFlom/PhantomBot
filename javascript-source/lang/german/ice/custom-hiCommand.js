@@ -12,3 +12,4 @@ $.lang.register('hicommand.usercansetmsg.inactive', 'Nutzer können eigene Nachr
 $.lang.register('hicommand.autogreeting.active', 'Automatische Begrüßung bei erster Nachricht eines Nutzers: aktiviert');
 $.lang.register('hicommand.autogreeting.inactive', 'Automatische Begrüßung bei erster Nachricht eines Nutzers: deaktiviert');
 $.lang.register('hicommand.autogreeting.info', 'Automatischer Modus ist aktiv, Auslösung per Befehl nicht möglich.');
+$.lang.register('hicommand.autocooldownminutes.current', 'Cooldown bis Nachricht erneut geschrieben wird (Auto-Modus): $1 Minute(n) seit letzter Nachricht des Nutzers.');

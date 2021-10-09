@@ -44,6 +44,7 @@ ob das Skript läuft.
 | `!hi usermessage`            | Admin        | Umschalten, ob Nutzer eigene Nachrichten speichern können. Standard: aktiviert |
 | `!hi autogreeting`           | Admin        | Automatischen Modus umschalten (Auslösung bei erster Nachricht eines Nutzers). Standard: deaktiviert |
 | `!hi cost [zahl]`            | Admin        | Höhe der Kosten an Punkten, um einen eigenen Text zu speichern. Standard: 0 |
+| `!hi autocooldown [zahl]`    | Admin        | Anzahl Minuten seit letzter Nachricht eines Nutzers, bis im Auto-Modus eine Nachricht erneut gechickt wird. Standard: 120 |
 | `!hi default [text]`         | Admin        | Standardbegrüßung speichern. Standard: keine |
 | `!hi adminset [name] [text]` | Admin        | Speichert den angegebenen Text für den angegebenen Nutzer. |
 

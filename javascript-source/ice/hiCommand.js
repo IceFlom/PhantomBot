@@ -9,7 +9,8 @@
         defaultMessage = $.getSetIniDbString('hisettings', 'defaultmsg', ''),
         onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false),
         userCanSetMsg = $.getSetIniDbBoolean('hisettings', 'usercansetmsg', true),
-        autogreeting = $.getSetIniDbBoolean('hisettings', 'autogreeting', false);
+        autogreeting = $.getSetIniDbBoolean('hisettings', 'autogreeting', false),
+        autoCooldownMinutes = $.getSetIniDbNumber('hisettings', 'autocooldownminutes', 120);
 
     /**
      * @function updateHi (reload settings)
@@ -20,6 +21,7 @@
         onlineonly = $.getIniDbNumber('hisettings', 'onlineonly');
         userCanSetMsg = $.getIniDbBoolean('hisettings', 'usercansetmsg');
         autogreeting = $.getIniDbBoolean('hisettings', 'autogreeting');
+        autoCooldownMinutes = $.getIniDbNumber('hisettings', 'autocooldownminutes')
     }
 
     /**
@@ -52,6 +54,15 @@
     function updateCost(costparam) {
         cost = costparam
         $.setIniDbBoolean('hisettings', 'cost', cost);
+    }
+
+    /**
+     * Updates the cooldown for automatic mode
+     * (minues since last message of a user before the greeting will be posted again)
+     */
+    function updateAutoCooldownMinutes(autoCooldownMinutesParam) {
+        autoCooldownMinutes = autoCooldownMinutesParam
+        $.setIniDbBoolean('hisettings', 'autocooldownminutes', autoCooldownMinutes);
     }
 
     /**
@@ -239,6 +250,12 @@
                 } else {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.cost.current', $.getPointsString(cost)));
                 }
+            } else if (subcommand.equalsIgnoreCase("autocooldown")) {
+                var autoCooldownMinutesValue = args[1];
+                if (!isNaN(autoCooldownMinutesValue)) {
+                    updateAutoCooldownMinutes(autoCooldownMinutesValue);
+                }
+                $.say($.whisperPrefix(sender) + $.lang.get('hicommand.autocooldownminutes.current', autoCooldownMinutes));
             } else if (subcommand.equalsIgnoreCase("default")) {
                 setMessage(sender, true, args);
             } else if (subcommand.equalsIgnoreCase("adminset")) {
@@ -263,6 +280,7 @@
             $.registerChatSubcommand('hi', 'usermessage', 1);
             $.registerChatSubcommand('hi', 'autogreeting', 1);
             $.registerChatSubcommand('hi', 'cost', 1);
+            $.registerChatSubcommand('hi', 'autocooldown', 1);
             $.registerChatSubcommand('hi', 'default', 1);
             $.registerChatSubcommand('hi', 'adminset', 1);
         }

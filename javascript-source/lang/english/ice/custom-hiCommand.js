@@ -12,3 +12,4 @@ $.lang.register('hicommand.usercansetmsg.inactive', 'Users can set their own mes
 $.lang.register('hicommand.autogreeting.active', 'Automatic greeting on first message of an user: enabled');
 $.lang.register('hicommand.autogreeting.inactive', 'Automatic greeting on first message of an user: disabled');
 $.lang.register('hicommand.autogreeting.info', 'Automatic mode is activated, you cannot use this command to trigger a greeting.');
+$.lang.register('hicommand.autocooldownminutes.current', 'Cooldown till message will be written again (auto-mode): $1 minutes since last message of the user.');
