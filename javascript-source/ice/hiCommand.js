@@ -10,7 +10,8 @@
         onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false),
         userCanSetMsg = $.getSetIniDbBoolean('hisettings', 'usercansetmsg', true),
         autogreeting = $.getSetIniDbBoolean('hisettings', 'autogreeting', false),
-        autoCooldownMinutes = $.getSetIniDbNumber('hisettings', 'autocooldownminutes', 120);
+        autoCooldownMinutes = $.getSetIniDbNumber('hisettings', 'autocooldownminutes', 120),
+        cachedTimePerUser = {};
 
     /**
      * @function updateHi (reload settings)
@@ -183,6 +184,33 @@
         // write answer
         $.say($.lang.get('hicommand.adminsaved', $.resolveRank(username), fullMessage));
     }
+
+    /**
+     * @event ircChannelMessage
+     */
+    $.bind('ircChannelMessage', function(event) {
+        if (!autogreeting) {
+            return;
+        }
+
+        var sender = event.getSender().toLowerCase(),
+            cachedTime = cachedTimePerUser[sender];
+
+        if (onlineonly && !$.isOnline($.channelName)) {
+            return;
+        }
+        if (!$.isBot(sender)) {
+            if (cachedTime !== undefined) {
+                var differenceMinutes = ($.systemTime() - cachedTime) / 1000 / 60;
+                if (differenceMinutes < autoCooldownMinutes) {
+                    cachedTimePerUser[sender] = $.systemTime();
+                    return;
+                }
+            }
+            cachedTimePerUser[sender] = $.systemTime();
+            doGreeting(sender);
+        }
+    });
 
     /**
      * @event command
