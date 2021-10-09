@@ -1,16 +1,29 @@
-docker-build-master:
+docker-build-master-local:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_LOCALREGISTRY_USER" -p "$CI_LOCALREGISTRY_TOKEN" $CI_LOCALREGISTRY
+  script:
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CI_LOCALREGISTRY/$STABLE_IMAGE" .
+    - docker push "$CI_LOCALREGISTRY/$STABLE_IMAGE"
+  only:
+    - master
+  except:
+    changes:
+      - docsbyice/*
+
+docker-build-master-dh:
   image: docker:latest
   stage: build
   services:
     - docker:dind
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_TOKEN" $CI_REGISTRY
-    - docker login -u "$CI_LOCALREGISTRY_USER" -p "$CI_LOCALREGISTRY_TOKEN" $CI_LOCALREGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$LOCAL_STABLE_IMAGE" .
-    - docker push "$LOCAL_STABLE_IMAGE"
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$STABLE_IMAGE" .
-    - docker push "$STABLE_IMAGE"
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CI_REGISTRY/$STABLE_IMAGE" .
+    - docker push "$CI_REGISTRY/$STABLE_IMAGE"
   only:
     - master
   except:
@@ -25,8 +38,8 @@ docker-build-develop:
   before_script:
     - docker login -u "$CI_LOCALREGISTRY_USER" -p "$CI_LOCALREGISTRY_TOKEN" $CI_LOCALREGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$LOCAL_TAG_IMAGE" .
-    - docker push "$LOCAL_TAG_IMAGE"
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CI_LOCALREGISTRY/$CANARY_IMAGE" .
+    - docker push "$CI_LOCALREGISTRY/$CANARY_IMAGE"
   only:
     - develop
   except:
@@ -41,8 +54,8 @@ docker-build-tags:
   before_script:
     - docker login -u "$CI_LOCALREGISTRY_USER" -p "$CI_LOCALREGISTRY_TOKEN" $CI_LOCALREGISTRY
   script:
-    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$LOCAL_TAG_IMAGE:$CI_COMMIT_TAG" .
-      - docker push "$LOCAL_TAG_IMAGE:$CI_COMMIT_TAG"
+    - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CI_LOCALREGISTRY/$TAG_IMAGE:$CI_COMMIT_TAG" .
+      - docker push "$CI_LOCALREGISTRY/$TAG_IMAGE:$CI_COMMIT_TAG"
   only:
     - tags
   except:
