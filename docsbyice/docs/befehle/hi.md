@@ -77,6 +77,13 @@ Um mehrzeilige Begrüßungen nutzen zu können, kann `\n` innerhalb des Textes g
 Die Nachricht wird dann zeilenweise mit einem Delay von 1 Sekunde ausgegeben. Dies kann nur von einem
 Admin genutzt werden.
 
+## Automatische Begrüßungen
+Wenn der Bot neue Nutzer bei ihrer ersten Nachricht automatisch mit einer Nachricht begrüßen soll, muss der automatische Modus
+mit `!hi autogreeting` aktiviert werden. Des Weiteren kann mit `!hi autocooldown [minuten]` eingestellt werden, wieviel Zeit seit der 
+letzten Nachricht eines Nutzers vergangen sein muss, damit er erneut begrüßt wird. Standardmäßig ist dies auf 120 Minuten eingestellt.
+
+Sobald der automatische Modus aktiv ist, kann die Begrüßung nicht mehr manuell mit `!hi` ausgelöst werden.
+
 ## Befehl !hi anpassen
 
 Wenn statt !hi ein anderer Hauptbefehl gewünscht ist, muss ein entsprechender Alias angelegt werden.
