@@ -9,3 +9,6 @@ $.lang.register('hicommand.saved', 'Gespeichert. Deine neue Nachricht: $1');
 $.lang.register('hicommand.adminsaved', 'Gespeichert. Neue Nachricht für $1: $2');
 $.lang.register('hicommand.usercansetmsg.active', 'Nutzer können eigene Nachrichten speichern: aktiviert');
 $.lang.register('hicommand.usercansetmsg.inactive', 'Nutzer können eigene Nachrichten speichern: deaktiviert');
+$.lang.register('hicommand.autogreeting.active', 'Automatische Begrüßung bei erster Nachricht eines Nutzers: aktiviert');
+$.lang.register('hicommand.autogreeting.inactive', 'Automatische Begrüßung bei erster Nachricht eines Nutzers: deaktiviert');
+$.lang.register('hicommand.autogreeting.info', 'Automatischer Modus ist aktiv, Auslösung per Befehl nicht möglich.');

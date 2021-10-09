@@ -9,3 +9,6 @@ $.lang.register('hicommand.saved', 'Saved. Your new message: $1');
 $.lang.register('hicommand.adminsaved', 'Saved. New message for $1: $2');
 $.lang.register('hicommand.usercansetmsg.active', 'Users can set their own messages: enabled');
 $.lang.register('hicommand.usercansetmsg.inactive', 'Users can set their own messages: disabled');
+$.lang.register('hicommand.autogreeting.active', 'Automatic greeting on first message of an user: enabled');
+$.lang.register('hicommand.autogreeting.inactive', 'Automatic greeting on first message of an user: disabled');
+$.lang.register('hicommand.autogreeting.info', 'Automatic mode is activated, you cannot use this command to trigger a greeting.');

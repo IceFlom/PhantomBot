@@ -8,7 +8,8 @@
     var cost = $.getSetIniDbNumber('hisettings', 'cost', 0),
         defaultMessage = $.getSetIniDbString('hisettings', 'defaultmsg', ''),
         onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false),
-        userCanSetMsg = $.getSetIniDbBoolean('hisettings', 'usercansetmsg', true);
+        userCanSetMsg = $.getSetIniDbBoolean('hisettings', 'usercansetmsg', true),
+        autogreeting = $.getSetIniDbBoolean('hisettings', 'autogreeting', false);
 
     /**
      * @function updateHi (reload settings)
@@ -18,6 +19,7 @@
         defaultMessage = $.getIniDbString('hisettings', 'defaultmsg');
         onlineonly = $.getIniDbNumber('hisettings', 'onlineonly');
         userCanSetMsg = $.getIniDbBoolean('hisettings', 'usercansetmsg');
+        autogreeting = $.getIniDbBoolean('hisettings', 'autogreeting');
     }
 
     /**
@@ -34,6 +36,14 @@
     function toggleUserCanSetMsg() {
         userCanSetMsg = !userCanSetMsg;
         $.setIniDbBoolean('hisettings', 'usercansetmsg', userCanSetMsg);
+    }
+
+    /**
+     * Toggles the autogreeting variable and saves the current state in database
+     */
+    function toggleAutogreeting() {
+        autogreeting = !autogreeting;
+        $.setIniDbBoolean('hisettings', 'autogreeting', autogreeting);
     }
 
     /**
@@ -179,7 +189,12 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly'));
                     return;
                 }
-                doGreeting(sender);
+                // Write message only, if autogreeting is disabled
+                if (!autogreeting) {
+                    doGreeting(sender);
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.autogreeting.info'));
+                }
                 return;
             }
             // Subcommand check
@@ -193,11 +208,9 @@
                     setMessage(sender, false, args)
                 }
             } else if (subcommand.equalsIgnoreCase("test")) {
-                // Test foreign user
                 var username = args[1].toLowerCase();
                 doGreeting(username);
             } else if (subcommand.equalsIgnoreCase("onlineonly")) {
-                // Toggle if channel must be live for a message
                 toggleOnlineonly();
                 if (onlineonly) {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.active'));
@@ -205,12 +218,18 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.onlineonly.inactive'));
                 }
             } else if (subcommand.equalsIgnoreCase("usermessage")) {
-                // Toggle if users can set their own message
                 toggleUserCanSetMsg();
                 if (userCanSetMsg) {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usercansetmsg.active'));
                 } else {
                     $.say($.whisperPrefix(sender) + $.lang.get('hicommand.usercansetmsg.inactive'));
+                }
+            } else if (subcommand.equalsIgnoreCase("autogreeting")) {
+                toggleAutogreeting();
+                if (autogreeting) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.autogreeting.active'));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('hicommand.autogreeting.inactive'));
                 }
             } else if (subcommand.equalsIgnoreCase("cost")) {
                 var costvalue = args[1];
@@ -242,6 +261,7 @@
             $.registerChatSubcommand('hi', 'test', 1);
             $.registerChatSubcommand('hi', 'onlineonly', 1);
             $.registerChatSubcommand('hi', 'usermessage', 1);
+            $.registerChatSubcommand('hi', 'autogreeting', 1);
             $.registerChatSubcommand('hi', 'cost', 1);
             $.registerChatSubcommand('hi', 'default', 1);
             $.registerChatSubcommand('hi', 'adminset', 1);
