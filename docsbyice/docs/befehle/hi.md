@@ -19,9 +19,9 @@ Auch wenn die englische Chatausgabe nicht verwendet wird, sollte sie installiert
 
 | Skript                       | Ablagepfad | Beschreibung      |
 | ---------------------------- | ------------ | ----------------|
-| [hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/custom/hiCommand.js){target=_blank}                                    | scripts/custom/hicommand.js                     | Hauptskript. |
-| [german/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/lang/german/custom/custom-hiCommand.js){target=_blank}   | scripts/lang/german/custom/custom-hicommand.js  | Deutsche Sprachausgabe. |
-| [english/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/blob/master/javascript-source/lang/english/custom/custom-hiCommand.js){target=_blank} | scripts/lang/english/custom/custom-hicommand.js | Englische Sprachausgabe. |
+| [hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/raw/master/javascript-source/ice/hiCommand.js){target=_blank}                                    | scripts/custom/hicommand.js                     | Hauptskript. |
+| [german/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/raw/master/javascript-source/lang/german/ice/custom-hiCommand.js){target=_blank}   | scripts/lang/german/custom/custom-hicommand.js  | Deutsche Sprachausgabe. |
+| [english/custom-hicommand.js](https://git.iceflom.de/iceflom/phantombot-iceversion/-/raw/master/javascript-source/lang/english/ice/custom-hiCommand.js){target=_blank} | scripts/lang/english/custom/custom-hicommand.js | Englische Sprachausgabe. |
 
 Vorgehen:
 

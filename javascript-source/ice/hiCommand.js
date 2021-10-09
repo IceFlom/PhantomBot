@@ -9,6 +9,7 @@
         defaultMessage = $.getSetIniDbString('hisettings', 'defaultmsg', ''),
         onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false);
 
+
     /**
      * @function updateHi (reload settings)
      */
