@@ -7,3 +7,5 @@ $.lang.register('hicommand.cost.updated', 'Updated the amount to pay for a new c
 $.lang.register('hicommand.notenoughpoints', '$1 is not enough, you need $2');
 $.lang.register('hicommand.saved', 'Saved. Your new message: $1');
 $.lang.register('hicommand.adminsaved', 'Saved. New message for $1: $2');
+$.lang.register('hicommand.usercansetmsg.active', 'Users can set their own messages: enabled');
+$.lang.register('hicommand.usercansetmsg.inactive', 'Users can set their own messages: disabled');

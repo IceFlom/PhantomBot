@@ -7,3 +7,5 @@ $.lang.register('hicommand.cost.updated', 'Kosten zum Speichern einer neuen Begr
 $.lang.register('hicommand.notenoughpoints', '$1 sind leider nicht genug, du brauchst $2');
 $.lang.register('hicommand.saved', 'Gespeichert. Deine neue Nachricht: $1');
 $.lang.register('hicommand.adminsaved', 'Gespeichert. Neue Nachricht für $1: $2');
+$.lang.register('hicommand.usercansetmsg.active', 'Nutzer können eigene Nachrichten speichern: aktiviert');
+$.lang.register('hicommand.usercansetmsg.inactive', 'Nutzer können eigene Nachrichten speichern: deaktiviert');
