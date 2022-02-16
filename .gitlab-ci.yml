@@ -40,8 +40,6 @@ docker-build-develop:
   script:
     - docker build --build-arg TARGETPLATFORM="linux/amd64" --build-arg PROJECT_VERSION="3.5.0" --pull -t "$CI_LOCALREGISTRY/$CANARY_IMAGE" .
     - docker push "$CI_LOCALREGISTRY/$CANARY_IMAGE"
-  only:
-    - develop
   except:
     changes:
       - docsbyice/*
