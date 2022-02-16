@@ -26,29 +26,47 @@ function contains($haystack, $needle) {
     }
 }
 
+function str_includes_array_value($needle, $haystack) {
+    foreach ($haystack as $v) {
+        if (strpos($needle, $v) !== false) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 function dofilter($data) {
     return filter_var($data, FILTER_SANITIZE_STRING, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK);
 }
 
-function doexit($code, $message) {
+function doexit($code, $message, $filternm) {
     http_response_code($code);
     echo json_encode(array('err' => 1, 'message' => $message));
+    apache_note('RBResp', $filternm);
     exit();
 }
 
 if (!array_key_exists('x-rollbar-access-token', $headers) || dofilter($headers['x-rollbar-access-token']) != $client_token) {
-    doexit(403, 'access denied');
+    doexit(403, 'access denied', 'token');
 }
 
 $data = file_get_contents('php://input');
 $item = json_decode($data, true);
 
 if (!array_key_exists('trace', $item['data']['body']) && !array_key_exists('trace_chain', $item['data']['body'])) {
-    doexit(409, 'only trace,trace_chain accepted');
+    doexit(409, 'only trace,trace_chain accepted', 'not_trace');
 }
 
 if (!in_array($item['data']['environment'], $allowed_environments)) {
-    doexit(409, 'environment not allowed');
+    doexit(409, 'environment not allowed', 'env');
+}
+
+if (file_exists('rollbar-allowed-versions.json')) {
+    $allowed_versions = json_decode(file_get_contents('rollbar-allowed-versions.json'), true);
+    if (!in_array($item['data']['code_version'], $allowed_versions[$item['data']['environment']])) {
+        doexit(409, 'version not allowed', 'ver');
+    }
 }
 
 if (array_key_exists('trace_chain', $item['data']['body'])) {
@@ -63,7 +81,7 @@ if (array_key_exists('trace_chain', $item['data']['body'])) {
 
 $lastframe = count($trace['frames']) - 1;
 
-foreach ($filters as $filter) {
+foreach ($filters as $i => $filter) {
     $checked = false;
     if (array_key_exists('exception', $filter)) {
         if (array_key_exists('class', $filter['exception'])) {
@@ -91,14 +109,14 @@ foreach ($filters as $filter) {
         if ($frameno < 0) {
             if (array_key_exists('class_name', $filter['frame'])) {
                 $checked = true;
-                if (!contains($trace['frame'][$frameno]['class_name'], $filter['frame']['class_name'])) {
+                if (!contains($trace['frames'][$frameno]['class_name'], $filter['frame']['class_name'])) {
                     continue;
                 }
             }
 
             if (array_key_exists('method', $filter['frame'])) {
                 $checked = true;
-                if (!contains($trace['frame'][$frameno]['method'], $filter['frame']['method'])) {
+                if (!contains($trace['frames'][$frameno]['method'], $filter['frame']['method'])) {
                     continue;
                 }
             }
@@ -109,10 +127,72 @@ foreach ($filters as $filter) {
         continue;
     }
 
-    doexit(409, 'filtered');
+    doexit(409, 'filtered', 'filter_' . $i);
+}
+
+$ctx = hash_init('sha1');
+
+hash_update($ctx, $item['data']['code_version']);
+hash_update($ctx, $item['data']['environment']);
+hash_update($ctx, $item['data']['level']);
+if (array_key_exists('title', $item['data'])) {
+    hash_update($ctx, $item['data']['title']);
+}
+
+if (array_key_exists('trace_chain', $item['data']['body'])) {
+    foreach($item['data']['body']['trace_chain'] as $v) {
+        hash_update($ctx, $v['exception']['class']);
+        hash_update($ctx, $v['exception']['description']);
+        hash_update($ctx, $v['exception']['message']);
+
+        $last = -1;
+        foreach($v['frames'] as $k => $f) {
+            if (str_includes_array_value($f['class_name'], $packages)) {
+                $last = $k;
+            } else {
+                foreach ($files as $file) {
+                    if (contains($f['filename'], $file)) {
+                        $last = $k;
+                    }
+                }
+            }
+        }
+        
+        if ($last >= 0) {
+            hash_update($ctx, $v['frames'][$last]['class_name']);
+            hash_update($ctx, $v['frames'][$last]['filename']);
+            hash_update($ctx, $v['frames'][$last]['lineno']);
+            hash_update($ctx, $v['frames'][$last]['method']);
+        }
+    }
+} else {
+    hash_update($ctx, $item['data']['body']['trace']['exception']['class']);
+    hash_update($ctx, $item['data']['body']['trace']['exception']['description']);
+    hash_update($ctx, $item['data']['body']['trace']['exception']['message']);
+
+    $last = -1;
+    foreach($item['data']['body']['trace']['frames'] as $k => $f) {
+        if (str_includes_array_value($f['class_name'], $packages)) {
+            $last = $k;
+        } else {
+            foreach ($files as $file) {
+                if (contains($f['filename'], $file)) {
+                    $last = $k;
+                }
+            }
+        }
+    }
+        
+    if ($last >= 0) {
+        hash_update($ctx, $item['data']['body']['trace']['frames'][$last]['class_name']);
+        hash_update($ctx, $item['data']['body']['trace']['frames'][$last]['filename']);
+        hash_update($ctx, $item['data']['body']['trace']['frames'][$last]['lineno']);
+        hash_update($ctx, $item['data']['body']['trace']['frames'][$last]['method']);
+    }
 }
 
 $item['access_token'] = $rollbar_token;
+$item['data']['fingerprint'] = hash_final($ctx);
 
 $c = curl_init();
 
@@ -127,6 +207,7 @@ $response = curl_exec($c);
 
 http_response_code(curl_getinfo($c, CURLINFO_RESPONSE_CODE));
 echo $response;
+apache_note('RBResp', 'rb');
 
 curl_close($c);
 ?>

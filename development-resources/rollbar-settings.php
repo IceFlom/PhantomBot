@@ -1,10 +1,10 @@
 <?php
 
 //require_once('rollbar-log.php');
-$rollbar_url = 'https://api.rollbar.com/api/1/item/';
+$rollbar_url = 'https://api.rollbar.com/api/1/item/'; //URL to POST reprots to if they pass filtering
 $rollbar_token = ''; //API Token for Rollbar
 $client_token = ''; //Access Token for clients to submit to this script
-$reverse = false;
+$reverse = false; //If true, the stack trace order is reversed before filtering and submitting
 
 /*
  * Filter format
@@ -38,6 +38,8 @@ $reverse = false;
  * )
  */
 
+// Main Filter List
+// It is recommended to not touch this and to instead add custom filters near the bottom near the "Custom Filters" comment
 $filters = array(
     array(
         'exception' => array(
@@ -72,7 +74,22 @@ $filters = array(
     array(
         'exception' => array(
             'class' => 'discord4j.rest.http.client.ClientException',
-            'message' => 'regex:/401(.*)Unauthorized/'
+            'message' => 'regex:/(400 Bad Request|401 Unauthorized|403 Forbidden|404 Not Found)/'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'com.mysql.jdbc.exceptions.jdbc4.MySQLQueryInterruptedException'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'com.mysql.jdbc.exceptions.jdbc4.MySQLNonTransientConnectionException'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Timeout while waiting for a free database connection*'
         )
     ),
     array(
@@ -92,7 +109,12 @@ $filters = array(
     ),
     array(
         'exception' => array(
-            'message' => 'regex:/SQLITE_(BUSY|CORRUPT|READONLY|CONSTRAINT|CANTOPEN|PROTOCOL)/'
+            'message' => 'regex:/SQLITE_(BUSY|CORRUPT|READONLY|CONSTRAINT|CANTOPEN|PROTOCOL|IOERR|NOTADB)/'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Incorrect string value: \'\\xF0*'
         )
     ),
     array(
@@ -112,31 +134,48 @@ $filters = array(
     ),
     array(
         'exception' => array(
-            'class' => 'java.io.FileNotFoundException',
-            'message' => './logs*'
+            'class' => 'java.io.FileNotFoundException'
         )
     ),
     array(
         'exception' => array(
-            'class' => 'java.io.FileNotFoundException',
-            'message' => './config*'
+            'class' => 'java.nio.file.NoSuchFileException'
         )
     ),
     array(
         'exception' => array(
-            'message' => 'regex:/java.io.FileNotFoundException(.*)\/\/addons/'
+            'class' => 'java.nio.file.InvalidPathException'
         )
     ),
     array(
         'exception' => array(
-            'class' => 'java.io.FileNotFoundException',
-            'message' => 'regex:/..web.panel.img/'
+            'class' => 'java.nio.file.AccessDeniedException'
         )
     ),
     array(
         'exception' => array(
-            'class' => 'java.nio.file.NoSuchFileException',
-            'message' => 'regex:/..web.panel.js.utils.gamesList.txt/'
+            'message' => '*java.io.FileNotFoundException*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*java.nio.file.NoSuchFileException*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*java.nio.file.InvalidPathException*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*java.nio.file.AccessDeniedException*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.net.SocketException',
+            'message' => 'Operation not permitted'
         )
     ),
     array(
@@ -163,9 +202,148 @@ $filters = array(
         'exception' => array(
             'message' => '*Connection pool has been disposed*'
         )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.net.ConnectException',
+            'message' => 'Connection refused*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'javax.net.ssl.SSLHandshakeException'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.io.IOException',
+            'message' => 'Input/output error'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.io.IOException',
+            'message' => 'Stream closed'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Address already in use*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'com.mysql.jdbc.MysqlDataTruncation'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Connection reset*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Socket closed*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Connection timed out*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*connection failing*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*apioauth is required*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*getCommunities*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '[TimeoutException]'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Network is unreachable*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.net.SocketException',
+            'message' => 'Software caused connection abort: recv failed'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.net.SocketException',
+            'message' => 'Connection timed out (Read failed)'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.net.SocketException',
+            'message' => 'Unexpected end of file from server'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Too many open files'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*UnknownHostException*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Host unreachable*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*An existing connection was forcibly closed by the remote host'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*Received close_notify during handshake'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'twitter4j.TwitterException',
+            'message' => '401:Authentication credentials*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => 'regex:/Failed to get donations.*404.*Not found/'
+        )
+    ),
+    array(
+        'exception' => array(
+            'class' => 'java.lang.IllegalArgumentException',
+            'message' => 'Invalid token*'
+        )
+    ),
+    array(
+        'exception' => array(
+            'message' => '*java.base does not export sun.security.x509*'
+        )
     )
 );
 
+// Only environment values below will be allowed
 $allowed_environments = array(
     'stable',
     'stable_docker',
@@ -173,5 +351,21 @@ $allowed_environments = array(
     'nightly_build_docker',
     'edge_build'
 );
+
+//Packages to use for the fingerprint
+$packages = array(
+    'tv.phantombot',
+    'com.gmt2001',
+    'com.illusionaryone',
+    'com.scaniatv'
+);
+
+//Files to use for the fingerprint
+$files = array(
+    '*.js'
+);
+
+//Put custom filters in rollbar-settings-extra.php in the provided array_push
+@include_once('rollbar-settings-extra.php');
 
 ?>

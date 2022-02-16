@@ -37,14 +37,14 @@ public class TipeeeStreamCache implements Runnable {
     private Map<String, String> cache = new ConcurrentHashMap<>();
     private Date timeoutExpire = new Date();
     private Date lastFail = new Date();
-    private Boolean firstUpdate = true;
-    private Boolean killed = false;
+    private boolean firstUpdate = true;
+    private boolean killed = false;
     private int numfail = 0;
 
     /**
      * Used to call and start this instance.
      *
-     * @param {String}  channel  Channel to run the cache for.
+     * @param {String} channel Channel to run the cache for.
      */
     public static TipeeeStreamCache instance(String channel) {
         TipeeeStreamCache instance = instances.get(channel);
@@ -59,7 +59,7 @@ public class TipeeeStreamCache implements Runnable {
     /**
      * Starts this class on a new thread.
      *
-     * @param {String}  channel  Channel to run the cache for.
+     * @param {String} channel Channel to run the cache for.
      */
     private TipeeeStreamCache(String channel) {
         this.channel = channel;
@@ -74,9 +74,9 @@ public class TipeeeStreamCache implements Runnable {
     /**
      * Checks if the donation has been cached.
      *
-     * @return {Boolean}
+     * @return {boolean}
      */
-    public Boolean exists(String donationID) {
+    public boolean exists(String donationID) {
         return cache.containsKey(donationID);
     }
 
@@ -118,16 +118,12 @@ public class TipeeeStreamCache implements Runnable {
 
         while (!killed) {
             try {
-                try {
-                    if (new Date().after(timeoutExpire)) {
-                        this.updateCache();
-                    }
-                } catch (Exception ex) {
-                    checkLastFail();
-                    com.gmt2001.Console.debug.println("TipeeeStreamCache.run: Failed to update donations: " + ex.getMessage());
+                if (new Date().after(timeoutExpire)) {
+                    this.updateCache();
                 }
             } catch (Exception ex) {
-                com.gmt2001.Console.err.println("TipeeeStreamCache.run: Failed to update donations: " + ex.getMessage());
+                checkLastFail();
+                com.gmt2001.Console.err.printStackTrace(ex);
             }
 
             try {
@@ -164,17 +160,17 @@ public class TipeeeStreamCache implements Runnable {
                 }
             } else {
                 try {
-                    throw new Exception("[HTTPErrorExecption] HTTP " + " " + jsonResult.getInt("_http") + ". req=" +
-                                        jsonResult.getString("_type") + " " + jsonResult.getString("_url") + "   " +
-                                        (jsonResult.has("message") && !jsonResult.isNull("message") ? "message=" +
-                                         jsonResult.getString("message") : "content=" + jsonResult.getString("_content")));
+                    throw new Exception("[HTTPErrorExecption] HTTP " + " " + jsonResult.getInt("_http") + ". req="
+                            + jsonResult.getString("_type") + " " + jsonResult.getString("_url") + "   "
+                            + (jsonResult.has("message") && !jsonResult.isNull("message") ? "message="
+                            + jsonResult.getString("message") : "content=" + jsonResult.getString("_content")));
                 } catch (Exception ex) {
                     /* Kill this cache if the tipeeestream token is bad and disable the module. */
                     if (ex.getMessage().contains("authentification")) {
                         com.gmt2001.Console.err.println("TipeeeStreamCache.updateCache: Bad API key disabling the TipeeeStream module.");
                         PhantomBot.instance().getDataStore().SetString("modules", "", "./handlers/tipeeestreamHandler.js", "false");
                     } else {
-                        com.gmt2001.Console.err.println("TipeeeStreamCache.updateCache: Failed to update donations: " + ex.getMessage());
+                        com.gmt2001.Console.err.printStackTrace(ex);
                     }
                     this.kill();
                 }
@@ -185,7 +181,7 @@ public class TipeeeStreamCache implements Runnable {
             } catch (Exception ex) {
                 if (ex.getMessage().startsWith("[SocketTimeoutException]") || ex.getMessage().startsWith("[IOException]")) {
                     checkLastFail();
-                    com.gmt2001.Console.warn.println("TipeeeStreamCache.run: Failed to update donations: " + ex.getMessage());
+                    com.gmt2001.Console.err.printStackTrace(ex);
                 }
             }
         }
@@ -197,7 +193,8 @@ public class TipeeeStreamCache implements Runnable {
 
         if (donations != null && !killed) {
             for (int i = 0; i < donations.length(); i++) {
-                if (cache == null || !cache.containsKey(donations.getJSONObject(i).get("id").toString())) {
+                if ((cache == null || !cache.containsKey(donations.getJSONObject(i).get("id").toString()))
+                        && !PhantomBot.instance().getDataStore().exists("donations", donations.getJSONObject(i).get("id").toString())) {
                     EventBus.instance().post(new TipeeeStreamDonationEvent(donations.getJSONObject(i).toString()));
                 }
             }
@@ -208,7 +205,7 @@ public class TipeeeStreamCache implements Runnable {
     /**
      * Sets the current cache.
      *
-     * @param {Map}  Cache
+     * @param {Map} Cache
      */
     public void setCache(Map<String, String> cache) {
         this.cache = cache;

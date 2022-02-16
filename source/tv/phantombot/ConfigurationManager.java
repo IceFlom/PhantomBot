@@ -18,12 +18,8 @@ package tv.phantombot;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.TreeSet;
 import java.util.function.Supplier;
 
 public class ConfigurationManager {
@@ -32,6 +28,8 @@ public class ConfigurationManager {
     private static final String PANEL_STANDARD_USER = "panel";
     private static final String PANEL_STANDARD_PASSWORD = "panel";
     private static final String OUAUTH_PREFIX = "oauth:";
+
+    public static final String PROP_ENVOVERRIDE = "ENVOVERRIDE";
 
     public static final String PROP_BASEPORT = "baseport";
     public static final String PROP_USEHTTPS = "usehttps";
@@ -70,10 +68,10 @@ public class ConfigurationManager {
         CaselessProperties startProperties = new CaselessProperties();
 
         /* Indicates that the botlogin.txt file should be overwritten/created. */
-        Boolean changed = false;
+        boolean changed = false;
 
         // Indicates that this is a fresh setup
-        Boolean newSetup = false;
+        boolean newSetup = false;
 
         /* Load up the bot info from the bot login file */
         try {
@@ -96,14 +94,21 @@ public class ConfigurationManager {
         } catch (IOException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
+
         /* Load up the bot info from the environment */
+        String prefix = "PHANTOMBOT_";
+        boolean envOverrides = System.getenv().containsKey(prefix + PROP_ENVOVERRIDE)
+                && (System.getenv(prefix + PROP_ENVOVERRIDE).equalsIgnoreCase("true") || System.getenv(prefix + PROP_ENVOVERRIDE).equals("1"));
         System.getenv().entrySet().forEach((v) -> {
-            String prefix = "PHANTOMBOT_";
             String key = v.getKey().toUpperCase();
             String value = v.getValue();
-            if (key.startsWith(prefix) && prefix.length() < key.length()) {
+            if (key.startsWith(prefix) && prefix.length() < key.length() && !key.equals(prefix + PROP_ENVOVERRIDE)) {
                 key = key.substring(prefix.length()).toLowerCase();
-                startProperties.setProperty(key, value);
+                if (envOverrides) {
+                    startProperties.setProperty(key, value);
+                } else {
+                    startProperties.putIfAbsent(key, value);
+                }
             }
         });
 
@@ -150,18 +155,18 @@ public class ConfigurationManager {
 
         /* Check to see if anything changed */
         if (changed) {
-            saveChanges(startProperties, BOTLOGIN_TXT_LOCATION);
+            startProperties.store(false);
         }
 
         // fresh setup indicator should not be saved
-        startProperties.setProperty("newSetup", newSetup.toString());
+        startProperties.setProperty("newSetup", newSetup ? "true" : "false");
 
         return startProperties;
     }
 
-    private static Boolean generateDefaultValues(CaselessProperties startProperties) {
-        Boolean changed = false;
-        
+    private static boolean generateDefaultValues(CaselessProperties startProperties) {
+        boolean changed = false;
+
         changed |= setDefaultIfMissing(startProperties, PROP_USEROLLBAR, "true", "Enabled Rollbar");
 
         /* Check to see if there's a webOauth set */
@@ -181,8 +186,8 @@ public class ConfigurationManager {
         return changed;
     }
 
-    private static Boolean correctCommonErrors(CaselessProperties startProperties) {
-        Boolean changed = false;
+    private static boolean correctCommonErrors(CaselessProperties startProperties) {
+        boolean changed = false;
 
         /* Make sure the oauth has been set correctly */
         if (startProperties.getProperty(PROP_OAUTH) != null && !startProperties.getProperty(PROP_OAUTH).startsWith(OUAUTH_PREFIX) && !startProperties.getProperty(PROP_OAUTH).isEmpty()) {
@@ -213,26 +218,6 @@ public class ConfigurationManager {
         return changed;
     }
 
-    private static void saveChanges(CaselessProperties properties, String saveFileDestination) {
-        CaselessProperties outputProperties = new CaselessProperties() {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public synchronized Enumeration<Object> keys() {
-                return Collections.enumeration(new TreeSet<>(super.keySet()));
-            }
-        };
-
-        try {
-            try (FileOutputStream outputStream = new FileOutputStream(saveFileDestination)) {
-                outputProperties.putAll(properties);
-                outputProperties.store(outputStream, "PhantomBot Configuration File");
-            }
-        } catch (IOException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-        }
-    }
-
     /**
      * Sets a default value to a properties object if the requested property does not exist
      *
@@ -242,7 +227,7 @@ public class ConfigurationManager {
      * @param setMessage the message which will be printed if the value is set to the given default value
      * @return {@code true} if the value has been set to default, {@code false} if the value is already present in the properties object
      */
-    private static Boolean setDefaultIfMissing(CaselessProperties properties, String propertyName, String defaultValue, String generatedMessage) {
+    private static boolean setDefaultIfMissing(CaselessProperties properties, String propertyName, String defaultValue, String generatedMessage) {
         return setDefaultIfMissing(properties, propertyName, () -> defaultValue, generatedMessage);
     }
 
@@ -256,8 +241,8 @@ public class ConfigurationManager {
      * @return {@code true} if the value has been generated, {@code false} if the value is already present in the properties object and does not have
      * to be generated
      */
-    private static Boolean setDefaultIfMissing(CaselessProperties properties, String propertyName, Supplier<String> defaultValueGenerator, String generatedMessage) {
-        Boolean changed = false;
+    private static boolean setDefaultIfMissing(CaselessProperties properties, String propertyName, Supplier<String> defaultValueGenerator, String generatedMessage) {
+        boolean changed = false;
         if (properties.getProperty(propertyName) == null) {
             properties.setProperty(propertyName, defaultValueGenerator.get());
             com.gmt2001.Console.debug.println(generatedMessage);
@@ -272,9 +257,9 @@ public class ConfigurationManager {
      * @param properties the Properties object to get the boolean value from
      * @param propertyName the name of the property to get
      * @param defaulValue the default value of the property
-     * @return the value of the property. If parsing the value to a Boolean fails, the default value is returned.
+     * @return the value of the property. If parsing the value to a boolean fails, the default value is returned.
      */
-    public static Boolean getBoolean(CaselessProperties properties, String propertyName, Boolean defaulValue) {
+    public static boolean getBoolean(CaselessProperties properties, String propertyName, boolean defaulValue) {
         return properties.getPropertyAsBoolean(propertyName, defaulValue);
     }
 

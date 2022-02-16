@@ -537,11 +537,18 @@
                     window.location = window.location.origin + window.location.pathname + 'login/#missingAuth=true';
                     return;
                 }
-                $('#sr-link').attr('href', 'http://' + helpers.getBotHost() + '/ytplayer');
+                $('#sr-link').attr('href', helpers.getBotSchemePath() + '/ytplayer');
                 $('body').append($('<script>', {
                     'src': 'js/index.js'
                 }));
             });
+        </script>
+        <script>
+        if (!window.location.pathname.endsWith("/")) {
+            let newURL = window.location.toString().replace(window.location.pathname, window.location.pathname + "/");
+            document.body.innerHTML = 'Fixing the URL, click <a href="' + newURL + '" target="_self">here</a> if you didn\'t redirect automatically...';
+            window.location.replace(newURL);
+        }
         </script>
     </body>
 

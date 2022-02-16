@@ -17,6 +17,7 @@
 
 (function() {
     var bot = $.botName.toLowerCase();
+    var sentReady = false;
 
     /*
      * @event command
@@ -50,7 +51,7 @@
              * @commandpath botName moderate - Forces the bot to detect its moderator status.
              */
             if (action.equalsIgnoreCase('moderate')) {
-                $.session.getModerationStatus();
+                Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
             }
 
             /*
@@ -332,7 +333,7 @@
          */
         if (command.equalsIgnoreCase('reconnect')) {
             if ($.isBot(sender)) {
-                $.session.reconnect();
+                Packages.tv.phantombot.PhantomBot.instance().getSession().reconnect();
             }
         }
 
@@ -370,7 +371,8 @@
         $.registerChatSubcommand(bot, 'moderate', 2);
 
         // Say the connected message.
-        if ($.inidb.exists('settings', 'connectedMsg')) {
+        if (!sentReady && $.inidb.exists('settings', 'connectedMsg')) {
+            sentReady = true;
             $.say($.inidb.get('settings', 'connectedMsg'));
         }
     });

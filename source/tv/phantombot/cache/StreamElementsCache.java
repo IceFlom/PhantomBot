@@ -37,14 +37,14 @@ public class StreamElementsCache implements Runnable {
     private Map<String, JSONObject> cache = new ConcurrentHashMap<>();
     private Date timeoutExpire = new Date();
     private Date lastFail = new Date();
-    private Boolean firstUpdate = true;
-    private Boolean killed = false;
+    private boolean firstUpdate = true;
+    private boolean killed = false;
     private int numfail = 0;
 
     /**
      * Used to call and start this instance.
      *
-     * @param {String}  channel  Channel to run the cache for.
+     * @param {String} channel Channel to run the cache for.
      */
     public static StreamElementsCache instance(String channel) {
         StreamElementsCache instance = instances.get(channel);
@@ -59,7 +59,7 @@ public class StreamElementsCache implements Runnable {
     /**
      * Starts this class on a new thread.
      *
-     * @param {String}  channel  Channel to run the cache for.
+     * @param {String} channel Channel to run the cache for.
      */
     private StreamElementsCache(String channel) {
         this.channel = channel;
@@ -74,7 +74,7 @@ public class StreamElementsCache implements Runnable {
     /**
      * Checks if the donation has been cached.
      *
-     * @return {Boolean}
+     * @return {boolean}
      */
     public boolean exists(String donationID) {
         return cache.containsKey(donationID);
@@ -118,16 +118,12 @@ public class StreamElementsCache implements Runnable {
 
         while (!killed) {
             try {
-                try {
-                    if (new Date().after(timeoutExpire)) {
-                        this.updateCache();
-                    }
-                } catch (Exception ex) {
-                    checkLastFail();
-                    com.gmt2001.Console.debug.println("StreamElementsCache.run: Failed to update donations: " + ex.getMessage());
+                if (new Date().after(timeoutExpire)) {
+                    this.updateCache();
                 }
             } catch (Exception ex) {
-                com.gmt2001.Console.err.println("StreamElementsCache.run: Failed to update donations: " + ex.getMessage());
+                checkLastFail();
+                com.gmt2001.Console.err.printStackTrace(ex);
             }
 
             try {
@@ -180,7 +176,8 @@ public class StreamElementsCache implements Runnable {
 
         if (donations != null && !killed) {
             for (int i = 0; i < donations.length(); i++) {
-                if (cache == null || !cache.containsKey(donations.getJSONObject(i).getString("_id"))) {
+                if ((cache == null || !cache.containsKey(donations.getJSONObject(i).getString("_id")))
+                        && !PhantomBot.instance().getDataStore().exists("donations", donations.getJSONObject(i).getString("_id"))) {
                     EventBus.instance().postAsync(new StreamElementsDonationEvent(donations.getJSONObject(i).toString()));
                 }
             }
@@ -192,7 +189,7 @@ public class StreamElementsCache implements Runnable {
     /**
      * Sets the current cache.
      *
-     * @param {Map}  Cache
+     * @param {Map} Cache
      */
     public void setCache(Map<String, JSONObject> cache) {
         this.cache = cache;

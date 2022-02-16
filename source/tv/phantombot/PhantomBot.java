@@ -49,14 +49,11 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -113,7 +110,6 @@ public final class PhantomBot implements Listener {
     private String ownerName;
     private String oauth;
     private String apiOAuth;
-    private String clientId;
     private static Double messageLimit;
     private static Double whisperLimit;
     private TwitchAuthorizationCodeFlow authflow;
@@ -127,9 +123,9 @@ public final class PhantomBot implements Listener {
     private String youtubeOAuth;
     private String youtubeOAuthThro;
     private String youtubeKey;
-    private Boolean webEnabled;
-    private Boolean musicEnabled;
-    private Boolean useHttps;
+    private boolean webEnabled;
+    private boolean musicEnabled;
+    private boolean useHttps;
     private int basePort;
     private String bindIP;
 
@@ -191,26 +187,27 @@ public final class PhantomBot implements Listener {
 
     /* PhantomBot Information */
     private static PhantomBot instance;
-    private static Boolean reloadScripts = false;
-    private static Boolean silentScriptsLoad = false;
-    private static Boolean enableDebugging = false;
-    private static Boolean enableDebuggingLogOnly = false;
-    private static Boolean enableRhinoDebugger = false;
+    private static boolean reloadScripts = false;
+    private static boolean silentScriptsLoad = false;
+    private static boolean enableDebugging = false;
+    private static boolean enableDebuggingLogOnly = false;
+    private static boolean enableRhinoDebugger = false;
+    private static boolean enableRhinoES6 = false;
     private static String timeZone = "GMT";
-    private static Boolean twitchTcpNodelay = true;
-    private static Boolean isInExitState = false;
-    private Boolean isExiting = false;
-    private Boolean interactive;
+    private static boolean twitchTcpNodelay = true;
+    private static boolean isInExitState = false;
+    private boolean isExiting = false;
+    private boolean interactive;
 
     /* Other Information */
-    private Boolean newSetup = false;
+    private boolean newSetup = false;
     private TwitchSession session;
     private SecureRandom random;
-    private Boolean joined = false;
+    private boolean joined = false;
     private TwitchWSHostIRC wsHostIRC;
     private TwitchPubSub pubSubEdge;
     private CaselessProperties pbProperties;
-    private Boolean backupDBAuto = false;
+    private boolean backupDBAuto = false;
     private int backupDBHourFrequency = 0;
     private int backupDBKeepDays = 0;
 
@@ -466,9 +463,6 @@ public final class PhantomBot implements Listener {
         /* Set the whisper limit for session.java to use. -- Currently Not Used -- */
         PhantomBot.whisperLimit = this.pbProperties.getPropertyAsDouble("whisperlimit60", 60.0);
 
-        /* Set the client id for the twitch api to use */
-        this.clientId = this.pbProperties.getProperty("clientid", "");
-
         /* Set any DB backup options. */
         this.backupDBAuto = this.pbProperties.getPropertyAsBoolean("backupdbauto", this.pbProperties.getPropertyAsBoolean("backupsqliteauto", true));
         this.backupDBHourFrequency = this.pbProperties.getPropertyAsInt("backupdbhourfrequency", this.pbProperties.getPropertyAsInt("backupsqlitehourfrequency", 24));
@@ -592,11 +586,11 @@ public final class PhantomBot implements Listener {
             com.gmt2001.Console.warn.println();
         } else {
             /* Start a session instance and then connect to WS-IRC @ Twitch. */
-            this.session = TwitchSession.instance(this.channelName, this.botName, this.oauth).connect();
+            this.session = new TwitchSession(this.channelName, this.botName, this.oauth).connect();
 
             /* Start a host checking instance. */
             if (apiOAuth.length() > 0 && checkModuleEnabled("./handlers/hostHandler.js")) {
-                this.wsHostIRC = TwitchWSHostIRC.instance(this.channelName, this.apiOAuth, EventBus.instance());
+                this.wsHostIRC = new TwitchWSHostIRC(this.channelName, this.apiOAuth);
             }
         }
     }
@@ -606,7 +600,7 @@ public final class PhantomBot implements Listener {
      *
      * @return {boolean}
      */
-    public Boolean isNightly() {
+    public boolean isNightly() {
         return RepoVersion.getNightlyBuild();
     }
 
@@ -615,7 +609,7 @@ public final class PhantomBot implements Listener {
      *
      * @return {boolean}
      */
-    public Boolean isPrerelease() {
+    public boolean isPrerelease() {
         return RepoVersion.getPrereleaseBuild();
     }
 
@@ -627,27 +621,19 @@ public final class PhantomBot implements Listener {
         return this.appflow;
     }
 
-    public void saveProperties() {
-        CaselessProperties outputProperties = new CaselessProperties() {
-            @Override
-            public synchronized Enumeration<Object> keys() {
-                return Collections.enumeration(new TreeSet<>(super.keySet()));
-            }
-        };
-
-        try {
-            try (FileOutputStream outputStream = new FileOutputStream("./config/botlogin.txt")) {
-                outputProperties.putAll(this.pbProperties);
-                outputProperties.store(outputStream, "PhantomBot Configuration File");
-            }
-        } catch (NullPointerException | IOException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
+    public void reconnect() {
+        if (this.session != null) {
+            this.session.reconnect();
+        }
+        if (this.wsHostIRC != null) {
+            this.wsHostIRC.reconnect();
+        }
+        if (this.pubSubEdge != null) {
+            this.pubSubEdge.reconnect(true);
         }
     }
 
     public void reloadProperties() {
-        this.pbProperties = ConfigurationManager.getConfiguration();
-        this.clientId = this.pbProperties.getProperty("clientid", "");
         this.apiOAuth = this.pbProperties.getProperty("apioauth", "");
         this.oauth = this.pbProperties.getProperty("oauth");
         Helix.instance().setOAuth(this.apiOAuth);
@@ -664,11 +650,12 @@ public final class PhantomBot implements Listener {
 
     public static String GetExecutionPath() {
         try {
-            return Paths.get(PhantomBot.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent().toString();
-        } catch (URISyntaxException ex) {
+            return Paths.get(PhantomBot.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent().toAbsolutePath().toRealPath().toString();
+        } catch (IOException | URISyntaxException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
-            return "";
         }
+
+        return ".";
     }
 
     /**
@@ -676,7 +663,7 @@ public final class PhantomBot implements Listener {
      *
      * @param {boolean} debug
      */
-    public static void setDebugging(Boolean debug) {
+    public static void setDebugging(boolean debug) {
         if (debug) {
             com.gmt2001.Console.out.println("Debug Mode Enabled");
         }
@@ -688,7 +675,7 @@ public final class PhantomBot implements Listener {
      *
      * @param {boolean} debug
      */
-    public static void setDebuggingLogOnly(Boolean debug) {
+    public static void setDebuggingLogOnly(boolean debug) {
         if (debug) {
             com.gmt2001.Console.out.println("Debug Log Only Mode Enabled");
         }
@@ -723,7 +710,7 @@ public final class PhantomBot implements Listener {
      *
      * @return {boolean} exit
      */
-    public Boolean isExiting() {
+    public boolean isExiting() {
         return this.isExiting;
     }
 
@@ -741,7 +728,7 @@ public final class PhantomBot implements Listener {
      *
      * @return {boolean}
      */
-    public Boolean hasDiscordToken() {
+    public boolean hasDiscordToken() {
         return this.discordToken.isEmpty();
     }
 
@@ -1061,8 +1048,16 @@ public final class PhantomBot implements Listener {
         ScriptEventManager.instance().kill();
 
         /* Gonna need a way to pass this to all channels */
-        if (PhantomBot.instance().getSession() != null) {
-            PhantomBot.instance().getSession().close();
+        if (this.getSession() != null) {
+            this.getSession().close();
+        }
+
+        if (this.wsHostIRC != null) {
+            this.wsHostIRC.shutdown();
+        }
+
+        if (this.pubSubEdge != null) {
+            this.pubSubEdge.shutdown();
         }
 
         /* Shutdown all caches */
@@ -1116,7 +1111,7 @@ public final class PhantomBot implements Listener {
         print("Closing the database...");
         dataStore.dispose();
 
-        this.saveProperties();
+        this.getProperties().store(false);
 
         try {
             RollbarProvider.instance().close();
@@ -1134,7 +1129,10 @@ public final class PhantomBot implements Listener {
     @Handler
     public void ircJoinComplete(IrcJoinCompleteEvent event) {
         /* Check if the bot already joined once. */
+        this.session.getModerationStatus();
+
         if (joined) {
+            com.gmt2001.Console.debug.println("ircJoinComplete::joined::" + this.channelName);
             return;
         }
 
@@ -1147,7 +1145,7 @@ public final class PhantomBot implements Listener {
         com.gmt2001.Console.debug.println("StartPubSub=" + (this.apiOAuth.length() > 0 && (TwitchValidate.instance().hasAPIScope("channel:moderate") || TwitchValidate.instance().hasAPIScope("channel:read:redemptions")) ? "t" : "f"));
         /* Start a pubsub instance here. */
         if (this.apiOAuth.length() > 0 && (TwitchValidate.instance().hasAPIScope("channel:moderate") || TwitchValidate.instance().hasAPIScope("channel:read:redemptions"))) {
-            this.pubSubEdge = TwitchPubSub.instance(this.channelName, TwitchAPIv5.instance().getChannelId(this.channelName), TwitchAPIv5.instance().getChannelId(this.botName), this.apiOAuth);
+            this.pubSubEdge = new TwitchPubSub(this.channelName, TwitchAPIv5.instance().getChannelId(this.channelName), TwitchAPIv5.instance().getChannelId(this.botName), this.apiOAuth);
         }
 
         /* Load the caches for each channels */
@@ -1176,7 +1174,6 @@ public final class PhantomBot implements Listener {
         Script.global.defineProperty("twitchcache", this.twitchCache, 0);
         Script.global.defineProperty("twitchteamscache", this.twitchTeamCache, 0);
         Script.global.defineProperty("emotes", this.emotesCache, 0);
-        Script.global.defineProperty("session", this.session, 0);
         Script.global.defineProperty("usernameCache", this.viewerListCache, 0);
     }
 
@@ -1314,16 +1311,25 @@ public final class PhantomBot implements Listener {
         PhantomBot.setSilentScriptsLoad(ConfigurationManager.getBoolean(startProperties, ConfigurationManager.PROP_SILENTSCRIPTSLOAD, false));
         /* Check to enable Rhino Debugger */
         PhantomBot.setEnableRhinoDebugger(ConfigurationManager.getBoolean(startProperties, ConfigurationManager.PROP_RHINODEBUGGER, false));
+
+        PhantomBot.setEnableRhinoES6(startProperties.getPropertyAsBoolean("rhino_es6", false));
     }
 
-    private static void setEnableRhinoDebugger(Boolean enableRhinoDebugger) {
+    private static void setEnableRhinoDebugger(boolean enableRhinoDebugger) {
         if (enableRhinoDebugger) {
             com.gmt2001.Console.out.println("Rhino Debugger will be launched if system supports it.");
         }
         PhantomBot.enableRhinoDebugger = enableRhinoDebugger;
     }
 
-    private static void setReloadScripts(Boolean reloadScripts) {
+    private static void setEnableRhinoES6(boolean enableRhinoES6) {
+        if (enableRhinoES6) {
+            com.gmt2001.Console.out.println("Rhino ECMAScript6 support enabled.");
+        }
+        PhantomBot.enableRhinoES6 = enableRhinoES6;
+    }
+
+    private static void setReloadScripts(boolean reloadScripts) {
         if (reloadScripts) {
             com.gmt2001.Console.out.println("Enabling Script Reloading");
         }
@@ -1331,7 +1337,7 @@ public final class PhantomBot implements Listener {
 
     }
 
-    private static void setSilentScriptsLoad(Boolean silentScriptsLoad) {
+    private static void setSilentScriptsLoad(boolean silentScriptsLoad) {
         if (silentScriptsLoad) {
             com.gmt2001.Console.out.println("Enabling Silent Script Load");
         }
@@ -1590,35 +1596,51 @@ public final class PhantomBot implements Listener {
         System.exit(EXIT_STATUS_OK);
     }
 
-    public static Boolean getReloadScripts() {
+    public static boolean getReloadScripts() {
         return reloadScripts;
     }
 
-    public static Boolean getSilentScriptsLoad() {
+    public static boolean getSilentScriptsLoad() {
         return silentScriptsLoad;
     }
 
-    public static Boolean getEnableDebugging() {
+    public static boolean getEnableDebugging() {
         return enableDebugging;
     }
 
-    public static Boolean getEnableDebuggingLogOnly() {
+    public static boolean getEnableDebuggingLogOnly() {
         return enableDebuggingLogOnly;
     }
 
-    public static Boolean getEnableRhinoDebugger() {
+    public static boolean getEnableRhinoDebugger() {
         return enableRhinoDebugger;
+    }
+
+    public static boolean getEnableRhinoES6() {
+        return enableRhinoES6;
     }
 
     public static String getTimeZone() {
         return timeZone;
     }
 
-    public static Boolean getTwitchTcpNodelay() {
+    public static boolean getTwitchTcpNodelay() {
         return twitchTcpNodelay;
     }
 
-    public static Boolean isInExitState() {
+    public static boolean isInExitState() {
         return isInExitState;
+    }
+
+    public void setPubSub(TwitchPubSub pubSub) {
+        this.pubSubEdge = pubSub;
+    }
+
+    public void setHostIRC(TwitchWSHostIRC hostIrc) {
+        this.wsHostIRC = hostIrc;
+    }
+
+    public void setSession(TwitchSession session) {
+        this.session = session;
     }
 }

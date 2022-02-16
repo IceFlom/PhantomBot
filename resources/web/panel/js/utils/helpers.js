@@ -181,33 +181,37 @@ $(function () {
     };
 
     /*
-     * @function handles the string input checks.
+     * @function handle input validation
      *
      * @param {Object} obj
+     * @param {Function} validator
      * @return {Boolean}
+     *
+     * Validator takes obj as argument should return null if the input is valid or else an error message.
      */
-    helpers.handleInputString = function (obj) {
+    helpers.handleInput = function (obj, validator) {
         if (obj.length === 0) {
-            helpers.logError('Failed to handle string due to the object being null.', helpers.LOG_TYPE.FORCE);
+            helpers.logError('Failed to validate input due to the object being null.', helpers.LOG_TYPE.FORCE);
             return;
         }
 
         // Make sure the input has a value in it.
-        if (obj.val().length < 1) {
+        const validationResult = validator(obj);
+        if (typeof validationResult === 'string') {
             if (!obj.parent().hasClass('has-error')) {
                 // Add the error class to the parent.
                 obj.parent().addClass('has-error');
                 // Append text saying the form cannot be empty.
                 obj.after($('<p/>', {
                     'class': 'help-block',
-                    'text': 'You cannot leave this field empty.'
+                    'text': validationResult
                 }));
                 let btn = obj.closest('form').find('button');
                 if (btn.data('candisable') !== undefined) {
                     // Disable the button
                     obj.closest('form').find('button').prop('disabled', true).addClass('disabled');
                 }
-                toastr.error('Missing data in input field.');
+                toastr.error('Invalid input field.');
                 return false;
             }
         } else {
@@ -227,53 +231,36 @@ $(function () {
     };
 
     /*
+     * @function handles the string input checks.
+     *
+     * @param {Object} obj
+     * @return {Boolean}
+     */
+    helpers.handleInputString = function (obj) {
+        return helpers.handleInput(obj, function (obj) {
+            if (obj.val().length < 1) {
+                return 'You cannot leave this field empty.';
+            }
+            return null;
+        });
+    };
+
+    /*
      * @function handles the number input checks.
      *
      * @param  {Object} obj
      * @return {Boolean}
      */
     helpers.handleInputNumber = function (obj, min, max) {
-        if (obj.length === 0) {
-            helpers.logError('Failed to handle number due to the object being null.', helpers.LOG_TYPE.FORCE);
-            return;
-        }
+        return helpers.handleInput(obj, function (obj) {
+            min = (min === undefined ? 0 : min);
+            let newMax = (max === undefined ? Number.MAX_SAFE_INTEGER : max);
 
-        min = (min === undefined ? 0 : min);
-        let newMax = (max === undefined ? Number.MAX_SAFE_INTEGER : max);
-
-        // Make sure the input has a value in it.
-        if (isNaN(parseInt(obj.val())) || isNaN(obj.val()) || parseInt(obj.val()) < min || parseInt(obj.val()) > newMax) {
-            if (!obj.parent().hasClass('has-error')) {
-                // Add the error class to the parent.
-                obj.parent().addClass('has-error');
-                // Append text saying the form cannot be empty.
-                obj.after($('<p/>', {
-                    'class': 'help-block',
-                    'text': 'Please enter a number that is greater or equal to ' + min + (max !== undefined ? ' and less or equal than ' + newMax + '' : '') + '.'
-                }));
-                let btn = obj.closest('form').find('button');
-                if (btn.data('candisable') !== undefined) {
-                    // Disable the button
-                    obj.closest('form').find('button').prop('disabled', true).addClass('disabled');
-                }
-                toastr.error('Missing data in input field.');
-                return false;
+            if (isNaN(parseInt(obj.val())) || isNaN(obj.val()) || parseInt(obj.val()) < min || parseInt(obj.val()) > newMax) {
+                return 'Please enter a number that is greater or equal to ' + min + (max !== undefined ? ' and less or equal than ' + newMax + '' : '') + '.';
             }
-        } else {
-            if (obj.parent().find('p').length > 0) {
-                if (obj.parent().hasClass('has-error')) {
-                    // Remove error class.
-                    obj.parent().removeClass('has-error');
-                    // Remove the help text.
-                    obj.parent().find('p').remove();
-                    // Enabled the button again.
-                    obj.closest('form').find('button').removeClass('disabled');
-                    return true;
-                }
-            }
-        }
-
-        return !obj.parent().hasClass('has-error');
+            return null;
+        });
     };
 
     /*
@@ -283,45 +270,14 @@ $(function () {
      * @return {Boolean}
      */
     helpers.handleInputDate = function (obj) {
-        if (obj.length === 0) {
-            helpers.logError('Failed to handle date due to the object being null.', helpers.LOG_TYPE.FORCE);
-            return;
-        }
+        return helpers.handleInput(obj, function (obj) {
+            let matched = obj.val().match(/^((\d{2}|\d{4})(\\|\/|\.|-)(\d{2})(\\|\/|\.|-)(\d{4}|\d{2}))$/);
 
-        let matched = obj.val().match(/^((\d{2}|\d{4})(\\|\/|\.|-)(\d{2})(\\|\/|\.|-)(\d{4}|\d{2}))$/);
-
-        // Make sure the input has a value in it.
-        if (matched === null || ((matched[6].length < 4 && matched[2].length == 2) || (matched[6].length == 2 && matched[2].length < 4))) {
-            if (!obj.parent().hasClass('has-error')) {
-                // Add the error class to the parent.
-                obj.parent().addClass('has-error');
-                // Append text saying the form cannot be empty.
-                obj.after($('<p/>', {
-                    'class': 'help-block',
-                    'text': 'Please enter a valid date (mm/dd/yyyy or dd/mm/yyyy).'
-                }));
-                let btn = obj.closest('form').find('button');
-                if (btn.data('candisable') !== undefined) {
-                    // Disable the button
-                    obj.closest('form').find('button').prop('disabled', true).addClass('disabled');
-                }
-                toastr.error('Bad date in field.');
-                return false;
+            if (matched === null || ((matched[6].length < 4 && matched[2].length == 2) || (matched[6].length == 2 && matched[2].length < 4))) {
+                return 'Please enter a valid date (mm/dd/yyyy or dd/mm/yyyy).';
             }
-        } else {
-            if (obj.parent().find('p').length > 0) {
-                if (obj.parent().hasClass('has-error')) {
-                    // Remove error class.
-                    obj.parent().removeClass('has-error');
-                    // Remove the help text.
-                    obj.parent().find('p').remove();
-                    // Enabled the button again.
-                    obj.closest('form').find('button').removeClass('disabled');
-                    return true;
-                }
-            }
-        }
-        return !obj.parent().hasClass('has-error');
+            return null;
+        });
     };
 
     /*
@@ -965,6 +921,25 @@ $(function () {
         return helpers.getModuleStatus(id, toggle, swit);
     };
 
+    let _isSwappedSubscriberVIP = false;
+    helpers.isSwappedSubscriberVIP = function () {
+        return _isSwappedSubscriberVIP;
+    };
+
+    let checkSwappedSubscriberVIP = function () {
+        socket.getDBValue('helpers_isSwappedSubscriberVIP', 'settings', 'isSwappedSubscriberVIP', function (e) {
+            _isSwappedSubscriberVIP = e.settings === '1';
+        });
+    };
+
+    setTimeout(function () {
+        checkSwappedSubscriberVIP();
+    }, 5e3);
+
+    setInterval(function () {
+        checkSwappedSubscriberVIP();
+    }, 30e3);
+
     /*
      * @function Gets the group ID by its name.
      *
@@ -973,6 +948,7 @@ $(function () {
      * @return {Number}
      */
     helpers.getGroupIdByName = function (name, asString) {
+        let swap = helpers.isSwappedSubscriberVIP();
         switch (name.toLowerCase()) {
             case 'casters':
             case 'caster':
@@ -985,13 +961,21 @@ $(function () {
                 return (asString ? '2' : 2);
             case 'subscribers':
             case 'subscriber':
-                return (asString ? '3' : 3);
+                if (swap) {
+                    return (asString ? '5' : 5);
+                } else {
+                    return (asString ? '3' : 3);
+                }
             case 'donators':
             case 'donator':
                 return (asString ? '4' : 4);
             case 'vips':
             case 'vip':
-                return (asString ? '5' : 5);
+                if (!swap) {
+                    return (asString ? '5' : 5);
+                } else {
+                    return (asString ? '3' : 3);
+                }
             case 'regulars':
             case 'regular':
                 return (asString ? '6' : 6);
@@ -1026,6 +1010,7 @@ $(function () {
      * @return {Number}
      */
     helpers.getGroupNameById = function (id) {
+        let swap = helpers.isSwappedSubscriberVIP();
         switch (id.toString()) {
             case '0':
                 return 'Caster';
@@ -1034,11 +1019,19 @@ $(function () {
             case '2':
                 return 'Moderators';
             case '3':
-                return 'Subscribers';
+                if (swap) {
+                    return 'VIPs';
+                } else {
+                    return 'Subscribers';
+                }
             case '4':
                 return 'Donators';
             case '5':
-                return 'vips';
+                if (!swap) {
+                    return 'VIPs';
+                } else {
+                    return 'Subscribers';
+                }
             case '6':
                 return 'Regulars';
             default:
@@ -1303,9 +1296,20 @@ $(function () {
 
     helpers.getBotHost = function () {
         var bothostname = window.localStorage.getItem('bothostname') || 'localhost';
-        var botport = window.localStorage.getItem('botport') || 25000;
+        var botport = window.localStorage.getItem('botport') || '25000';
 
-        return bothostname.length > 0 ? bothostname + (botport !== 80 && botport !== 443 ? ':' + botport : '') : '!missing';
+        return bothostname.length > 0 ? bothostname + (botport !== '80' && botport !== '443' ? ':' + botport : '') : '!missing';
+    };
+
+    helpers.shouldUseHttpsPrefix = function () {
+        var bothostname = window.localStorage.getItem('bothostname') || 'localhost';
+        var botport = window.localStorage.getItem('botport') || '25000';
+
+        return botport === '443' && bothostname.match(/(([0-9]{1,3})\.){3}([0-9]{1,3})/) === null;
+    };
+
+    helpers.getBotSchemePath = function () {
+        return 'http' + (helpers.shouldUseHttpsPrefix() ? 's' : '') + '://' + helpers.getBotHost();
     };
 
     helpers.getUserLogo = function () {
