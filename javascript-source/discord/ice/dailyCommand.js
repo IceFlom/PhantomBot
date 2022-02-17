@@ -35,6 +35,7 @@
             channel = event.getDiscordChannel(),
             command = event.getCommand(),
             mention = event.getMention(),
+            args = event.getArgs(),
             subcommand = args[0];
 
         if (command.equalsIgnoreCase('daily')) {
