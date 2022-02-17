@@ -16,7 +16,8 @@
  */
 
 (function() {
-    var rewards = [],
+    var cost = $.getSetIniDbNumber('discordSlotMachineSettings', 'cost', 30),
+        rewards = [],
         emojis = [];
 
     /**
@@ -39,6 +40,10 @@
         emojis[2] = $.getSetIniDbString('discordSlotMachineEmojis', 'emoji_2', ':tangerine:');
         emojis[3] = $.getSetIniDbString('discordSlotMachineEmojis', 'emoji_3', ':spades:');
         emojis[4] = $.getSetIniDbString('discordSlotMachineEmojis', 'emoji_4', ':hearts:');
+    }
+
+    function loadSettings() {
+        cost = $.getIniDbNumber('discordSlotMachineSettings', 'cost')
     }
 
     /**
@@ -74,16 +79,22 @@
         var e1 = getEmoteKey(),
             e2 = getEmoteKey(),
             e3 = getEmoteKey(),
-            message = $.lang.get('discord.slotmachine.result.start', $.discord.userPrefix(mention).replace(', ', ''), emojis[e1], emojis[e2], emojis[e3]);
+            wonPoints = 0;
 
         if (e1 == e2 && e2 == e3) {
-            $.discord.say(channel, message + $.lang.get('discord.slotmachine.result.win', ($.getPointsString(rewards[e1]) + '.')) + $.gameMessages.getWin(username, 'slot'));
-            $.inidb.incr('points', twitchName, rewards[e1]);
-        } else if (e1 == e2 || (e2 == e3 && e3 == e1)) {
-            $.discord.say(channel, message + $.lang.get('slotmachine.result.win', (e1 == e2 ? $.getPointsString(Math.floor(rewards[e1] * 0.3)) : $.getPointsString(Math.floor(rewards[e3] * 0.3))) + '.') + $.gameMessages.getWin(username, 'slot'));
-            $.inidb.incr('points', twitchName, (e1 == e2 ? (Math.floor(rewards[e1] * 0.3)) : (Math.floor(rewards[e3] * 0.3))));
+            wonPoints = rewards[e1];
+            $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.slotmachine.result', cost, emojis[e1], emojis[e2], emojis[e3], wonPoints) + " -- " + $.gameMessages.getWin(username, 'slot'));
+            $.inidb.incr('points', twitchName, wonPoints);
+        } else if (e1 == e2 || (e2 == e3 || e3 == e1)) {
+            if (e1 == e2) {
+                wonPoints = Math.floor(rewards[e1] * 0.3);
+            } else {
+                wonPoints = Math.floor(rewards[e3] * 0.3);
+            }
+            $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.slotmachine.result', cost, emojis[e1], emojis[e2], emojis[e3], wonPoints) + " -- " + $.gameMessages.getWin(username, 'slot'));
+            $.inidb.incr('points', twitchName, wonPoints);
         } else {
-            $.discord.say(channel, message + $.gameMessages.getLose(username, 'slot'));
+            $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.slotmachine.result', cost, emojis[e1], emojis[e2], emojis[e3], wonPoints) + " -- " + $.gameMessages.getLose(username, 'slot'));
         }
     }
 
@@ -105,6 +116,11 @@
             if (action === undefined) {
                 var twitchName = $.discord.resolveTwitchName(event.getSenderId());
                 if (twitchName !== null) {
+                    if ($.getUserPoints(twitchName) < cost) {
+                        $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('slotmachine.nopoints', $.getPointsString(cost)));
+                        return;
+                    }
+                    $.inidb.decr('points', twitchName, cost);
                     calculate(channel, sender, mention, twitchName);
                 } else {
                     $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.accountlink.usage.nolink'));
@@ -139,6 +155,7 @@
 
         loadRewards();
         loadEmojis();
+        loadSettings();
     });
 
     /**
@@ -148,6 +165,7 @@
         if (event.getScript().equalsIgnoreCase('./discord/games/slotMachine.js')) {
             loadRewards();
             loadEmojis();
+            loadSettings();
         }
     })
 })();

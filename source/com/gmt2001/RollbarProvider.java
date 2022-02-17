@@ -21,12 +21,12 @@ import com.rollbar.api.payload.data.Level;
 import com.rollbar.api.payload.data.Person;
 import com.rollbar.api.payload.data.Server;
 import com.rollbar.api.payload.data.body.BodyContent;
+import com.rollbar.api.payload.data.body.Frame;
 import com.rollbar.api.payload.data.body.Trace;
 import com.rollbar.api.payload.data.body.TraceChain;
 import com.rollbar.notifier.Rollbar;
 import com.rollbar.notifier.config.ConfigBuilder;
 import com.rollbar.notifier.filter.Filter;
-import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -36,12 +36,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.SystemUtils;
 import reactor.util.annotation.Nullable;
+import tv.phantombot.CaselessProperties.Transaction;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.RepoVersion;
 import tv.phantombot.twitch.api.TwitchValidate;
@@ -58,6 +61,7 @@ public class RollbarProvider implements AutoCloseable {
     private static final int REPEAT_INTERVAL_MINUTES = 180;
     private static final long REPEAT_CHECK_INTERVAL = 1800000L;
     private static final List<String> APP_PACKAGES = Collections.unmodifiableList(Arrays.asList("tv.phantombot", "com.gmt2001", "com.illusionaryone", "com.scaniatv"));
+    private static final List<String> FINGERPRINT_FILE_REGEX = Collections.unmodifiableList(Arrays.asList("(.*).js"));
     private static final List<String> SEND_VALUES = Collections.unmodifiableList(Arrays.asList("allownonascii", "baseport", "channel", "datastore", "debugon", "debuglog",
             "helixdebug", "ircdebug", "logtimezone", "msglimit30", "musicenable", "owner", "proxybypasshttps", "reactordebug", "reloadscripts", "rhinodebugger",
             "rollbarid", "twitch_tcp_nodelay", "usehttps", "user", "useeventsub", "userollbar", "webenable", "whisperlimit60", "wsdebug"));
@@ -150,6 +154,39 @@ public class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
+                                if (error.getClass().equals(discord4j.rest.http.client.ClientException.class) && error.getMessage().contains("401")
+                                        && error.getMessage().contains("Unauthorized")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(com.mysql.jdbc.exceptions.jdbc4.MySQLQueryInterruptedException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(com.mysql.jdbc.exceptions.jdbc4.MySQLNonTransientConnectionException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Timeout while waiting for a free database connection")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("setAutoCommit")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("path to") && error.getMessage().contains("phantombot.db") && error.getMessage().contains("not exist")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("attempt to write a readonly database")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Incorrect string value: '\\xF0*")) {
+                                    return true;
+                                }
+
                                 if (error.getMessage().startsWith("[SQLITE_BUSY]")) {
                                     return true;
                                 }
@@ -170,32 +207,88 @@ public class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
+                                if (error.getMessage().startsWith("[SQLITE_PROTOCOL]")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().startsWith("[SQLITE_IOERROR]")) {
+                                    return true;
+                                }
+
                                 if (error.getMessage().startsWith("opening db")) {
                                     return true;
                                 }
 
-                                if (error.getClass().equals(java.io.FileNotFoundException.class) && error.getMessage().startsWith("./logs")) {
+                                if (error.getMessage().contains("sql") && error.getMessage().contains("unrecognized token")) {
                                     return true;
                                 }
 
-                                if (error.getClass().equals(java.io.FileNotFoundException.class) && error.getMessage().startsWith("./config")) {
+                                if (error.getMessage().contains("sql") && error.getMessage().contains("no such table")) {
                                     return true;
                                 }
 
-                                if (error.getClass().equals(java.nio.file.NoSuchFileException.class) && error.getMessage().equals("./web/panel/js/utils/gamesList.txt")) {
+                                if (error.getClass().equals(java.io.FileNotFoundException.class) || error.getMessage().contains("java.io.FileNotFoundException")) {
                                     return true;
                                 }
 
-                                if (error.getMessage().equals("Connection reset by peer")) {
+                                if (error.getClass().equals(java.nio.file.NoSuchFileException.class) || error.getMessage().contains("java.nio.file.NoSuchFileException")) {
                                     return true;
                                 }
 
-                                if (error.getMessage().equals("java.io.IOException: Connection reset by peer")) {
+                                if (error.getClass().equals(java.nio.file.InvalidPathException.class) || error.getMessage().contains("java.nio.file.InvalidPathException")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.nio.file.AccessDeniedException.class) || error.getMessage().contains("java.nio.file.AccessDeniedException")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.net.SocketException.class) && error.getMessage().equals("Operation not permitted")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Connection reset by peer")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.lang.OutOfMemoryError.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.net.UnknownHostException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.net.SocketTimeoutException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Connection pool has been disposed")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.net.ConnectException.class) && error.getMessage().contains("Connection refused")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(javax.net.ssl.SSLHandshakeException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.io.IOException.class) && error.getMessage().contains("Input/output error")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.io.IOException.class) && error.getMessage().contains("Stream closed")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Address already in use")) {
                                     return true;
                                 }
                             }
 
-                            com.gmt2001.Console.debug.println("[ROLLBAR] " + level.name() + (custom != null && (Boolean) custom.getOrDefault("isUncaught", false)
+                            com.gmt2001.Console.debug.println("[ROLLBAR-PRE] " + level.name() + (custom != null && (boolean) custom.getOrDefault("isUncaught", false)
                                     ? "[Uncaught]" : "") + (description != null && !description.isBlank() ? " (" + description + ")" : "") + " " + (error != null ? error.toString() : "Null"));
 
                             return false;
@@ -204,53 +297,93 @@ public class RollbarProvider implements AutoCloseable {
                         @Override
                         public boolean postProcess(Data data) {
                             if (md != null) {
-                                md.reset();
+                                try {
+                                    md.reset();
 
-                                md.update(data.getCodeVersion().getBytes());
-                                md.update(data.getEnvironment().getBytes());
-                                md.update(data.getLevel().name().getBytes());
-                                md.update(data.getTitle().getBytes());
+                                    md.update(Optional.ofNullable(data.getCodeVersion()).orElse("").getBytes());
+                                    md.update(Optional.ofNullable(data.getEnvironment()).orElse("").getBytes());
+                                    md.update(Optional.ofNullable(data.getLevel()).orElse(Level.ERROR).name().getBytes());
+                                    md.update(Optional.ofNullable(data.getTitle()).orElse("").getBytes());
 
-                                BodyContent bc = data.getBody().getContents();
+                                    BodyContent bc = data.getBody().getContents();
 
-                                if (bc instanceof TraceChain) {
-                                    TraceChain tc = (TraceChain) bc;
-                                    tc.getTraces().stream().forEachOrdered(t -> {
-                                        md.update(t.getException().getClassName().getBytes());
-                                        md.update(t.getException().getDescription().getBytes());
-                                        md.update(t.getException().getMessage().getBytes());
-                                        t.getFrames().stream().forEachOrdered(f -> {
-                                            md.update(f.getClassName().getBytes());
-                                            md.update(f.getFilename().getBytes());
-                                            md.update(f.getLineNumber().toString().getBytes());
-                                            md.update(f.getMethod().getBytes());
+                                    if (bc instanceof TraceChain) {
+                                        TraceChain tc = (TraceChain) bc;
+                                        tc.getTraces().stream().forEachOrdered(t -> {
+                                            md.update(Optional.ofNullable(t.getException().getClassName()).orElse("").getBytes());
+                                            md.update(Optional.ofNullable(t.getException().getDescription()).orElse("").getBytes());
+                                            md.update(Optional.ofNullable(t.getException().getMessage()).orElse("").getBytes());
+                                            int last = -1;
+                                            for (int i = 0; i < t.getFrames().size(); i++) {
+                                                Frame f = t.getFrames().get(i);
+                                                for (String p : APP_PACKAGES) {
+                                                    if (f.getClassName() != null && f.getClassName().contains(p)) {
+                                                        last = i;
+                                                    }
+                                                }
+                                                for (String p : FINGERPRINT_FILE_REGEX) {
+                                                    if (f.getFilename() != null && f.getFilename().matches(p)) {
+                                                        last = i;
+                                                    }
+                                                }
+                                            }
+
+                                            if (last >= 0) {
+                                                Frame f = t.getFrames().get(last);
+                                                md.update(Optional.ofNullable(f.getClassName()).orElse("").getBytes());
+                                                md.update(Optional.ofNullable(f.getFilename()).orElse("").getBytes());
+                                                md.update(Optional.ofNullable(f.getLineNumber()).orElse(0).toString().getBytes());
+                                                md.update(Optional.ofNullable(f.getMethod()).orElse("").getBytes());
+                                            }
                                         });
-                                    });
-                                } else if (bc instanceof Trace) {
-                                    Trace t = (Trace) bc;
-                                    md.update(t.getException().getClassName().getBytes());
-                                    md.update(t.getException().getDescription().getBytes());
-                                    md.update(t.getException().getMessage().getBytes());
-                                    t.getFrames().stream().forEachOrdered(f -> {
-                                        md.update(f.getClassName().getBytes());
-                                        md.update(f.getFilename().getBytes());
-                                        md.update(f.getLineNumber().toString().getBytes());
-                                        md.update(f.getMethod().getBytes());
-                                    });
-                                }
+                                    } else if (bc instanceof Trace) {
+                                        Trace t = (Trace) bc;
+                                        md.update(Optional.ofNullable(t.getException().getClassName()).orElse("").getBytes());
+                                        md.update(Optional.ofNullable(t.getException().getDescription()).orElse("").getBytes());
+                                        md.update(Optional.ofNullable(t.getException().getMessage()).orElse("").getBytes());
+                                        int last = -1;
+                                        for (int i = 0; i < t.getFrames().size(); i++) {
+                                            Frame f = t.getFrames().get(i);
+                                            for (String p : APP_PACKAGES) {
+                                                if (f.getClassName() != null && f.getClassName().contains(p)) {
+                                                    last = i;
+                                                }
+                                            }
+                                            for (String p : FINGERPRINT_FILE_REGEX) {
+                                                if (f.getFilename() != null && f.getFilename().matches(p)) {
+                                                    last = i;
+                                                }
+                                            }
+                                        }
 
-                                byte[] bytes = md.digest();
-                                BigInteger bi = new BigInteger(1, bytes);
-                                String digest = String.format("%0" + (bytes.length << 1) + "X", bi);
+                                        if (last >= 0) {
+                                            Frame f = t.getFrames().get(last);
+                                            md.update(Optional.ofNullable(f.getClassName()).orElse("").getBytes());
+                                            md.update(Optional.ofNullable(f.getFilename()).orElse("").getBytes());
+                                            md.update(Optional.ofNullable(f.getLineNumber()).orElse(0).toString().getBytes());
+                                            md.update(Optional.ofNullable(f.getMethod()).orElse("").getBytes());
+                                        }
+                                    }
 
-                                Calendar c = Calendar.getInstance();
-                                if (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).after(c.getTime())) {
-                                    return true;
-                                } else {
-                                    c.add(Calendar.MINUTE, REPEAT_INTERVAL_MINUTES);
-                                    reportsPassedFilters.put(digest, c.getTime());
+                                    String digest = Hex.encodeHexString(md.digest());
+
+                                    Calendar c = Calendar.getInstance();
+
+                                    com.gmt2001.Console.debug.println("[ROLLBAR-POST] " + digest + " " + (reportsPassedFilters.containsKey(digest) ? "t" : "f") + (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).after(c.getTime()) ? "t" : "f"));
+
+                                    if (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).after(c.getTime())) {
+                                        com.gmt2001.Console.debug.println("[ROLLBAR-POST] filtered");
+                                        return true;
+                                    } else {
+                                        c.add(Calendar.MINUTE, REPEAT_INTERVAL_MINUTES);
+                                        reportsPassedFilters.put(digest, c.getTime());
+                                    }
+                                } catch (Exception e) {
+                                    com.gmt2001.Console.debug.printOrLogStackTrace(e);
                                 }
                             }
+
+                            com.gmt2001.Console.debug.println("[ROLLBAR-POST] not filtered");
 
                             return false;
                         }
@@ -283,6 +416,19 @@ public class RollbarProvider implements AutoCloseable {
         return RollbarProvider.INSTANCE;
     }
 
+    public static Map<String, Object> localsToCustom(String[] names, Object[] values) {
+        Map<String, Object> custom = new HashMap<>();
+        Map<String, Object> locals = new HashMap<>();
+
+        for (int i = 0; i < Math.min(names.length, values.length); i++) {
+            locals.put(names[i], values[i]);
+        }
+
+        custom.put("__locals", locals);
+
+        return custom;
+    }
+
     public Rollbar getRollbar() {
         return this.rollbar;
     }
@@ -298,7 +444,7 @@ public class RollbarProvider implements AutoCloseable {
             com.gmt2001.Console.out.println();
             com.gmt2001.Console.out.println("Sending exceptions to Rollbar");
             com.gmt2001.Console.out.println("You can disable this by adding the following to a new line in botlogin.txt and restarting: userollbar=false");
-            com.gmt2001.Console.out.println("If you got this from the official PhantomBot GitHub, you can submit GPDR delete requests to gpdr@phantombot.hopto.org");
+            com.gmt2001.Console.out.println("If you got this from the official PhantomBot GitHub, you can submit GDPR delete requests to gdpr@phantombot.hopto.org");
             com.gmt2001.Console.out.println();
         }
     }
@@ -479,12 +625,10 @@ public class RollbarProvider implements AutoCloseable {
         }
 
         if (id == null || id.isBlank()) {
+            Transaction transaction = PhantomBot.instance().getProperties().startTransaction(Transaction.PRIORITY_NORMAL);
             id = RollbarProvider.generateId();
-
-            if (PhantomBot.instance() != null) {
-                PhantomBot.instance().getProperties().put("rollbarid", id);
-                PhantomBot.instance().saveProperties();
-            }
+            transaction.setProperty("rollbarid", id);
+            transaction.commit();
         }
 
         return id;

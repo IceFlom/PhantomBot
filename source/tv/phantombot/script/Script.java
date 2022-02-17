@@ -45,7 +45,7 @@ public class Script {
     private int fileNotFoundCount = 0;
     private static ScriptableObject scope;
 
-    @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
+    @SuppressWarnings({"CallToThreadStartDuringObjectConstruction", "LeakingThisInConstructor"})
     public Script(File file) {
         this.file = file;
         this.lastModified = file.lastModified();
@@ -56,7 +56,7 @@ public class Script {
     }
 
     public static String callMethod(String method, String arg) {
-        Object[] obj = new Object[] {arg};
+        Object[] obj = new Object[]{arg};
 
         return ScriptableObject.callMethod(global, method, obj).toString();
     }
@@ -93,11 +93,12 @@ public class Script {
                 String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
                 com.gmt2001.Console.err.println("Failed to reload module: " + path + ": " + ex.getMessage());
             }
+            com.gmt2001.Console.err.printStackTrace(ex);
         }
     }
 
     @SuppressWarnings("rawtypes")
-    public void reload(Boolean silent) throws IOException {
+    public void reload(boolean silent) throws IOException {
         if (killed) {
             return;
         }
@@ -130,6 +131,7 @@ public class Script {
                 String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
                 com.gmt2001.Console.err.println("Failed to reload module: " + path + ": " + ex.getMessage());
             }
+            com.gmt2001.Console.err.printStackTrace(ex);
         }
     }
 
@@ -152,10 +154,10 @@ public class Script {
             @Override
             protected boolean hasFeature(Context cx, int featureIndex) {
                 switch (featureIndex) {
-                case Context.FEATURE_LOCATION_INFORMATION_IN_ERROR:
-                    return true;
-                default:
-                    return super.hasFeature(cx, featureIndex);
+                    case Context.FEATURE_LOCATION_INFORMATION_IN_ERROR:
+                        return true;
+                    default:
+                        return super.hasFeature(cx, featureIndex);
                 }
             }
         };
@@ -171,6 +173,10 @@ public class Script {
         }
 
         context = ctxFactory.enterContext();
+        if (PhantomBot.getEnableRhinoES6()) {
+            context.setLanguageVersion(Context.VERSION_ES6);
+        }
+
         if (!PhantomBot.getEnableRhinoDebugger()) {
             context.setOptimizationLevel(9);
         }
@@ -181,7 +187,7 @@ public class Script {
         scope.defineProperty("$script", this, 0);
 
         /* Configure debugger. */
-        if (PhantomBot.getEnableRhinoDebugger()) {
+        if (PhantomBot.getEnableRhinoDebugger() && debugger != null) {
             if (file.getName().endsWith("init.js")) {
                 debugger.setBreakOnEnter(false);
                 debugger.setScope(scope);
@@ -193,10 +199,13 @@ public class Script {
         try {
             context.evaluateString(scope, Files.readString(file.toPath()), file.getName(), 1, null);
         } catch (FileNotFoundException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             throw new IOException("File not found. This could be a caching issue, will retry.");
         } catch (EvaluatorException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             throw new IOException("JavaScript Error: " + ex.getMessage());
         } catch (IOException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             throw new IOException(ex.getMessage());
         }
     }

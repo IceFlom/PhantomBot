@@ -82,16 +82,18 @@ public class WsAlertsPollsHandler implements WsFrameHandler {
 
     private void handleSocketEvent(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
         String script = jso.getString("script");
-        String arguments = jso.getJSONObject("args").getString("arguments");
-        JSONArray jsonArray = jso.getJSONObject("args").getJSONArray("args");
+        String arguments = jso.getJSONObject("args").optString("arguments");
+        JSONArray jsonArray = jso.getJSONObject("args").optJSONArray("args");
         String uniqueID = jso.has("socket_event") ? jso.getString("socket_event") : "";
 
         JSONStringer jsonObject = new JSONStringer();
         List<String> tempArgs = new LinkedList<>();
         String[] args = null;
 
-        for (int i = 0; i < jsonArray.length(); i++) {
-            tempArgs.add(jsonArray.getString(i));
+        if (jsonArray != null) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                tempArgs.add(jsonArray.getString(i));
+            }
         }
 
         if (!tempArgs.isEmpty()) {
@@ -122,6 +124,17 @@ public class WsAlertsPollsHandler implements WsFrameHandler {
             com.gmt2001.Console.debug.println("triggerAudioPanel: " + audioHook);
             JSONStringer jsonObject = new JSONStringer();
             jsonObject.object().key("audio_panel_hook").value(audioHook).endObject();
+            sendJSONToAll(jsonObject.toString());
+        } catch (JSONException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
+    public void triggerAudioPanel(String audioHook, float volume) {
+        try {
+            com.gmt2001.Console.debug.println("triggerAudioPanel: " + audioHook);
+            JSONStringer jsonObject = new JSONStringer();
+            jsonObject.object().key("audio_panel_hook").value(audioHook).key("audio_panel_volume").value(volume).endObject();
             sendJSONToAll(jsonObject.toString());
         } catch (JSONException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);

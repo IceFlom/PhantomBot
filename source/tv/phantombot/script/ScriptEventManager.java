@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import net.engio.mbassy.listener.Handler;
 import org.apache.commons.text.WordUtils;
 import tv.phantombot.event.Event;
@@ -31,7 +32,7 @@ public class ScriptEventManager implements Listener {
 
     private static final ScriptEventManager instance = new ScriptEventManager();
     private final ConcurrentHashMap<String, ScriptEventHandler> events = new ConcurrentHashMap<>();
-    private final List<String> classes = new ArrayList<String>();
+    private final List<String> classes = new ArrayList<>();
     private boolean isKilled = false;
 
     /**
@@ -79,7 +80,7 @@ public class ScriptEventManager implements Listener {
                 com.gmt2001.Console.debug.println("Dispatched event " + eventName);
             } catch (Exception ex) {
                 com.gmt2001.Console.err.println("Failed to dispatch event " + event.getClass().getName());
-                com.gmt2001.Console.err.printStackTrace(ex);
+                com.gmt2001.Console.err.printStackTrace(ex, false, true);
             }
         }
     }
@@ -88,7 +89,7 @@ public class ScriptEventManager implements Listener {
      * Method to see if an event exists, this is used from init.js.
      *
      * @param {String} eventName
-     * @return {Boolean}
+     * @return {boolean}
      */
     public boolean hasEvent(String eventName) {
         return events.containsKey((WordUtils.capitalize(eventName) + "Event"));
@@ -104,13 +105,22 @@ public class ScriptEventManager implements Listener {
         register(eventName, handler, true);
     }
 
+    protected String formatEventName(String input) {
+        return input.substring(0, 1).toLowerCase() + input.substring(1).replace("Event", "");
+    }
+
+    protected List<String> getEventNames() {
+        Reflect.instance().loadPackageRecursive(Event.class.getName().substring(0, Event.class.getName().lastIndexOf('.')));
+        return Reflect.instance().getSubTypesOf(Event.class).stream().map((c) -> this.formatEventName(c.getName().substring(c.getName().lastIndexOf('.') + 1))).collect(Collectors.toList());
+    }
+
     private void register(String eventName, ScriptEventHandler handler, boolean recurse) {
-        eventName = WordUtils.capitalize(eventName) + "Event";
+        String ceventName = WordUtils.capitalize(eventName) + (eventName.equalsIgnoreCase("Event") ? "" : "Event");
         Class<? extends Event> event = null;
 
         for (String c : classes) {
             try {
-                event = Class.forName(c + "." + eventName).asSubclass(Event.class);
+                event = Class.forName(c + "." + ceventName).asSubclass(Event.class);
                 break;
             } catch (ClassNotFoundException ex) {
 

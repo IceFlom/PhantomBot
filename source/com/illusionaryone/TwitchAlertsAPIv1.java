@@ -18,6 +18,7 @@
  */
 package com.illusionaryone;
 
+import com.gmt2001.RollbarProvider;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -134,29 +135,29 @@ public class TwitchAlertsAPIv1 {
             fillJSONObject(jsonResult, true, doPost ? "POST" : "GET", urlAddress, urlConn.getResponseCode(), "", "", jsonText);
         } catch (JSONException ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "JSONException", ex.getMessage(), jsonText);
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex, RollbarProvider.localsToCustom(new String[]{"doPost", "urlAddress", "ex.Class", "ex.getMessage", "jsonText"}, new Object[]{doPost, urlAddress, "JSONException", ex.getMessage(), jsonText}));
         } catch (NullPointerException ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "NullPointerException", ex.getMessage(), "");
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex);
         } catch (MalformedURLException ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "MalformedURLException", ex.getMessage(), "");
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex);
         } catch (SocketTimeoutException ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "SocketTimeoutException", ex.getMessage(), "");
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex);
         } catch (IOException ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "IOException", ex.getMessage(), "");
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex);
         } catch (Exception ex) {
             fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "Exception", ex.getMessage(), "");
-            com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+            com.gmt2001.Console.err.printStackTrace(ex);
         } finally {
             if (inputStream != null)
                 try {
                 inputStream.close();
             } catch (IOException ex) {
                 fillJSONObject(jsonResult, false, doPost ? "POST" : "GET", urlAddress, 0, "IOException", ex.getMessage(), "");
-                com.gmt2001.Console.debug.println("TwitchAlertsAPIv1::readJsonFromUrl::Exception: " + ex.getMessage());
+                com.gmt2001.Console.err.printStackTrace(ex);
             }
         }
 

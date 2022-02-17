@@ -63,7 +63,7 @@ public final class err {
         System.err.println("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + o);
     }
 
-    public static void println(Object o, Boolean logOnly) {
+    public static void println(Object o, boolean logOnly) {
         String stackInfo;
         StackTraceElement st = debug.findCaller();
 
@@ -84,6 +84,10 @@ public final class err {
         printStackTrace(e, null, isUncaught);
     }
 
+    public static void printStackTrace(Throwable e, boolean isUncaught, boolean force) {
+        printStackTrace(e, null, "", isUncaught, force);
+    }
+
     public static void printStackTrace(Throwable e, String description) {
         printStackTrace(e, null, description, false);
     }
@@ -97,7 +101,11 @@ public final class err {
     }
 
     public static void printStackTrace(Throwable e, Map<String, Object> custom, String description, boolean isUncaught) {
-        if (PhantomBot.getEnableDebugging()) {
+        printStackTrace(e, custom, description, isUncaught, false);
+    }
+
+    public static void printStackTrace(Throwable e, Map<String, Object> custom, String description, boolean isUncaught, boolean force) {
+        if (PhantomBot.getEnableDebugging() || force) {
             e.printStackTrace(System.err);
         }
 
