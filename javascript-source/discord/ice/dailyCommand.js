@@ -24,7 +24,7 @@
      */
     function updateIntervalHours(intervalparam) {
         intervalHours = intervalparam
-        $.setIniDbBoolean('discordDailyCommandSettings', 'intervalhours', interval);
+        $.setIniDbBoolean('discordDailyCommandSettings', 'intervalhours', intervalHours);
     }
 
     /**
