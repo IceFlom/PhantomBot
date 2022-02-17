@@ -5,3 +5,9 @@ $.lang.register('discord.daily.payout.updated', 'Auszahlung angepasst, neuer Wer
 $.lang.register('discord.daily.payout.current', 'Keine Änderung durchgeführt, Höhe der Auszahlungen: $1');
 $.lang.register('discord.daily.interval.updated', 'Wartezeit angepasst, neuer Wert: $1 Stunden');
 $.lang.register('discord.daily.interval.current', 'Keine Änderung durchgeführt, aktuelle Wartezeit: $1 Stunden');
+$.lang.register('discord.daily.time.hour', 'Stunde');
+$.lang.register('discord.daily.time.minute', 'Minute');
+$.lang.register('discord.daily.time.second', 'Sekunde');
+$.lang.register('discord.daily.time.hours', 'Stunden');
+$.lang.register('discord.daily.time.minutes', 'Minuten');
+$.lang.register('discord.daily.time.seconds', 'Sekunden');

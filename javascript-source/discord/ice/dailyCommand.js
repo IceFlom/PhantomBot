@@ -28,6 +28,37 @@
     }
 
     /**
+     * transfer timestamp to readable time format
+     * @param timestamp
+     * @returns {string}
+     */
+    function getFormattedTime(timestamp) {
+        var hours,
+            minutes,
+            seconds,
+            strHours = " " + $.lang.get('discord.daily.time.hours') + " ",
+            strMinutes = " " + $.lang.get('discord.daily.time.minutes') + " ",
+            strSeconds = " " + $.lang.get('discord.daily.time.seconds') + " ";
+
+        hours = Math.trunc(timestamp / 1000 / 60 / 60);
+        timestamp = timestamp - Math.trunc(hours * 1000 * 60 * 60);
+        minutes = Math.trunc(timestamp / 1000 / 60);
+        timestamp = timestamp - Math.trunc(minutes * 1000 * 60);
+        seconds = Math.trunc(timestamp / 1000);
+
+        if (hours === 1) {
+            strHours = " " + $.lang.get('discord.daily.time.hour') + " ";
+        }
+        if (minutes === 1) {
+            strMinutes = " " + $.lang.get('discord.daily.time.minute') + " ";
+        }
+        if (seconds === 1) {
+            strSeconds = " " + $.lang.get('discord.daily.time.second') + " ";
+        }
+        return hours + strHours + minutes + strMinutes + seconds + strSeconds;
+    }
+
+    /**
      * @event command
      */
     $.bind('discordChannelCommand', function(event) {
@@ -48,7 +79,7 @@
             twitchName = twitchName.toLowerCase();
 
             // subcommand processing
-            if (subcommand !== 'undefined') {
+            if (subcommand !== undefined) {
                 if (subcommand.equalsIgnoreCase("setpayout")) {
                     var payoutvalue = args[1];
                     if (!isNaN(payoutvalue)) {
@@ -83,7 +114,7 @@
                 $.inidb.incr('points', twitchName, payout);
                 $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.daily.success', $.getPointsString(payout)));
             } else {
-                $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.daily.wait', $.getFormattedTime(timeGone), intervalHours));
+                $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.daily.wait', getFormattedTime(timeGone), intervalHours));
             }
         }
     });
