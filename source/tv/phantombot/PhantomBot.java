@@ -990,7 +990,7 @@ public final class PhantomBot implements Listener {
             Script.global.defineProperty("alertspollssocket", alertsPollsHandler, 0);
             Script.global.defineProperty("random", random, 0);
             Script.global.defineProperty("youtube", YouTubeAPIv3.instance(), 0);
-            Script.global.defineProperty("twitter", TwitterAPI.instance(), 0);
+            /* Script.global.defineProperty("twitter", TwitterAPI.instance(), 0); */
             Script.global.defineProperty("twitchCacheReady", PhantomBot.twitchCacheReady, 0);
             Script.global.defineProperty("isNightly", isNightly(), 0);
             Script.global.defineProperty("isPrerelease", isPrerelease(), 0);
