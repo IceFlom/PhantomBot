@@ -1,2 +1,7 @@
-$.lang.register('discord.daily.success', 'dir wurden als tägliche Belohnung $1 gutgeschrieben.');
-$.lang.register('discord.daily.wait', 'seit deiner letzten Belohnung sind erst $1 vergangen. Du erhälst diese nur alle $2 Stunden.');
+$.lang.register('discord.daily.success', 'you got $1 as your daily reward.');
+$.lang.register('discord.daily.wait', 'your last award is only $1 ago. You can get this reward every $2 hours.');
+$.lang.register('discord.daily.help', 'avaiable commands for admins: setpayout [amount]; setinterval [hours]');
+$.lang.register('discord.daily.payout.updated', 'payout updated, new value: $1');
+$.lang.register('discord.daily.payout.current', 'nothing was changed, current amount of payouts: $1');
+$.lang.register('discord.daily.interval.updated', 'interval updated, new value: $1 hours');
+$.lang.register('discord.daily.interval.current', 'nothing was changed, current interval: $1 hours');
