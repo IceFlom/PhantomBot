@@ -46,10 +46,6 @@
         }
 
 		if (command.equalsIgnoreCase('steal')) {
-            if (onlineOnly && !$.isOnline($.channelName)) {
-                $.say($.whisperPrefix(sender) + $.lang.get('steal.onlineonly'));
-                return;
-            }
 			if (!action) {
                 $.say($.whisperPrefix(sender) + $.lang.get('steal.usage'));
                 return;
@@ -82,6 +78,13 @@
                 toggleOnlineonly(sender);
                 return;
             }
+
+            // Validation: channel online?
+            if (onlineOnly && !$.isOnline($.channelName)) {
+                $.say($.whisperPrefix(sender) + $.lang.get('steal.onlineonly'));
+                return;
+            }
+
             // Validation: Thief = victim?
             if (sender.equalsIgnoreCase(action)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('steal.self', $.username.resolve(action)));
