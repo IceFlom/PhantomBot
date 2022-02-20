@@ -857,14 +857,19 @@ public final class PhantomBot implements Listener {
 
             /* Check to see if all the Twitter info needed is there */
             if (!twitterUsername.isEmpty() && !twitterAccessToken.isEmpty() && !twitterConsumerToken.isEmpty() && !twitterConsumerSecret.isEmpty() && !twitterSecretToken.isEmpty()) {
-                /* Set the Twitter tokens */
-                TwitterAPI.instance().setUsername(twitterUsername);
-                TwitterAPI.instance().setAccessToken(twitterAccessToken);
-                TwitterAPI.instance().setSecretToken(twitterSecretToken);
-                TwitterAPI.instance().setConsumerKey(twitterConsumerToken);
-                TwitterAPI.instance().setConsumerSecret(twitterConsumerSecret);
-                /* Check to see if the tokens worked */
-                TwitterAPI.instance().authenticate();
+                try {
+                    /* Set the Twitter tokens */
+                    TwitterAPI.instance().setUsername(twitterUsername);
+                    TwitterAPI.instance().setAccessToken(twitterAccessToken);
+                    TwitterAPI.instance().setSecretToken(twitterSecretToken);
+                    TwitterAPI.instance().setConsumerKey(twitterConsumerToken);
+                    TwitterAPI.instance().setConsumerSecret(twitterConsumerSecret);
+                    /* Check to see if the tokens worked */
+                    TwitterAPI.instance().authenticate();
+                } catch (Exception ex) {
+                    com.gmt2001.Console.err.println("TwitterAPI authentication failed fatally");
+                    com.gmt2001.Console.err.printStackTrace(ex);
+                }
             }
 
             /* print a extra line in the console. */
@@ -990,7 +995,7 @@ public final class PhantomBot implements Listener {
             Script.global.defineProperty("alertspollssocket", alertsPollsHandler, 0);
             Script.global.defineProperty("random", random, 0);
             Script.global.defineProperty("youtube", YouTubeAPIv3.instance(), 0);
-            /* Script.global.defineProperty("twitter", TwitterAPI.instance(), 0); */
+            Script.global.defineProperty("twitter", TwitterAPI.instance(), 0);
             Script.global.defineProperty("twitchCacheReady", PhantomBot.twitchCacheReady, 0);
             Script.global.defineProperty("isNightly", isNightly(), 0);
             Script.global.defineProperty("isPrerelease", isPrerelease(), 0);
