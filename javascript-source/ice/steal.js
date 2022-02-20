@@ -157,6 +157,7 @@
             $.registerChatCommand('./ice/steal.js', 'steal', 7);
             $.registerChatSubcommand('steal', 'min', 1);
             $.registerChatSubcommand('steal', 'max', 1);
+            $.registerChatSubcommand('steal', 'onlineonly', 1);
         }
     });
     $.reloadSteal = reloadSteal;
