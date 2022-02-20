@@ -5,3 +5,7 @@ $.lang.register('slotmachine.rewards.usage', 'Nutzung: !slot rewards [Wert1] [We
 $.lang.register('slotmachine.rewards.success', 'Gewinnhöhe für die Slotmaschine aktualisiert.');
 $.lang.register('slotmachine.emote.usage', 'Nutzung: !slot emotes [Emote1] [Emote2] [Emote3] [Emote4] [Emote5]. Aktuell: $1');
 $.lang.register('slotmachine.emote.success', 'Emotes für die Slotmaschine aktualisiert.');
+$.lang.register('slotmachine.onlineonly.enabled', 'Option aktiviert, die Slotmaschine ist jetzt nicht mehr nutzbar, wenn kein Stream läuft.');
+$.lang.register('slotmachine.onlineonly.disabled', 'Option deaktiviert, die Slotmaschine kann auch ohne Stream genutzt werden.');
+$.lang.register('slotmachine.cost.current', 'Aktuelle Kosten für die Slotmaschine: $1');
+$.lang.register('slotmachine.cost.updated', 'Kosten für die Slotmaschine aktualisiert: $1');

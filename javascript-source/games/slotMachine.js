@@ -49,7 +49,7 @@
         emoteList[2] = $.getIniDbString('slotmachineemotes', 'emote_2');
         emoteList[3] = $.getIniDbString('slotmachineemotes', 'emote_3');
         emoteList[4] = $.getIniDbString('slotmachineemotes', 'emote_4');
-    };
+    }
 
     /**
      * @function loadPrizes
@@ -84,7 +84,30 @@
         if (rand > 700) {
             return 0;
         }
-    };
+    }
+
+    /**
+     * @function toggleOnlineonly
+     * @param {string} sender
+     */
+    function toggleOnlineonly(sender) {
+        onlineOnly = !onlineOnly;
+        if (onlineOnly) {
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly.enabled'));
+        } else {
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly.disabled'));
+        }
+    }
+
+    /**
+     * Updates the cost
+     * @function updateCost
+     * @param {int} costvalue
+     */
+    function updateCost(costvalue) {
+        cost = costvalue
+        $.setIniDbBoolean('slotmachine', 'cost', cost);
+    }
 
     /**
      * @function calculateResult
@@ -174,6 +197,25 @@
                     $.inidb.set('slotmachineemotes', 'emote_4', args[5]);
                     return;
                 }
+
+                /**
+                 * @commandpath slot onlineonly - Toggles the onlineonly option.
+                 */
+                if (args[0].equalsIgnoreCase('onlineonly')) {
+                    toggleOnlineonly(sender);
+                    return;
+                }
+
+                if (args[0].equalsIgnoreCase("cost")) {
+                    var costvalue = args[1];
+                    if (!isNaN(costvalue)) {
+                        updateCost(costvalue);
+                        $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.cost.updated', $.getPointsString(cost)));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.cost.current', $.getPointsString(cost)));
+                    }
+                    return;
+                }
             }
 
             if (onlineOnly && !$.isOnline($.channelName)) {
@@ -199,6 +241,7 @@
         $.registerChatCommand('./games/slotMachine.js', 'slot', 7);
         $.registerChatSubcommand('slot', 'rewards', 1);
         $.registerChatSubcommand('slot', 'emotes', 1);
+        $.registerChatSubcommand('slot', 'onlineonly', 1);
     });
 
     $.loadPrizesSlot = loadPrizes;
