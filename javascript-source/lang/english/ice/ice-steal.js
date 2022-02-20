@@ -22,4 +22,6 @@ $.lang.register('steal.min.usage', 'Benutzung: !steal min [Mindestzahl]');
 $.lang.register('steal.min.success', 'Das stehlbare Minimum wurde auf $1 gesetzt.');
 $.lang.register('steal.max.usage', 'Benutzung: !steal max [Maximalzahl]');
 $.lang.register('steal.max.success', 'Das stehlbare Maximum wurde auf $1 gesetzt.');
+$.lang.register('steal.onlineonly.enabled', 'Option aktiviert, es kann nur gestohlen werden wenn ein Stream läuft.');
+$.lang.register('steal.onlineonly.disabled', 'Option deaktiviert, es kann auch ohne Stream gestohlen werden.');
 
