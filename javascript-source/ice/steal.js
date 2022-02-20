@@ -93,26 +93,26 @@
                 return;
             }
 
-            var angreiferPoints = $.getUserPoints(sender),
-                opferPoints = $.getUserPoints(action);
+            var attackerPoints = $.getUserPoints(sender),
+                victimPoints = $.getUserPoints(action);
             // Angreifer hat 0 Punkte
-            if (angreiferPoints == 0) {
+            if (attackerPoints == 0) {
                 $.say($.lang.get('steal.user.nopoints', $.username.resolve(sender)));
                 return;
             }
             // Opfer hat 0 Punkte
-            if (opferPoints == 0) {
+            if (victimPoints == 0) {
                 $.say($.lang.get('steal.user.nopoints', $.username.resolve(action)));
                 return;
             }
 
             // Adjust max points if user has less points
             var maxPoints = maxSteal;
-            if (angreiferPoints < maxPoints) {
-                maxPoints = angreiferPoints;
+            if (attackerPoints < maxPoints) {
+                maxPoints = attackerPoints;
             }
-            if (opferPoints < maxPoints) {
-                maxPoints = opferPoints;
+            if (victimPoints < maxPoints) {
+                maxPoints = victimPoints;
             }
             var randInt = $.randRange(minSteal, maxPoints);
 
