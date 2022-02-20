@@ -24,7 +24,9 @@
  */
 (function() {
     var prizes = [],
-        emoteList = [];
+        emoteList = [],
+        cost = $.getSetIniDbNumber('slotmachine', 'cost', 15),
+        onlineOnly = $.getSetIniDbBoolean('slotmachine', 'onlineonly', true);
 
     /* Set default prizes and emotes in the DB for the Panel */
     $.getSetIniDbNumber('slotmachine', 'prizes_0', 75);
@@ -47,7 +49,7 @@
         emoteList[2] = $.getIniDbString('slotmachineemotes', 'emote_2');
         emoteList[3] = $.getIniDbString('slotmachineemotes', 'emote_3');
         emoteList[4] = $.getIniDbString('slotmachineemotes', 'emote_4');
-    };
+    }
 
     /**
      * @function loadPrizes
@@ -82,7 +84,30 @@
         if (rand > 700) {
             return 0;
         }
-    };
+    }
+
+    /**
+     * @function toggleOnlineonly
+     * @param {string} sender
+     */
+    function toggleOnlineonly(sender) {
+        onlineOnly = !onlineOnly;
+        if (onlineOnly) {
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly.enabled'));
+        } else {
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly.disabled'));
+        }
+    }
+
+    /**
+     * Updates the cost
+     * @function updateCost
+     * @param {int} costvalue
+     */
+    function updateCost(costvalue) {
+        cost = costvalue
+        $.setIniDbBoolean('slotmachine', 'cost', cost);
+    }
 
     /**
      * @function calculateResult
@@ -92,24 +117,28 @@
         var e1 = getEmoteKey(),
             e2 = getEmoteKey(),
             e3 = getEmoteKey(),
-            message = $.lang.get('slotmachine.result.start', $.resolveRank(sender), emoteList[e1], emoteList[e2], emoteList[e3]);
+            wonPoints = 0;
 
         loadPrizes();
 
         if (e1 == e2 && e2 == e3) {
-            message += $.lang.get('slotmachine.result.win', ($.getPointsString(prizes[e1]) + '.'));
-            $.say(message + $.gameMessages.getWin(sender, 'slot'));
-            $.inidb.incr('points', sender, prizes[e1]);
+            wonPoints = prizes[e1];
+            $.inidb.incr('points', sender, wonPoints);
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.result', cost, emoteList[e1], emoteList[e2], emoteList[e3], wonPoints));
             return;
         }
 
         if (e1 == e2 || e2 == e3 || e3 == e1) {
-            message += $.lang.get('slotmachine.result.win', (e1 == e2 ? $.getPointsString(Math.floor(prizes[e1] * 0.3)) : $.getPointsString(Math.floor(prizes[e3] * 0.3))) + '.');
-            $.say(message + $.gameMessages.getWin(sender, 'slot'));
-            $.inidb.incr('points', sender, (e1 == e2 ? (Math.floor(prizes[e1] * 0.3)) : (Math.floor(prizes[e3] * 0.3))));
+            if (e1 == e2) {
+                wonPoints = Math.floor(prizes[e1] * 0.3);
+            } else {
+                wonPoints = Math.floor(prizes[e3] * 0.3);
+            }
+            $.inidb.incr('points', sender, wonPoints);
+            $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.result', cost, emoteList[e1], emoteList[e2], emoteList[e3], wonPoints));
             return;
         }
-        $.say(message + $.gameMessages.getLose(sender, 'slot'));
+        $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.result', cost, emoteList[e1], emoteList[e2], emoteList[e3], wonPoints));
     };
 
     /**
@@ -129,7 +158,7 @@
              */
             if (args[0] !== undefined) {
                 if (args[0].equalsIgnoreCase('rewards')) {
-                    if (args.length != 6) {
+                    if (args.length < 6) {
                         loadPrizes();
                         $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.rewards.usage', prizes.join(' ')));
                         return;
@@ -168,7 +197,37 @@
                     $.inidb.set('slotmachineemotes', 'emote_4', args[5]);
                     return;
                 }
+
+                /**
+                 * @commandpath slot onlineonly - Toggles the onlineonly option.
+                 */
+                if (args[0].equalsIgnoreCase('onlineonly')) {
+                    toggleOnlineonly(sender);
+                    return;
+                }
+
+                if (args[0].equalsIgnoreCase("cost")) {
+                    var costvalue = args[1];
+                    if (!isNaN(costvalue)) {
+                        updateCost(costvalue);
+                        $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.cost.updated', $.getPointsString(cost)));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.cost.current', $.getPointsString(cost)));
+                    }
+                    return;
+                }
             }
+
+            if (onlineOnly && !$.isOnline($.channelName)) {
+                $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly'));
+                return;
+            }
+
+            if ($.getUserPoints(sender) < cost) {
+                $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.nopoints', $.getPointsString(cost)));
+                return;
+            }
+            $.inidb.decr('points', sender, cost);
 
             /* Slot machine */
             calculateResult(sender);
@@ -182,6 +241,7 @@
         $.registerChatCommand('./games/slotMachine.js', 'slot', 7);
         $.registerChatSubcommand('slot', 'rewards', 1);
         $.registerChatSubcommand('slot', 'emotes', 1);
+        $.registerChatSubcommand('slot', 'onlineonly', 1);
     });
 
     $.loadPrizesSlot = loadPrizes;
