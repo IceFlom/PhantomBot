@@ -92,6 +92,7 @@
      */
     function toggleOnlineonly(sender) {
         onlineOnly = !onlineOnly;
+        $.setIniDbBoolean('slotmachine', 'onlineonly', onlineOnly);
         if (onlineOnly) {
             $.say($.whisperPrefix(sender) + $.lang.get('slotmachine.onlineonly.enabled'));
         } else {
