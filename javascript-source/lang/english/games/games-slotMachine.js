@@ -15,8 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-$.lang.register('slotmachine.result.start', '$1: [ $2 $3 $4 ] ');
-$.lang.register('slotmachine.result.win', ' +$1 ');
+$.lang.register('slotmachine.result', '-$1 > [ $2 | $3 | $4 ] > +$5');
+$.lang.register('slotmachine.nopoints', 'you need at least $1 to use the slotmachine.');
+$.lang.register('slotmachine.onlineonly', 'the slotmachine is closed while there is no stream.');
 $.lang.register('slotmachine.rewards.usage', 'Usage: !slot rewards [val1] [val2] [val3] [val4] [val5]. Currently: $1');
 $.lang.register('slotmachine.rewards.success', 'Updated rewards for the slot machine.');
 $.lang.register('slotmachine.emote.usage', 'Usage: !slot emotes [emote1] [emote2] [emote3] [emote4] [emote5]. Currently: $1');
