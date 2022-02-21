@@ -10,17 +10,23 @@
     var topAmount = $.getSetIniDbNumber('charcount_settings', 'topamount', 5),
         dbSaveMinutes = $.getSetIniDbNumber('charcount_settings', 'dbsaveminutes', 1),
         countingSince = $.getSetIniDbNumber('charcount_settings', 'countingsince', new Date().getTime()),
+        countCommands = $.getSetIniDbBoolean('charcount_settings', 'countcommands', true),
         charCountTable = 'charcount',
         charCountRecords = [],
         userCache = {};
-    /*
+
+    /**
      * @function reloadCharacterCount
      */
     function reloadCharacterCount() {
         topAmount = $.getIniDbNumber('charcount_settings', 'topamount');
         dbSaveMinutes = $.getIniDbNumber('charcount_settings', 'dbsaveminutes');
+        countCommands = $.getIniDbBoolean('charcount_settings', 'countcommands');
     }
 
+    /**
+     * @function loadCharcountTable
+     */
     function loadCharcountTable() {
         charCountRecords = $.inidb.GetKeyValueList(charCountTable, '');
         charCountRecords.sort((a, b) => {
@@ -36,17 +42,27 @@
         return (charCountRecords.findIndex((record) => record.getKey().equalsIgnoreCase(sender)) + 1);
     }
 
+    /**
+     * @function getNumberOfRecords
+     * @returns {number}
+     */
     function getNumberOfRecords() {
         return charCountRecords.length;
     }
 
-    /*
+    /**
+     * @function isCommand
+     * @param {string} text
+     */
+    function isCommand(text) {
+        return text.startsWith("!");
+    }
+
+    /**
      * @function getTop
-     *
      * @returns {Array}
      */
     function getTop() {
-        // Load two more from db because of streamer/bot filtering
         var list = [],
             i,
             ctr = 0;
@@ -65,8 +81,8 @@
         return list.slice(0, topAmount);
     }
 
-    /* @function reset
-     * Deletes one or all entries in the database
+    /** @function reset
+     * @param {string} username
      */
     function reset(username) {
         // reset all?
@@ -86,9 +102,8 @@
         }
     }
 
-    /*
+    /**
      * @function saveInDatabase
-     * Save the cached informations in the database
      */
     function saveInDatabase() {
         var keys = [],
@@ -108,6 +123,11 @@
         $.inidb.setbatch(charCountTable, keys, values);
     }
 
+    /**
+     * @function getFormattedDate
+     * @param {timestamp} timestamp
+     * @returns {string}
+     */
     function getFormattedDate(timestamp) {
         var date = new Date(timestamp);
         return ("0" + date.getDate()).slice(-2) + "."
@@ -115,29 +135,39 @@
             + date.getFullYear();
     }
 
-    /*
+    /**
      * @event ircChannelMessage
      */
     $.bind('ircChannelMessage', function(event) {
-        if ($.isOnline($.channelName)) {
-            var username = event.getSender().toLowerCase(),
-                msgCharCount = event.getMessage().length(),
-                cachedCount = userCache[username];
-            if (cachedCount !== undefined) {
-                userCache[username] = cachedCount + msgCharCount;
-            } else {
-                userCache[username] = msgCharCount;
-            }
+        // channel not online?
+        if (!$.isOnline($.channelName)) {
+            return;
+        }
+        // count commands? is command?
+        if (!countCommands && isCommand(event.getMessage())) {
+            return;
+        }
+
+        // process message
+        var username = event.getSender().toLowerCase(),
+            msgCharCount = event.getMessage().length(),
+            cachedCount = userCache[username];
+        if (cachedCount !== undefined) {
+            userCache[username] = cachedCount + msgCharCount;
+        } else {
+            userCache[username] = msgCharCount;
         }
     });
 
-    // Set the timer for character db save
+    /**
+     * @timer
+     */
     var interval = setInterval(function() {
         saveInDatabase();
         loadCharcountTable();
     }, dbSaveMinutes * 60 * 1e3, 'scripts::commands::characterCount.js');
 
-    /*
+    /**
      * @event command
      */
     $.bind('command', function(event) {
