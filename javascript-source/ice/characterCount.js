@@ -47,25 +47,21 @@
      */
     function getTop() {
         // Load two more from db because of streamer/bot filtering
-        var keys = $.inidb.GetKeysByNumberOrderValue(charCountTable, '', 'DESC', topAmount + 2, 0),
-            list = [],
+        var list = [],
             i,
             ctr = 0;
 
-        for (i in keys) {
-            if (!$.isBot(keys[i]) && !$.isOwner(keys[i])) {
+        for (i in charCountRecords) {
+            if (!$.isBot(charCountRecords[i].getKey()) && !$.isOwner(charCountRecords[i].getKey())) {
                 if (ctr++ == topAmount) {
                     break;
                 }
                 list.push({
-                    username: keys[i],
-                    value: $.inidb.get(charCountTable, keys[i])
+                    username: charCountRecords[i].getKey(),
+                    value: charCountRecords[i].getValue()
                 });
             }
         }
-        list.sort(function(a, b) {
-            return (b.value - a.value);
-        });
         return list.slice(0, topAmount);
     }
 
@@ -184,7 +180,7 @@
                 i;
 
             for (i in temp) {
-                top.push((parseInt(i) + 1) + '. ' + $.resolveRank(temp[i].username) + ' ' + temp[i].value + ' ' + $.lang.get('charactercount.unit'));
+                top.push((parseInt(i) + 1) + '. ' + $.username.resolve(temp[i].username) + ' ' + temp[i].value + ' ' + $.lang.get('charactercount.unit'));
             }
             $.say($.lang.get('charactercount.top', topAmount, top.join(', '), getFormattedDate(countingSince)));
         } else if (command.equalsIgnoreCase('text')) {
