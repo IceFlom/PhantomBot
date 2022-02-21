@@ -35,6 +35,20 @@
     }
 
     /**
+     * @function toggleCountCommands
+     * @param {string} sender
+     */
+    function toggleCountCommands(sender) {
+        countCommands = !countCommands;
+        $.setIniDbBoolean('charcount_settings', 'countcommands', countCommands);
+        if (countCommands) {
+            $.say($.whisperPrefix(sender) + $.lang.get('charactercount.countcommands.enabled'));
+        } else {
+            $.say($.whisperPrefix(sender) + $.lang.get('charactercount.countcommands.disabled'));
+        }
+    }
+
+    /**
      * @function getUserPosition()
      * @param {string} sender
      */
@@ -201,6 +215,10 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('charactercount.reset.usage'));
                     return;
                 }
+                if (subcmd.equalsIgnoreCase('countcommands')) {
+                    toggleCountCommands(sender);
+                    return;
+                }
                 $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usage'));
                 return;
             }
@@ -231,6 +249,7 @@
         $.registerChatCommand('./ice/characterCount.js', 'toptext', 7);
         $.registerChatSubcommand('toptext', 'set', 1);
         $.registerChatSubcommand('toptext', 'reset', 1);
+        $.registerChatSubcommand('toptext', 'countcommands', 1);
         $.registerChatCommand('./ice/characterCount.js', 'text', 7);
     });
     loadCharcountTable();

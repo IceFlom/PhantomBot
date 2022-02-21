@@ -9,3 +9,5 @@ $.lang.register('charactercount.usage', 'Nutzung: !toptext für die Topliste, !t
 $.lang.register('charactercount.set.usage', 'Nutzung: !toptext set [number] -> Setzt die Anzahl an Platzierungen, die ausgegeben werden sollen.');
 $.lang.register('charactercount.set.success', 'Gespeichert. Ab sofort enthält die Topliste $1 Platzierungen.');
 $.lang.register('charactercount.reset.usage', 'Nutzung: !toptext reset [username|all] -> Setzt die Einträge des angegebenen Benutzers zurück, bei Angabe von "all" wird alles zurückgesetzt.');
+$.lang.register('charactercount.countcommands.enabled', 'Botbefehle werden jetzt mitgezählt.');
+$.lang.register('charactercount.countcommands.disabled', 'Botbefehle werden jetzt nicht mehr mitgezählt.');
