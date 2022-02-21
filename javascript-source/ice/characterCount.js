@@ -11,14 +11,33 @@
         dbSaveMinutes = $.getSetIniDbNumber('charcount_settings', 'dbsaveminutes', 1),
         countingSince = $.getSetIniDbNumber('charcount_settings', 'countingsince', new Date().getTime()),
         charCountTable = 'charcount',
+        charCountRecords = [],
         userCache = {};
-
     /*
      * @function reloadCharacterCount
      */
     function reloadCharacterCount() {
         topAmount = $.getIniDbNumber('charcount_settings', 'topamount');
         dbSaveMinutes = $.getIniDbNumber('charcount_settings', 'dbsaveminutes');
+    }
+
+    function loadCharcountTable() {
+        charCountRecords = $.inidb.GetKeyValueList(charCountTable, '');
+        charCountRecords.sort((a, b) => {
+            return b.getValue() - a.getValue();
+        });
+    }
+
+    /**
+     * @function getUserPosition()
+     * @param {string} sender
+     */
+    function getUserPosition(sender) {
+        return (charCountRecords.findIndex((record) => record.getKey().equalsIgnoreCase(sender)) + 1);
+    }
+
+    function getNumberOfRecords() {
+        return charCountRecords.length;
     }
 
     /*
@@ -119,6 +138,7 @@
     // Set the timer for character db save
     var interval = setInterval(function() {
         saveInDatabase();
+        loadCharcountTable();
     }, dbSaveMinutes * 60 * 1e3, 'scripts::commands::characterCount.js');
 
     /*
@@ -171,7 +191,7 @@
             // send user specific character count to chat
             var userCount = $.getIniDbNumber('charcount', sender, 0);
             if (userCount > 0) {
-                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + ' ' + $.lang.get('charactercount.unit'), $.inidb.GetPositionInTable(charCountTable, sender), $.inidb.GetNumberOfRecords(charCountTable)));
+                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + ' ' + $.lang.get('charactercount.unit'), getUserPosition(sender), getNumberOfRecords()));
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.notfound'));
             }
@@ -187,6 +207,6 @@
         $.registerChatSubcommand('toptext', 'reset', 1);
         $.registerChatCommand('./ice/characterCount.js', 'text', 7);
     });
-
+    loadCharcountTable();
     $.reloadCharacterCount = reloadCharacterCount;
 })();
