@@ -47,7 +47,7 @@
 
 		if (command.equalsIgnoreCase('steal')) {
 			if (!action) {
-                $.say($.whisperPrefix(sender) + $.lang.get('steal.usage'));
+                $.say($.whisperPrefix(sender) + $.lang.get('steal.usage', $.pointNameMultiple));
                 return;
             }
 
@@ -100,12 +100,12 @@
                 victimPoints = $.getUserPoints(action);
             // Angreifer hat 0 Punkte
             if (attackerPoints == 0) {
-                $.say($.lang.get('steal.user.nopoints', $.username.resolve(sender)));
+                $.say($.lang.get('steal.user.nopoints', $.username.resolve(sender), $.pointNameMultiple));
                 return;
             }
             // Opfer hat 0 Punkte
             if (victimPoints == 0) {
-                $.say($.lang.get('steal.user.nopoints', $.username.resolve(action)));
+                $.say($.lang.get('steal.user.nopoints', $.username.resolve(action), $.pointNameMultiple));
                 return;
             }
 
@@ -126,7 +126,7 @@
                 // Thief looses
                 var police = $.randRange(1, 100);
                 if (police > 30) {
-                    // points to tresor
+                    // points to safe
                     $.inidb.decr('points', sender.toLowerCase(), randInt);
                     $.inidb.incr('polizei', 'tresor', randInt);
                     setTimeout(function() {
