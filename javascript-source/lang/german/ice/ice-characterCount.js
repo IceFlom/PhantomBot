@@ -1,0 +1,13 @@
+$.lang.register('charactercount.unit', 'Zeichen');
+$.lang.register('charactercount.top', 'Top $1 "Zeichen im Chat": $2 (seit: $3)');
+$.lang.register('charactercount.usercount.result', 'du hast bislang $1 im Chat geschrieben. Du befindest dich auf Platz $2 von $3.');
+$.lang.register('charactercount.usercount.notfound', 'es gibt (noch) keinen Eintrag für dich.');
+$.lang.register('charactercount.reset.all', 'Alle Einträge wurden gelöscht.');
+$.lang.register('charactercount.reset.user', 'Der Wert für $1 wurde zurückgesetzt.');
+$.lang.register('charactercount.reset.notfound', 'Keinen Eintrag für $1 gefunden!');
+$.lang.register('charactercount.usage', 'Nutzung: !toptext für die Topliste, !text für eigenen Zähler. Admins: !toptext set [Zahl] oder !toptext reset [Benutzername|all]');
+$.lang.register('charactercount.set.usage', 'Nutzung: !toptext set [Zahl] -> Setzt die Anzahl an Platzierungen, die ausgegeben werden sollen.');
+$.lang.register('charactercount.set.success', 'Gespeichert. Ab sofort enthält die Topliste $1 Platzierungen.');
+$.lang.register('charactercount.reset.usage', 'Nutzung: !toptext reset [Benutzername|all] -> Setzt die Einträge des angegebenen Benutzers zurück, bei Angabe von "all" wird alles zurückgesetzt.');
+$.lang.register('charactercount.countcommands.enabled', 'Botbefehle werden jetzt mitgezählt.');
+$.lang.register('charactercount.countcommands.disabled', 'Botbefehle werden jetzt nicht mehr mitgezählt.');
