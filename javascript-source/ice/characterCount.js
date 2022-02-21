@@ -76,8 +76,8 @@
      * @function getTop
      * @returns {Array}
      */
-    function getTop() {
-        var list = [],
+    function getTopString() {
+        var toplistString = "",
             i,
             ctr = 0;
 
@@ -86,13 +86,12 @@
                 if (ctr++ == topAmount) {
                     break;
                 }
-                list.push({
-                    username: charCountRecords[i].getKey(),
-                    value: charCountRecords[i].getValue()
-                });
+                toplistString += (parseInt(i) + 1) + '. '
+                    + $.username.resolve(charCountRecords[i].getKey()) + ': '
+                    + charCountRecords[i].getValue() + " | "
             }
         }
-        return list.slice(0, topAmount);
+        return toplistString;
     }
 
     /** @function reset
@@ -223,19 +222,12 @@
                 return;
             }
             // send topliste to chat
-            var temp = getTop(),
-                top = [],
-                i;
-
-            for (i in temp) {
-                top.push((parseInt(i) + 1) + '. ' + $.username.resolve(temp[i].username) + ' ' + temp[i].value + ' ' + $.lang.get('charactercount.unit'));
-            }
-            $.say($.lang.get('charactercount.top', topAmount, top.join(', '), getFormattedDate(countingSince)));
+            $.say($.lang.get('charactercount.top', topAmount, getTopString(), getFormattedDate(countingSince)));
         } else if (command.equalsIgnoreCase('text')) {
             // send user specific character count to chat
             var userCount = $.getIniDbNumber('charcount', sender, 0);
             if (userCount > 0) {
-                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + ' ' + $.lang.get('charactercount.unit'), getUserPosition(sender), getNumberOfRecords()));
+                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + $.lang.get('charactercount.unit'), getUserPosition(sender), getNumberOfRecords()));
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.notfound'));
             }
