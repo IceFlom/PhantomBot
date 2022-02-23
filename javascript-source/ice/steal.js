@@ -128,7 +128,7 @@
                 if (police > 30) {
                     // points to safe
                     $.inidb.decr('points', sender.toLowerCase(), randInt);
-                    $.inidb.incr('polizei', 'tresor', randInt);
+                    $.inidb.incr('police', 'safe', randInt);
                     setTimeout(function() {
                         $.say($.lang.get('steal.target.police', $.getPointsString(randInt), $.username.resolve(sender)));
                     }, 5e3);
