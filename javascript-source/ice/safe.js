@@ -3,6 +3,9 @@
  */
 
 (function() {
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './ice/safe.js', false);
+
     var onlineOnly = $.getSetIniDbBoolean('safeSettings', 'onlineonly', true),
         joinTime = $.getSetIniDbNumber('safeSettings', 'joinTime', 120),
         costs = $.getSetIniDbNumber('safeSettings', 'costs', 100),
@@ -12,7 +15,7 @@
         cooldownRaise = $.getSetIniDbNumber('safeSettings', 'cooldownraise', 15),
         enterMessage = $.getSetIniDbBoolean('safeSettings', 'enterMessage', true),
         warningMessage = $.getSetIniDbBoolean('safeSettings', 'warningMessage', true),
-        randActive = $.getSetIniDbBoolean('safeSettings', 'randActive', true),
+        randActive = $.getSetIniDbBoolean('safeSettings', 'randActive', false),
         randMinPoints = $.getSetIniDbNumber('safeSettings', 'randMinPoints', 200),
         randMaxPoints = $.getSetIniDbNumber('safeSettings', 'randMaxPoints', 500),
         randMinTime = $.getSetIniDbNumber('safeSettings', 'randMinTime', 60),
@@ -20,6 +23,7 @@
         discordAnnounce = $.getSetIniDbBoolean('safeSettings', 'discordAnnounce', false),
         discordChannel = $.getSetIniDbString('safeSettings', 'discordChannel', '0'),
         discordMessage = $.getSetIniDbString('safeSettings', 'discordMessage', '(user) wants to start a heist. You have (jointime) seconds to open (url) and join the heist. There are currently (safeamount) in the safe.'),
+        contentOfSafe = $.getSetIniDbNumber('police', 'safe', 0),
         currentHeist = {},
         stories = [],
         lastStory,
@@ -45,6 +49,25 @@
         discordMessage = $.getIniDbString('safeSettings', 'discordMessage');
     }
 
+    /**
+     * transfer timestamp to readable time format
+     * @param timestamp
+     * @returns {string}
+     */
+    function getFormattedTime(timestamp) {
+        var hours,
+            minutes,
+            seconds;
+
+        hours = Math.trunc(timestamp / 1000 / 60 / 60);
+        timestamp = timestamp - Math.trunc(hours * 1000 * 60 * 60);
+        minutes = Math.trunc(timestamp / 1000 / 60);
+        timestamp = timestamp - Math.trunc(minutes * 1000 * 60);
+        seconds = Math.trunc(timestamp / 1000);
+
+        return hours + ":" + minutes + ":" + seconds;
+    }
+
     function givePointsInterval() {
         var intervalMs,
             points;
@@ -60,7 +83,7 @@
                 givePointsInterval();
             }
         }, intervalMs);
-        $.consoleLn($.lang.get('safe.randptlog', $.getPointsString(points), $.getFormattedTime(intervalMs)));
+        $.consoleLn($.lang.get('safe.randptlog', $.getPointsString(points), getFormattedTime(intervalMs)));
     }
 
     /**
@@ -478,8 +501,6 @@
         if (randActive) {
             givePointsInterval();
         }
-        // disabled by default
-        $.getSetIniDbBoolean('modules', './ice/safe.js', false);
     });
 
     $.reloadSafe = reloadSafe;
