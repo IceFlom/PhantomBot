@@ -7,6 +7,9 @@
  *
  */
 (function() {
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './ice/characterCount.js', false);
+
     var topAmount = $.getSetIniDbNumber('charcount_settings', 'topamount', 5),
         dbSaveMinutes = $.getSetIniDbNumber('charcount_settings', 'dbsaveminutes', 1),
         countingSince = $.getSetIniDbNumber('charcount_settings', 'countingsince', new Date().getTime()),

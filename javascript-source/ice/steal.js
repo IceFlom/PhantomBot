@@ -4,6 +4,9 @@
  *
  */
 (function() {
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './ice/steal.js', false);
+
 	var minSteal = $.getSetIniDbNumber('stealSettings', 'minSteal', 1),
         maxSteal = $.getSetIniDbNumber('stealSettings', 'maxSteal', 50),
         onlineOnly = $.getSetIniDbBoolean('stealSettings', 'onlineonly', true);
