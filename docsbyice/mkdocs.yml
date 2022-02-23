@@ -32,7 +32,7 @@ theme:
 site_author: "IceFlom"
 copyright: Copyright &copy; IceFlom
 #extra_css:
-#    - css/extra.css
+#   - css/extra.css
 nav:
   - Home: index.md
   - Installation: installation/installation.md
