@@ -7,9 +7,9 @@
         joinTime = $.getSetIniDbNumber('safeSettings', 'joinTime', 120),
         costs = $.getSetIniDbNumber('safeSettings', 'costs', 100),
         minPlayer = $.getSetIniDbNumber('safeSettings', 'minPlayer', 5),
-        sperrzeitMin = $.getSetIniDbNumber('safeSettings', 'sperrzeitminuten', 120),
-        sperrTimestamp = $.getSetIniDbNumber('safeSettings', 'sperrtimestamp', 0),
-        sperrErhoehung = $.getSetIniDbNumber('safeSettings', 'sperrerhoehung', 15),
+        cooldownMinutes = $.getSetIniDbNumber('safeSettings', 'cooldownminutes', 120),
+        cooldownTimestamp = $.getSetIniDbNumber('safeSettings', 'cooldowntimestamp', 0),
+        cooldownRaise = $.getSetIniDbNumber('safeSettings', 'cooldownraise', 15),
         enterMessage = $.getSetIniDbBoolean('safeSettings', 'enterMessage', true),
         warningMessage = $.getSetIniDbBoolean('safeSettings', 'warningMessage', true),
         randActive = $.getSetIniDbBoolean('safeSettings', 'randActive', true),
@@ -19,23 +19,23 @@
         randMaxTime = $.getSetIniDbNumber('safeSettings', 'randMaxTime', 120),
         discordAnnounce = $.getSetIniDbBoolean('safeSettings', 'discordAnnounce', false),
         discordChannel = $.getSetIniDbString('safeSettings', 'discordChannel', '0'),
-        discordMessage = $.getSetIniDbString('safeSettings', 'discordMessage', '(user) möchte einen Tresorraub starten. Du hast (jointime) Sekunden Zeit, um auf (url) daran teilzunehmen. Im Tresor befinden sich aktuell (safeamount).'),
-        currentTresorraub = {},
+        discordMessage = $.getSetIniDbString('safeSettings', 'discordMessage', '(user) wants to start a heist. You have (jointime) seconds to open (url) and join the heist. There are currently (safeamount) in the safe.'),
+        currentHeist = {},
         stories = [],
         lastStory,
-        erhoehungSperrTS = 0;
+        raiseCooldownTimestamp = 0;
 
-    function reloadTresor() {
+    function reloadSafe() {
         onlineOnly = $.getIniDbBoolean('safeSettings', 'onlineonly');
         joinTime = $.getIniDbNumber('safeSettings', 'joinTime');
         costs = $.getIniDbNumber('safeSettings', 'costs');
         minPlayer = $.getIniDbNumber('safeSettings', 'minPlayer');
-        sperrzeitMin = $.getIniDbNumber('safeSettings', 'sperrzeitminuten');
-        sperrTimestamp = $.getIniDbNumber('safeSettings', 'sperrtimestamp');
-        sperrErhoehung = $.getIniDbNumber('safeSettings', 'sperrerhoehung');
+        cooldownMinutes = $.getIniDbNumber('safeSettings', 'cooldownminutes');
+        cooldownTimestamp = $.getIniDbNumber('safeSettings', 'cooldowntimestamp');
+        cooldownRaise = $.getIniDbNumber('safeSettings', 'cooldownraise');
         enterMessage = $.getIniDbBoolean('safeSettings', 'enterMessage');
         warningMessage = $.getIniDbBoolean('safeSettings', 'warningMessage');
-        randActive = $.getIniDbBoolean('safeSettings', 'randTresorActive');
+        randActive = $.getIniDbBoolean('safeSettings', 'randActive');
         randMinPoints = $.getIniDbNumber('safeSettings', 'randMinPoints');
         randMaxPoints = $.getIniDbNumber('safeSettings', 'randMaxPoints');
         randMinTime = $.getIniDbNumber('safeSettings', 'randMinTime');
@@ -53,70 +53,69 @@
         points = $.randRange(randMinPoints, randMaxPoints);
         var t = setTimeout(function() {
             if ($.isOnline($.channelName)) {
-                $.inidb.incr('polizei', 'tresor', points);
-                $.say($.lang.get('tresorsystem.randompoints', $.getPointsString(points)));
+                $.inidb.incr('police', 'safe', points);
+                $.say($.lang.get('safe.randompoints', $.getPointsString(points)));
             }
             if (randActive) {
                 givePointsInterval();
             }
         }, intervalMs);
-        $.consoleLn($.lang.get('tresorsystem.randptlog', $.getPointsString(points), $.getFormattedTime(intervalMs)));
+        $.consoleLn($.lang.get('safe.randptlog', $.getPointsString(points), $.getFormattedTime(intervalMs)));
     }
 
     /**
-     * @function setSperrzeit
+     * @function setCooldown
      */
-    function setSperrzeit() {
-        var sperrMinutenMs = sperrzeitMin * 60 * 1e3;
-        sperrTimestamp = new Date().getTime() + sperrMinutenMs;
-        $.setIniDbNumber('safeSettings', 'sperrtimestamp', sperrTimestamp);
+    function setCooldown() {
+        var cooldownMinutesMs = cooldownMinutes * 60 * 1e3;
+        cooldownTimestamp = new Date().getTime() + cooldownMinutesMs;
+        $.setIniDbNumber('safeSettings', 'cooldowntimestamp', cooldownTimestamp);
     }
 
     /**
-     * @function erhoeheSperrzeit
+     * @function raiseCooldown
      */
-    function erhoeheSperrzeit() {
-        sperrTimestamp = sperrTimestamp + (sperrErhoehung * 60 * 1e3);
-        $.setIniDbNumber('safeSettings', 'sperrtimestamp', sperrTimestamp);
-        erhoehungSperrTS = new Date().getTime() + (60 * 1e3);
+    function raiseCooldown() {
+        cooldownTimestamp = cooldownTimestamp + (cooldownRaise * 60 * 1e3);
+        $.setIniDbNumber('safeSettings', 'cooldowntimestamp', cooldownTimestamp);
+        raiseCooldownTimestamp = new Date().getTime() + (60 * 1e3);
     }
 
     /**
-     * @function isErhoehungOk
+     * @function isRaiseOk
      * @returns {boolean}
      */
-    function isErhoehungOk() {
-        return erhoehungSperrTS < new Date().getTime();
+    function isRaiseOk() {
+        return raiseCooldownTimestamp < new Date().getTime();
     }
 
     /**
-     * @function isGesperrt
+     * @function isOnCooldown
      * @returns {boolean}
      */
-    function isGesperrt() {
-        return sperrTimestamp > new Date().getTime();
+    function isOnCooldown() {
+        return cooldownTimestamp > new Date().getTime();
     }
 
     /**
-     * @function getSperrRest
+     * @function getRemainingCooldown
      * @returns {integer}
      */
-    function getSperrRest() {
-        return Math.ceil((sperrTimestamp - new Date().getTime()) / 1000 / 60);
+    function getRemainingCooldown() {
+        return Math.ceil((cooldownTimestamp - new Date().getTime()) / 1000 / 60);
     }
 
     /**
-     * @function getGesamtgewinn
-     * Zufallsprozentzahl zwischen 30 und 100, Anteil am Tresorinhalt
+     * @function getOverallProfit
      * @returns {integer}
      */
-    function getGesamtgewinn() {
-        var minProzent = 30,
-            maxProzent = 100,
-            randProzent,
-            tresorinhalt = $.getIniDbNumber('polizei', 'tresor');
-        randProzent = $.randRange(minProzent, maxProzent);
-        return Math.floor((tresorinhalt / 100) * randProzent);
+    function getOverallProfit() {
+        var minPercent = 30,
+            maxPercent = 100,
+            randPercent,
+            contentOfSafe = $.getIniDbNumber('police', 'safe');
+        randPercent = $.randRange(minPercent, maxPercent);
+        return Math.floor((contentOfSafe / 100) * randPercent);
     }
 
     /**
@@ -127,27 +126,27 @@
             chapterId,
             lines;
 
-        currentTresorraub.users = [];
-        currentTresorraub.survivors = [];
-        currentTresorraub.caught = [];
-        currentTresorraub.gameState = 0;
+        currentHeist.users = [];
+        currentHeist.survivors = [];
+        currentHeist.caught = [];
+        currentHeist.gameState = 0;
 
         stories = [];
 
-        for (storyId; $.lang.exists('tresorsystem.stories.' + storyId + '.title'); storyId++) {
+        for (storyId; $.lang.exists('safe.stories.' + storyId + '.title'); storyId++) {
             lines = [];
-            for (chapterId = 1; $.lang.exists('tresorsystem.stories.' + storyId + '.chapter.' + chapterId); chapterId++) {
-                lines.push($.lang.get('tresorsystem.stories.' + storyId + '.chapter.' + chapterId));
+            for (chapterId = 1; $.lang.exists('safe.stories.' + storyId + '.chapter.' + chapterId); chapterId++) {
+                lines.push($.lang.get('safe.stories.' + storyId + '.chapter.' + chapterId));
             }
 
             stories.push({
-                game: ($.lang.exists('tresorsystem.stories.' + storyId + '.game') ? $.lang.get('tresorsystem.stories.' + storyId + '.game') : null),
-                title: $.lang.get('tresorsystem.stories.' + storyId + '.title'),
+                game: ($.lang.exists('safe.stories.' + storyId + '.game') ? $.lang.get('safe.stories.' + storyId + '.game') : null),
+                title: $.lang.get('safe.stories.' + storyId + '.title'),
                 lines: lines,
             });
         }
 
-        $.consoleDebug($.lang.get('tresorsystem.loaded', storyId - 1));
+        $.consoleDebug($.lang.get('safe.loaded', storyId - 1));
 
         for (var i in stories) {
             if (stories[i].game === null) {
@@ -155,8 +154,8 @@
             }
         }
 
-        $.log.warn('Du musst mindestens eine Tresorraub-Geschichte haben, bei dem nicht ein bestimmtes Spiel gesetzt ist.');
-        currentTresorraub.gameState = 2;
+        $.log.warn('You need at least one story, which is not bound to a specific game!');
+        currentHeist.gameState = 2;
     }
 
     /**
@@ -166,8 +165,8 @@
      */
     function checkUserAlreadyJoined(username) {
         var i;
-        for (i in currentTresorraub.users) {
-            if (currentTresorraub.users[i].username == username) {
+        for (i in currentHeist.users) {
+            if (currentHeist.users[i].username == username) {
                 return true;
             }
         }
@@ -175,11 +174,11 @@
     }
 
     /**
-     * @function tresorUsersListJoin
+     * @function safeUsersListJoin
      * @param {Array} list
      * @returns {string}
      */
-    function tresorUsersListJoin(list) {
+    function safeUsersListJoin(list) {
         var temp = [],
             i;
         for (i in list) {
@@ -193,20 +192,20 @@
      */
     function calculateResult() {
         var i;
-        for (i in currentTresorraub.users) {
+        for (i in currentHeist.users) {
             if ($.randRange(1, 100) > 50) {
-                currentTresorraub.survivors.push(currentTresorraub.users[i]);
+                currentHeist.survivors.push(currentHeist.users[i]);
             } else {
-                currentTresorraub.caught.push(currentTresorraub.users[i]);
+                currentHeist.caught.push(currentHeist.users[i]);
             }
         }
     }
 
     /**
-     * @function rueckerstattung
+     * @function refund
      * @param {Array} userslist
      */
-    function rueckerstattung(userslist) {
+    function refund(userslist) {
         for (i in userslist) {
             $.inidb.incr('points', userslist[i].username, costs);
         }
@@ -219,15 +218,15 @@
      */
     function replaceTags(line) {
         if (line.indexOf('(caught)') > -1) {
-            if (currentTresorraub.caught.length > 0) {
-                return line.replace('(caught)', tresorUsersListJoin(currentTresorraub.caught));
+            if (currentHeist.caught.length > 0) {
+                return line.replace('(caught)', safeUsersListJoin(currentHeist.caught));
             } else {
                 return '';
             }
         }
         if (line.indexOf('(survivors)') > -1) {
-            if (currentTresorraub.survivors.length > 0) {
-                return line.replace('(survivors)', tresorUsersListJoin(currentTresorraub.survivors));
+            if (currentHeist.survivors.length > 0) {
+                return line.replace('(survivors)', safeUsersListJoin(currentHeist.survivors));
             } else {
                 return '';
             }
@@ -247,7 +246,7 @@
             message = $.replace(message, '(url)', 'https://twitch.tv/' + $.channelName);
         }
         if (message.match(/\(safeamount\)/g)) {
-            message = $.replace(message, '(safeamount)', $.getPointsString($.getIniDbNumber('polizei', 'tresor')));
+            message = $.replace(message, '(safeamount)', $.getPointsString($.getIniDbNumber('police', 'safe')));
         }
         $.discord.say(discordChannel, message);
     }
@@ -257,15 +256,15 @@
      * @param {string} username
      */
     function startHeist(username) {
-        currentTresorraub.gameState = 1;
+        currentHeist.gameState = 1;
 
         var t = setTimeout(function() {
-            if (currentTresorraub.users.length >= minPlayer) {
+            if (currentHeist.users.length >= minPlayer) {
                 runStory();
             } else {
-                // Mindestanzahl Spieler nicht erreicht
-                rueckerstattung(currentTresorraub.users);
-                $.say($.lang.get('tresorsystem.start.notenough', minPlayer, currentTresorraub.users.length));
+                // not enough player
+                refund(currentHeist.users);
+                $.say($.lang.get('safe.start.notenough', minPlayer, currentHeist.users.length));
                 clearCurrentAdventure();
             }
         }, joinTime * 1e3);
@@ -273,7 +272,7 @@
         if (discordAnnounce) {
             announceDiscord(username)
         }
-        $.say($.lang.get('tresorsystem.start.success', $.resolveRank(username), $.pointNameMultiple, minPlayer, $.getPointsString(costs)));
+        $.say($.lang.get('safe.start.success', $.resolveRank(username), $.pointNameMultiple, minPlayer, $.getPointsString(costs)));
     }
 
     /**
@@ -284,37 +283,37 @@
      */
     function joinHeist(username) {
         if (stories.length < 1) {
-            $.log.error('Keine Tresorraub-Geschichte gefunden; Start nicht möglich!');
+            $.log.error('No story found; Cannot start heist!');
             return;
         }
 
-        if (currentTresorraub.gameState > 1) {
+        if (currentHeist.gameState > 1) {
             if (!warningMessage) return;
-            $.say($.whisperPrefix(username) + $.lang.get('tresorsystem.join.notpossible'));
+            $.say($.whisperPrefix(username) + $.lang.get('safe.join.notpossible'));
             return;
         }
 
         if (checkUserAlreadyJoined(username)) {
             if (!warningMessage) return;
-            $.say($.whisperPrefix(username) + $.lang.get('tresorsystem.alreadyjoined'));
+            $.say($.whisperPrefix(username) + $.lang.get('safe.alreadyjoined'));
             return;
         }
 
         if (costs > $.getUserPoints(username)) {
             if (!warningMessage) return;
-            $.say($.whisperPrefix(username) + $.lang.get('tresorsystem.join.needpoints', $.getPointsString($.getUserPoints(username)), $.getPointsString(costs)));
+            $.say($.whisperPrefix(username) + $.lang.get('safe.join.needpoints', $.getPointsString($.getUserPoints(username)), $.getPointsString(costs)));
             return;
         }
         
-        if (currentTresorraub.gameState == 0) {
+        if (currentHeist.gameState == 0) {
             startHeist(username);
         } else {
             if (enterMessage) {
-                $.say($.whisperPrefix(username) + $.lang.get('tresorsystem.join.success', $.getPointsString(costs)));
+                $.say($.whisperPrefix(username) + $.lang.get('safe.join.success', $.getPointsString(costs)));
             }
         }
 
-        currentTresorraub.users.push({
+        currentHeist.users.push({
             username: username,
             costs: parseInt(costs),
         });
@@ -333,7 +332,7 @@
             line,
             t;
 
-        currentTresorraub.gameState = 2;
+        currentHeist.gameState = 2;
         calculateResult();
 
         var game = $.getGame($.channelName);
@@ -358,7 +357,7 @@
             story = $.randElement(temp);
         } while (story == lastStory && stories.length != 1);
 
-        $.say($.lang.get('tresorsystem.runstory', story.title, currentTresorraub.users.length));
+        $.say($.lang.get('safe.runstory', story.title, currentHeist.users.length));
 
         t = setInterval(function() {
             if (progress < story.lines.length) {
@@ -378,37 +377,37 @@
      * @function endHeist
      */
     function endHeist() {
-        var i, pay = 0, gesamtgewinn = 0, username, maxlength = 0;
+        var i, pay = 0, overallProfit = 0, username, maxlength = 0;
         var temp = [];
         
-        // Wenn es Überlebende gibt
-        if (currentTresorraub.survivors.length > 0) {
-            gesamtgewinn = getGesamtgewinn();
-            pay = Math.floor(gesamtgewinn / currentTresorraub.survivors.length);
+        // survivors available
+        if (currentHeist.survivors.length > 0) {
+            overallProfit = getOverallProfit();
+            pay = Math.floor(overallProfit / currentHeist.survivors.length);
 
-            for (i in currentTresorraub.survivors) {
-                $.inidb.decr('polizei', 'tresor', pay);
-                $.inidb.incr('tresorraubPayoutsTEMP', currentTresorraub.survivors[i].username, pay);
-                $.inidb.incr('points', currentTresorraub.survivors[i].username, currentTresorraub.survivors[i].costs + pay);
+            for (i in currentHeist.survivors) {
+                $.inidb.decr('police', 'safe', pay);
+                $.inidb.incr('heistPayoutsTEMP', currentHeist.survivors[i].username, pay);
+                $.inidb.incr('points', currentHeist.survivors[i].username, currentHeist.survivors[i].costs + pay);
             }
 
-            for (i in currentTresorraub.survivors) {
-                username = currentTresorraub.survivors[i].username;
+            for (i in currentHeist.survivors) {
+                username = currentHeist.survivors[i].username;
                 maxlength += username.length();
-                temp.push($.username.resolve(username) + ' (+' + $.getPointsString($.inidb.get('tresorraubPayoutsTEMP', currentTresorraub.survivors[i].username)) + ')');
+                temp.push($.username.resolve(username) + ' (+' + $.getPointsString($.inidb.get('heistPayoutsTEMP', currentHeist.survivors[i].username)) + ')');
             }
         }
-        if (gesamtgewinn > 0) {
-            $.say($.lang.get('tresorsystem.pointsummary', $.getPointsString(gesamtgewinn)));
+        if (overallProfit > 0) {
+            $.say($.lang.get('safe.pointsummary', $.getPointsString(overallProfit)));
         }
         if (temp.length == 0) {
-            $.say($.lang.get('tresorsystem.completed.no.win'));
+            $.say($.lang.get('safe.completed.no.win'));
         } else if (((maxlength + 14) + $.channelName.length) > 512) {
-            $.say($.lang.get('tresorsystem.completed.win.total', currentTresorraub.survivors.length, currentTresorraub.caught.length)); //in case too many people enter.
+            $.say($.lang.get('safe.completed.win.total', currentHeist.survivors.length, currentHeist.caught.length)); //in case too many people enter.
         } else {
-            $.say($.lang.get('tresorsystem.completed', temp.join(', ')));
+            $.say($.lang.get('safe.completed', temp.join(', ')));
         }
-        setSperrzeit();
+        setCooldown();
         clearCurrentAdventure();
         temp = "";
     }
@@ -417,13 +416,13 @@
      * @function clearCurrentAdventure
      */
     function clearCurrentAdventure() {
-        currentTresorraub = {
+        currentHeist = {
             gameState: 0,
             users: [],
             survivors: [],
             caught: [],
         }
-        $.inidb.RemoveFile('tresorraubPayoutsTEMP');
+        $.inidb.RemoveFile('heistPayoutsTEMP');
     }
 
     /**
@@ -436,33 +435,33 @@
             action = args[0];
 
         if (command.equalsIgnoreCase('safe')) {
-            var tresor = $.getIniDbNumber('polizei', 'tresor');
-            $.say($.lang.get('tresorsystem.tresor', $.getPointsString(tresor)));
+            var safe = $.getIniDbNumber('police', 'safe');
+            $.say($.lang.get('safe.content', $.getPointsString(safe)));
         }
 
         if (command.equalsIgnoreCase('heist')) {
             if (onlineOnly && !$.isOnline($.channelName)) {
-                $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.onlineonly'));
+                $.say($.whisperPrefix(sender) + $.lang.get('safe.onlineonly'));
                 return;
             }
-            // Prüfe Sperrung
-            if (isGesperrt()) {
-                $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.gesperrt', getSperrRest()));
-                if (isErhoehungOk() && $.randRange(1, 100) < 31) {
+            // check cooldown
+            if (isOnCooldown()) {
+                $.say($.whisperPrefix(sender) + $.lang.get('safe.oncooldown', getRemainingCooldown()));
+                if (isRaiseOk() && $.randRange(1, 100) < 31) {
                     var t = setTimeout(function() {
-                        erhoeheSperrzeit();
-                        $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.erwischt', sperrErhoehung, getSperrRest()));
+                        raiseCooldown();
+                        $.say($.whisperPrefix(sender) + $.lang.get('safe.caught', cooldownRaise, getRemainingCooldown()));
                     }, 2e3);
                 }
                 return;
             }
 
-            if ($.getIniDbNumber('polizei', 'tresor') < 10) {
-                $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.leer'));
+            if ($.getIniDbNumber('police', 'safe') < 10) {
+                $.say($.whisperPrefix(sender) + $.lang.get('safe.empty'));
                 return;
             }
-            if (currentTresorraub.gameState == 0 && (typeof action === 'undefined' || !action.equalsIgnoreCase('start'))) {
-                $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.adventure.usage', $.getPointsString(costs)));
+            if (currentHeist.gameState == 0 && (typeof action === 'undefined' || !action.equalsIgnoreCase('start'))) {
+                $.say($.whisperPrefix(sender) + $.lang.get('safe.adventure.usage', $.getPointsString(costs)));
                 return;
             }
             joinHeist(sender);
@@ -483,5 +482,5 @@
         $.getSetIniDbBoolean('modules', './ice/safe.js', false);
     });
 
-    $.reloadTresor = reloadTresor;
+    $.reloadSafe = reloadSafe;
 })();
