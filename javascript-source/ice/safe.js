@@ -435,12 +435,12 @@
             args = event.getArgs(),
             action = args[0];
 
-        if (command.equalsIgnoreCase('tresor')) {
+        if (command.equalsIgnoreCase('safe')) {
             var tresor = $.getIniDbNumber('polizei', 'tresor');
             $.say($.lang.get('tresorsystem.tresor', $.getPointsString(tresor)));
         }
 
-        if (command.equalsIgnoreCase('tresorraub')) {
+        if (command.equalsIgnoreCase('heist')) {
             if (onlineOnly && !$.isOnline($.channelName)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('tresorsystem.onlineonly'));
                 return;
@@ -474,8 +474,8 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./games/tresorSystem.js', 'tresorraub', 7);
-        $.registerChatCommand('./games/tresorSystem.js', 'tresor', 7);
+        $.registerChatCommand('./ice/safe.js', 'heist', 7);
+        $.registerChatCommand('./ice/safe.js', 'safe', 7);
         loadStories();
         if (randActive) {
             givePointsInterval();
