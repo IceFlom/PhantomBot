@@ -457,12 +457,12 @@
             args = event.getArgs(),
             action = args[0];
 
-        if (command.equalsIgnoreCase('safe')) {
+        if (command.equalsIgnoreCase('safe') || command.equalsIgnoreCase('tresor')) {
             var safe = $.getIniDbNumber('police', 'safe');
             $.say($.lang.get('safe.content', $.getPointsString(safe)));
         }
 
-        if (command.equalsIgnoreCase('heist')) {
+        if (command.equalsIgnoreCase('heist') || command.equalsIgnoreCase('tresorraub')) {
             if (onlineOnly && !$.isOnline($.channelName)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('safe.onlineonly'));
                 return;
@@ -497,6 +497,9 @@
     $.bind('initReady', function() {
         $.registerChatCommand('./ice/safe.js', 'heist', 7);
         $.registerChatCommand('./ice/safe.js', 'safe', 7);
+        // german commands
+        $.registerChatCommand('./ice/safe.js', 'tresorraub', 7);
+        $.registerChatCommand('./ice/safe.js', 'tresor', 7);
         loadStories();
         if (randActive) {
             givePointsInterval();
