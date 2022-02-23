@@ -5,6 +5,9 @@
  * Individual greetings
  */
 (function() {
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './ice/hiCommand.js', false);
+
     var cost = $.getSetIniDbNumber('hisettings', 'cost', 0),
         defaultMessage = $.getSetIniDbString('hisettings', 'defaultmsg', ''),
         onlineonly = $.getSetIniDbBoolean('hisettings', 'onlineonly', false),

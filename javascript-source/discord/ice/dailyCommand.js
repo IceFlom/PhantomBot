@@ -3,6 +3,9 @@
  */
 
 (function() {
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './discord/ice/dailyCommand.js', false);
+
     var payout = $.getSetIniDbNumber('discordDailyCommandSettings', 'payout', 100),
         intervalHours = $.getSetIniDbNumber('discordDailyCommandSettings', 'intervalhours', 24);
 
