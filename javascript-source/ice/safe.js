@@ -480,6 +480,8 @@
         if (randActive) {
             givePointsInterval();
         }
+        // disabled by default
+        $.getSetIniDbBoolean('modules', './ice/safe.js', false);
     });
 
     $.reloadTresor = reloadTresor;
