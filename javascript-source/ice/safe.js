@@ -3,47 +3,47 @@
  */
 
 (function() {
-    var onlineOnly = $.getSetIniDbBoolean('tresorSettings', 'onlineonly', true),
-        joinTime = $.getSetIniDbNumber('tresorSettings', 'joinTime', 120),
-        costs = $.getSetIniDbNumber('tresorSettings', 'costs', 100),
-        minPlayer = $.getSetIniDbNumber('tresorSettings', 'minPlayer', 5),
-        sperrzeitMin = $.getSetIniDbNumber('tresorSettings', 'sperrzeitminuten', 120),
-        sperrTimestamp = $.getSetIniDbNumber('tresorSettings', 'sperrtimestamp', 0),
-        sperrErhoehung = $.getSetIniDbNumber('tresorSettings', 'sperrerhoehung', 15),
-        enterMessage = $.getSetIniDbBoolean('tresorSettings', 'enterMessage', true),
-        warningMessage = $.getSetIniDbBoolean('tresorSettings', 'warningMessage', true),
-        randActive = $.getSetIniDbBoolean('tresorSettings', 'randActive', true),
-        randMinPoints = $.getSetIniDbNumber('tresorSettings', 'randMinPoints', 200),
-        randMaxPoints = $.getSetIniDbNumber('tresorSettings', 'randMaxPoints', 500),
-        randMinTime = $.getSetIniDbNumber('tresorSettings', 'randMinTime', 60),
-        randMaxTime = $.getSetIniDbNumber('tresorSettings', 'randMaxTime', 120),
-        discordAnnounce = $.getSetIniDbBoolean('tresorSettings', 'discordAnnounce', false),
-        discordChannel = $.getSetIniDbString('tresorSettings', 'discordChannel', '0'),
-        discordMessage = $.getSetIniDbString('tresorSettings', 'discordMessage', '(user) möchte einen Tresorraub starten. Du hast (jointime) Sekunden Zeit, um auf (url) daran teilzunehmen. Im Tresor befinden sich aktuell (safeamount).'),
+    var onlineOnly = $.getSetIniDbBoolean('safeSettings', 'onlineonly', true),
+        joinTime = $.getSetIniDbNumber('safeSettings', 'joinTime', 120),
+        costs = $.getSetIniDbNumber('safeSettings', 'costs', 100),
+        minPlayer = $.getSetIniDbNumber('safeSettings', 'minPlayer', 5),
+        sperrzeitMin = $.getSetIniDbNumber('safeSettings', 'sperrzeitminuten', 120),
+        sperrTimestamp = $.getSetIniDbNumber('safeSettings', 'sperrtimestamp', 0),
+        sperrErhoehung = $.getSetIniDbNumber('safeSettings', 'sperrerhoehung', 15),
+        enterMessage = $.getSetIniDbBoolean('safeSettings', 'enterMessage', true),
+        warningMessage = $.getSetIniDbBoolean('safeSettings', 'warningMessage', true),
+        randActive = $.getSetIniDbBoolean('safeSettings', 'randActive', true),
+        randMinPoints = $.getSetIniDbNumber('safeSettings', 'randMinPoints', 200),
+        randMaxPoints = $.getSetIniDbNumber('safeSettings', 'randMaxPoints', 500),
+        randMinTime = $.getSetIniDbNumber('safeSettings', 'randMinTime', 60),
+        randMaxTime = $.getSetIniDbNumber('safeSettings', 'randMaxTime', 120),
+        discordAnnounce = $.getSetIniDbBoolean('safeSettings', 'discordAnnounce', false),
+        discordChannel = $.getSetIniDbString('safeSettings', 'discordChannel', '0'),
+        discordMessage = $.getSetIniDbString('safeSettings', 'discordMessage', '(user) möchte einen Tresorraub starten. Du hast (jointime) Sekunden Zeit, um auf (url) daran teilzunehmen. Im Tresor befinden sich aktuell (safeamount).'),
         currentTresorraub = {},
         stories = [],
         lastStory,
         erhoehungSperrTS = 0;
 
     function reloadTresor() {
-        onlineOnly = $.getIniDbBoolean('tresorSettings', 'onlineonly');
-        joinTime = $.getIniDbNumber('tresorSettings', 'joinTime');
-        costs = $.getIniDbNumber('tresorSettings', 'costs');
-        minPlayer = $.getIniDbNumber('tresorSettings', 'minPlayer');
-        sperrzeitMin = $.getIniDbNumber('tresorSettings', 'sperrzeitminuten');
-        sperrTimestamp = $.getIniDbNumber('tresorSettings', 'sperrtimestamp');
-        sperrErhoehung = $.getIniDbNumber('tresorSettings', 'sperrerhoehung');
-        enterMessage = $.getIniDbBoolean('tresorSettings', 'enterMessage');
-        warningMessage = $.getIniDbBoolean('tresorSettings', 'warningMessage');
-        randActive = $.getIniDbBoolean('tresorSettings', 'randTresorActive');
-        randMinPoints = $.getIniDbNumber('tresorSettings', 'randMinPoints');
-        randMaxPoints = $.getIniDbNumber('tresorSettings', 'randMaxPoints');
-        randMinTime = $.getIniDbNumber('tresorSettings', 'randMinTime');
-        randMaxTime = $.getIniDbNumber('tresorSettings', 'randMaxTime');
-        discordAnnounce = $.getIniDbBoolean('tresorSettings', 'discordAnnounce');
-        discordChannel = $.getIniDbString('tresorSettings', 'discordChannel');
-        discordMessage = $.getIniDbString('tresorSettings', 'discordMessage');
-    };
+        onlineOnly = $.getIniDbBoolean('safeSettings', 'onlineonly');
+        joinTime = $.getIniDbNumber('safeSettings', 'joinTime');
+        costs = $.getIniDbNumber('safeSettings', 'costs');
+        minPlayer = $.getIniDbNumber('safeSettings', 'minPlayer');
+        sperrzeitMin = $.getIniDbNumber('safeSettings', 'sperrzeitminuten');
+        sperrTimestamp = $.getIniDbNumber('safeSettings', 'sperrtimestamp');
+        sperrErhoehung = $.getIniDbNumber('safeSettings', 'sperrerhoehung');
+        enterMessage = $.getIniDbBoolean('safeSettings', 'enterMessage');
+        warningMessage = $.getIniDbBoolean('safeSettings', 'warningMessage');
+        randActive = $.getIniDbBoolean('safeSettings', 'randTresorActive');
+        randMinPoints = $.getIniDbNumber('safeSettings', 'randMinPoints');
+        randMaxPoints = $.getIniDbNumber('safeSettings', 'randMaxPoints');
+        randMinTime = $.getIniDbNumber('safeSettings', 'randMinTime');
+        randMaxTime = $.getIniDbNumber('safeSettings', 'randMaxTime');
+        discordAnnounce = $.getIniDbBoolean('safeSettings', 'discordAnnounce');
+        discordChannel = $.getIniDbString('safeSettings', 'discordChannel');
+        discordMessage = $.getIniDbString('safeSettings', 'discordMessage');
+    }
 
     function givePointsInterval() {
         var intervalMs,
@@ -61,7 +61,7 @@
             }
         }, intervalMs);
         $.consoleLn($.lang.get('tresorsystem.randptlog', $.getPointsString(points), $.getFormattedTime(intervalMs)));
-    };
+    }
 
     /**
      * @function setSperrzeit
@@ -69,17 +69,17 @@
     function setSperrzeit() {
         var sperrMinutenMs = sperrzeitMin * 60 * 1e3;
         sperrTimestamp = new Date().getTime() + sperrMinutenMs;
-        $.setIniDbNumber('tresorSettings', 'sperrtimestamp', sperrTimestamp);
-    };
+        $.setIniDbNumber('safeSettings', 'sperrtimestamp', sperrTimestamp);
+    }
 
     /**
      * @function erhoeheSperrzeit
      */
     function erhoeheSperrzeit() {
         sperrTimestamp = sperrTimestamp + (sperrErhoehung * 60 * 1e3);
-        $.setIniDbNumber('tresorSettings', 'sperrtimestamp', sperrTimestamp);
+        $.setIniDbNumber('safeSettings', 'sperrtimestamp', sperrTimestamp);
         erhoehungSperrTS = new Date().getTime() + (60 * 1e3);
-    };
+    }
 
     /**
      * @function isErhoehungOk
@@ -87,7 +87,7 @@
      */
     function isErhoehungOk() {
         return erhoehungSperrTS < new Date().getTime();
-    };
+    }
 
     /**
      * @function isGesperrt
@@ -95,7 +95,7 @@
      */
     function isGesperrt() {
         return sperrTimestamp > new Date().getTime();
-    };
+    }
 
     /**
      * @function getSperrRest
@@ -103,7 +103,7 @@
      */
     function getSperrRest() {
         return Math.ceil((sperrTimestamp - new Date().getTime()) / 1000 / 60);
-    };
+    }
 
     /**
      * @function getGesamtgewinn
@@ -157,7 +157,7 @@
 
         $.log.warn('Du musst mindestens eine Tresorraub-Geschichte haben, bei dem nicht ein bestimmtes Spiel gesetzt ist.');
         currentTresorraub.gameState = 2;
-    };
+    }
 
     /**
      * @function checkUserAlreadyJoined
@@ -172,7 +172,7 @@
             }
         }
         return false;
-    };
+    }
 
     /**
      * @function tresorUsersListJoin
@@ -186,7 +186,7 @@
             temp.push($.username.resolve(list[i].username));
         }
         return temp.join(', ');
-    };
+    }
 
     /**
      * @function calculateResult
@@ -200,7 +200,7 @@
                 currentTresorraub.caught.push(currentTresorraub.users[i]);
             }
         }
-    };
+    }
 
     /**
      * @function rueckerstattung
@@ -210,7 +210,7 @@
         for (i in userslist) {
             $.inidb.incr('points', userslist[i].username, costs);
         }
-    };
+    }
 
     /**
      * @function replaceTags
@@ -233,7 +233,7 @@
             }
         }
         return line
-    };
+    }
 
     function announceDiscord(username) {
         var message = discordMessage;
@@ -274,7 +274,7 @@
             announceDiscord(username)
         }
         $.say($.lang.get('tresorsystem.start.success', $.resolveRank(username), $.pointNameMultiple, minPlayer, $.getPointsString(costs)));
-    };
+    }
 
     /**
      * @function joinHeist
@@ -321,7 +321,7 @@
 
         $.inidb.decr('points', username, costs);
         return true;
-    };
+    }
 
     /**
      * @function runStory
@@ -372,7 +372,7 @@
             }
             progress++;
         }, 5e3);
-    };
+    }
 
     /**
      * @function endHeist
@@ -411,7 +411,7 @@
         setSperrzeit();
         clearCurrentAdventure();
         temp = "";
-    };
+    }
 
     /**
      * @function clearCurrentAdventure
@@ -424,7 +424,7 @@
             caught: [],
         }
         $.inidb.RemoveFile('tresorraubPayoutsTEMP');
-    };
+    }
 
     /**
      * @event command
@@ -466,7 +466,6 @@
                 return;
             }
             joinHeist(sender);
-            return;
         }
     });
 
