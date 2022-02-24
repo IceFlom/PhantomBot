@@ -25,10 +25,10 @@ $.lang.register('safe.content', 'Im Tresor der Polizei liegen aktuell $1');
 $.lang.register('safe.stories.1.title', 'Schneeballschlacht');
 $.lang.register('safe.stories.1.chapter.1', 'Die Handschuhe sind angezogen, die Schneemauer hochgezogen. Beide Teams haben das nötige Feuer in den Augen und die Schneebälle vorbereitet. Ein Ball fliegt schneller und höher als der andere!');
 $.lang.register('safe.stories.1.chapter.2', '(caught) verfehlen leider den ein oder anderen Ball, rutschen aus und bekommen die gegnerischen Geschosse direkt auf die Nase. Das Spiel ist vorbei, die Bälle aufgebraucht.');
-$.lang.register('safe.stories.1.chapter.3', '(survivors) gewinnen voller Euphorie und glühenden Händen das Spiel. Jubelnd erhalten sie die glitzernde "Ice-Coins"!');
+$.lang.register('safe.stories.1.chapter.3', '(survivors) gewinnen voller Euphorie und glühenden Händen das Spiel. Jubelnd erhalten sie die glitzernden Preise!');
 
 $.lang.register('safe.stories.2.title', 'Eisbecher-Wettessen');
-$.lang.register('safe.stories.2.chapter.1', 'In der Eisdiele "Flömchen" findet wieder einmal das allseits bekannte Eisbecher-Wettessen statt. Vanille, Schokolade, Erdbeere, Zitrone, Stracciatella - für jeden ist etwas im Becher dabei. 15 Kugeln gilt es zu schaffen! Auf die Plätze...fertig... - esst!');
+$.lang.register('safe.stories.2.chapter.1', 'In der Eisdiele findet wieder einmal das allseits bekannte Eisbecher-Wettessen statt. Vanille, Schokolade, Erdbeere, Zitrone, Stracciatella - für jeden ist etwas im Becher dabei. 15 Kugeln gilt es zu schaffen! Auf die Plätze...fertig... - esst!');
 $.lang.register('safe.stories.2.chapter.2', 'Die Tische sind voller Waffelkrümel, Eistropfen und benutzten Servietten. Die ersten Kugeln sind weg...die Becher lichten sich, die Bäuche werden runder.');
 $.lang.register('safe.stories.2.chapter.3', '(caught) haben weit vor dem leeren Eisbecher aufgegeben. Die Hosenknöpfe platzen, die Oberteile rutschen üb er den großen, runden Bauch. puh');
 $.lang.register('safe.stories.2.chapter.4', '(survivors) hat/haben es geschafft in der Zeit alle Kugeln aufzuessen! Erschöpft aber stolz werfen sie die Löffel auf den Tisch und jubeln! "Der goldene Löffel" wird als Preis überreicht!');
