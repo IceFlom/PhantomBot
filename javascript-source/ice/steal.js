@@ -48,7 +48,7 @@
             action = action.replace("@", "");
         }
 
-		if (command.equalsIgnoreCase('steal')) {
+		if (command.equalsIgnoreCase('steal') || command.equalsIgnoreCase('stehlen')) {
 			if (!action) {
                 $.say($.whisperPrefix(sender) + $.lang.get('steal.usage', $.pointNameMultiple));
                 return;
@@ -164,6 +164,11 @@
             $.registerChatSubcommand('steal', 'min', 1);
             $.registerChatSubcommand('steal', 'max', 1);
             $.registerChatSubcommand('steal', 'onlineonly', 1);
+            // german variant
+            $.registerChatCommand('./ice/steal.js', 'stehlen', 7);
+            $.registerChatSubcommand('stehlen', 'min', 1);
+            $.registerChatSubcommand('stehlen', 'max', 1);
+            $.registerChatSubcommand('stehlen', 'onlineonly', 1);
         }
     });
     $.reloadSteal = reloadSteal;
