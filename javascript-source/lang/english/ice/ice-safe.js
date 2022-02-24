@@ -1,34 +1,44 @@
-$.lang.register('safe.adventure.usage', 'Kaution für die Ausrüstung: $1 - Zum Starten !tresorraub START - Zum Beitreten nur !tresorraub');
-$.lang.register('safe.alreadyjoined', 'Du hast dich dem Raub bereits angeschlossen.');
-$.lang.register('safe.pointsummary', 'Insgesamt wurden $1 aus dem Tresor erbeutet.');
-$.lang.register('safe.completed', 'Tresorraub beendet, Überlebende erhalten ihre Kaution zurück, Überlebende: $1.');
-$.lang.register('safe.completed.no.win', 'Der Tresorraub ist abgeschlossen. Niemand hat es geschafft. Die Kaution ist damit verloren.');
-$.lang.register('safe.completed.win.total', 'Der Raub wurde mit $1 Überlebenden und $2 Toten beendet, die Überlebenden erhalten ihre Kaution zurück.');
-$.lang.register('safe.join.needpoints', 'Du hast leider nur $1, die Ausrüstung für den Raub kostet aber $2.');
-$.lang.register('safe.join.notpossible', 'Beitritt gerade nicht möglich.');
-$.lang.register('safe.join.success', 'Du nimmst jetzt an dem Raub teil, deine Ausrüstung kostet $1.');
-$.lang.register('safe.loaded', 'Geschichten für Tresorraub geladen ($1 gefunden).');
-$.lang.register('safe.runstory', 'Starte "$1" mit $2 Spieler(n).');
-$.lang.register('safe.start.success', '$1 sucht ein Team für einen Tresorraub. Es werden mindestens $3 Personen benötigt. Verwende "!tresorraub" um beizutreten! (Kaution für Ausrüstung: $4)');
-$.lang.register('safe.start.notenough', 'Der Tresorraub wurde abgesagt, wir brauchen mindestens $1 Leute, sind aber nur $2. Alle haben die Kaution für die Ausrüstung zurück bekommen.');
-$.lang.register('safe.tamagotchijoined', '$1 möchte den Tresor auch stürmen.');
-$.lang.register('safe.oncooldown', 'Die Polizeipräsenz ist eindeutig zu hoch, lass uns noch $1 Minute(n) warten.');
-$.lang.register('safe.caught', 'Die Polizei hat gesehen wie du umher geschlichen bist. Wir sollten $1 Minute(n) länger warten, also insgesamt nun noch $2 Minute(n).');
-$.lang.register('safe.empty', 'Ein geheimer Informant hat uns mitgeteilt, dass der Tresor fast leer ist. Ein Raub lohnt sich aktuell nicht.');
-$.lang.register('safe.onlineonly', 'Der Tresor wird von einem mysteriösen Schleier umhüllt, dieser lichtet sich erst mit dem Start des Streams.');
+$.lang.register('safe.adventure.usage', 'Bond for the euipment: $1 - To start type !heist START - To join only !heist');
+$.lang.register('safe.alreadyjoined', 'You joined the heist.');
+$.lang.register('safe.pointsummary', 'You captured $1 overall from the safe.');
+$.lang.register('safe.completed', 'Heist finished, survivors get their bonds back, Survivors: $1.');
+$.lang.register('safe.completed.no.win', 'Heist finished, nobody survived. The bonds are lost.');
+$.lang.register('safe.completed.win.total', 'Heist finished with $1 survivors and $2 dead persons, the survivors get their bonds back.');
+$.lang.register('safe.join.needpoints', 'You need at least $2 to join the heist, you have only $1.');
+$.lang.register('safe.join.notpossible', 'Joining currently not possible.');
+$.lang.register('safe.join.success', 'You are now part of the heist, you pay $1 for your equipment.');
+$.lang.register('safe.loaded', 'Loaded stories for the heist ($1 found).');
+$.lang.register('safe.runstory', 'Starting "$1" with $2 player(s).');
+$.lang.register('safe.start.success', '$1 is searching a team to start a heist. You need at least $3 people. Use "!heist" to join! (KBond for the equipment: $4)');
+$.lang.register('safe.start.notenough', 'The heist was cancelled, we need at least $1 people, but we are only $2. Everbody got hteir bond for the equipment back.');
+$.lang.register('safe.tamagotchijoined', '$1 wants to join the heist.');
+$.lang.register('safe.oncooldown', 'There is too much police nearby, lets wait $1 minute(s).');
+$.lang.register('safe.caught', 'The police saw you looking around. We should wait $1 more minute(s), so overall $2 minute(s).');
+$.lang.register('safe.empty', 'A secret whistle-blower told us, that the safe is nearby empty. A heist is not worthwhile.');
+$.lang.register('safe.onlineonly', 'The safe is not visible due to a mysterios fog, maybe it gets better when the stream starts.');
 
-$.lang.register('safe.randompoints', 'Die Polizei hat bei einer Razzia $1 sichergestellt und diese in den Tresor gelegt.');
-$.lang.register('safe.randptlog', 'Neuer Timer erstellt! Der Tresor erhält $1 in $2');
-$.lang.register('safe.content', 'Im Tresor der Polizei liegen aktuell $1');
+$.lang.register('safe.randompoints', 'The police did a raid and secured $1. They put it into their safe');
+$.lang.register('safe.randptlog', 'New timer created! The safe gets $1 in $2');
+$.lang.register('safe.content', 'Current content of the police safe: $1');
 
 
-$.lang.register('safe.stories.1.title', 'Schneeballschlacht');
-$.lang.register('safe.stories.1.chapter.1', 'Die Handschuhe sind angezogen, die Schneemauer hochgezogen. Beide Teams haben das nötige Feuer in den Augen und die Schneebälle vorbereitet. Ein Ball fliegt schneller und höher als der andere!');
-$.lang.register('safe.stories.1.chapter.2', '(caught) verfehlen leider den ein oder anderen Ball, rutschen aus und bekommen die gegnerischen Geschosse direkt auf die Nase. Das Spiel ist vorbei, die Bälle aufgebraucht.');
-$.lang.register('safe.stories.1.chapter.3', '(survivors) gewinnen voller Euphorie und glühenden Händen das Spiel. Jubelnd erhalten sie die glitzernde "Ice-Coins"!');
+$.lang.register('safe.stories.1.title', 'Time Heist');
+$.lang.register('safe.stories.1.chapter.1', 'Your memory is vague, on the table a small laptop is playing a video: "My name is The Architect. The bank of Karabraxos is the most secure bank in the universe. You will rob the bank of Karabraxos!"');
+$.lang.register('safe.stories.1.chapter.2', 'Unable to leave their minds blank, (caught) slowly feel their mind being drained as The Teller feeds on their thoughts.');
+$.lang.register('safe.stories.1.chapter.3', 'We find ourselves back in the room we started in as consciousness of (survivors) slowly fades again, only to wake up in our beds like nothing at all has happened.');
 
-$.lang.register('safe.stories.2.title', 'Eisbecher-Wettessen');
-$.lang.register('safe.stories.2.chapter.1', 'In der Eisdiele "Flömchen" findet wieder einmal das allseits bekannte Eisbecher-Wettessen statt. Vanille, Schokolade, Erdbeere, Zitrone, Stracciatella - für jeden ist etwas im Becher dabei. 15 Kugeln gilt es zu schaffen! Auf die Plätze...fertig... - esst!');
-$.lang.register('safe.stories.2.chapter.2', 'Die Tische sind voller Waffelkrümel, Eistropfen und benutzten Servietten. Die ersten Kugeln sind weg...die Becher lichten sich, die Bäuche werden runder.');
-$.lang.register('safe.stories.2.chapter.3', '(caught) haben weit vor dem leeren Eisbecher aufgegeben. Die Hosenknöpfe platzen, die Oberteile rutschen üb er den großen, runden Bauch. puh');
-$.lang.register('safe.stories.2.chapter.4', '(survivors) hat/haben es geschafft in der Zeit alle Kugeln aufzuessen! Erschöpft aber stolz werfen sie die Löffel auf den Tisch und jubeln! "Der goldene Löffel" wird als Preis überreicht!');
+$.lang.register('safe.stories.2.title', 'Beartraps');
+$.lang.register('safe.stories.2.chapter.1', 'Friends! I\'ve got coordinates for a secret stash of bolts, hidden away within the bowels of the elven forest. We should shoe up and give this a go!');
+$.lang.register('safe.stories.2.chapter.2', 'Look out, bear traps! (caught) got their legs ripped off!');
+$.lang.register('safe.stories.2.chapter.3', 'Dayum, that was a close call for losing a leg. But you\'ve deserved this (survivors)!');
+
+$.lang.register('safe.stories.3.title', 'Vampires?!');
+$.lang.register('safe.stories.3.chapter.1', 'Ah, my dear friends! I may have found the adventure of a lifetime. Namely the house of count Dracula is believed to be the bolts master! I\'m for going now!');
+$.lang.register('safe.stories.3.chapter.2', 'It\'s him! (caught) got slaughtered violently!');
+$.lang.register('safe.stories.3.chapter.3', 'That was a close call, I don\'t think I\'ve been bitten. you? Ow well, (survivors), here\'s your share! ~Transforms into a bat and flutters off~');
+
+$.lang.register('safe.stories.4.title', 'Cereal');
+$.lang.register('safe.stories.4.chapter.1', 'I think we have a much bigger threat on our hands than the cave in... It is half man, half bear, half pig... Don\'t Laugh, I\'M SUPER CEREAL!');
+$.lang.register('safe.stories.4.chapter.2', '/me As the adventurers work their way through the tunnels they hear a soft noise from behind them...');
+$.lang.register('safe.stories.4.chapter.3', 'Look out! It\'s ManBearPig! (caught) get dragged off into the darkness.');
+$.lang.register('safe.stories.4.chapter.4', '(survivors) run away. Let\'s get out of here guys! We can\'t deal with this alone');
