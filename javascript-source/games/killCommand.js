@@ -102,8 +102,8 @@
         lastSelfRand = rand;
     }
 
-    function checkTimeout(sender, opfer) {
-        return !$.isMod(sender) && !$.isMod(opfer) && killTimeout > 0;
+    function checkTimeout(sender, target) {
+        return !$.isMod(sender) && !$.isMod(target) && killTimeout > 0;
     }
 
     function doTimeout(user, timeout) {
@@ -112,68 +112,68 @@
         }, 2000);
     }
 
-    function doStrafzahlung(user, strafe) {
+    function doPenalty(user, penalty) {
         var userPoints = $.getUserPoints(user),
             lang;
-        // Angreifer nicht genug Geld für die Strafzahlung
-        if (userPoints < strafe) {
+        // attacker does not have enough points for the penalty
+        if (userPoints < penalty) {
             $.setIniDbNumber('points', user.toLowerCase(), 0);
             if (!$.isMod(user)) {
                 doTimeout(user, jailTimeout);
-                lang = $.lang.get('killcommand.nopoints.jail', $.resolveRank(user), $.getPointsString(strafe), jailTimeout);
+                lang = $.lang.get('killcommand.nopoints.jail', $.resolveRank(user), $.getPointsString(penalty), jailTimeout);
             } else {
-                lang = $.lang.get('killcommand.nopoints.jailmod', $.resolveRank(user), $.getPointsString(strafe));
+                lang = $.lang.get('killcommand.nopoints.jailmod', $.resolveRank(user), $.getPointsString(penalty));
             }
         } else {
-            $.inidb.decr('points', user.toLowerCase(), strafe);
-            lang = $.lang.get('killcommand.strafe', $.resolveRank(user), $.getPointsString(strafe));
+            $.inidb.decr('points', user.toLowerCase(), penalty);
+            lang = $.lang.get('killcommand.strafe', $.resolveRank(user), $.getPointsString(penalty));
         }
         setTimeout(function() {
             $.say(lang);
         }, 1000);
     }
 
-    // Angreifer stirbt
-    function processAttacker(sender, opfer) {
+    // attacker dies
+    function processAttacker(sender, target) {
         var tries = 0;
         do {
             tries++;
             rand = $.randRange(1, attackerMessageCount);
         } while (rand == lastAttackerRand && tries < 5);
-        $.say($.lang.get('killcommand.attacker.' + rand, $.resolveRank(sender), $.resolveRank(opfer)));
+        $.say($.lang.get('killcommand.attacker.' + rand, $.resolveRank(sender), $.resolveRank(target)));
         // Keine Zahlung
-        if (checkTimeout(sender, opfer)) {
+        if (checkTimeout(sender, target)) {
             doTimeout(sender, killTimeout);
         }
         lastAttackerRand = rand;
     }
 
-    // Opfer wird nur verletzt
-    function processInjured(sender, opfer) {
+    // kill failed, target is injured only
+    function processInjured(sender, target) {
         var tries = 0,
-            strafe = $.randRange(minCostInjured, maxCostInjured);
+            penalty = $.randRange(minCostInjured, maxCostInjured);
         do {
             tries++;
             rand = $.randRange(1, injuredMessageCount);
-        } while (rand == lastInjuredRand && tries < 5);
-        $.say($.lang.get('killcommand.injured.' + rand, $.resolveRank(sender), $.resolveRank(opfer)));
-        doStrafzahlung(sender, strafe);
-        // Sender zahlt 1-50
+        } while (rand === lastInjuredRand && tries < 5);
+        $.say($.lang.get('killcommand.injured.' + rand, $.resolveRank(sender), $.resolveRank(target)));
+        doPenalty(sender, penalty);
+        // sender has to pay
         lastInjuredRand = rand;
     }
 
-    // Opfer stirbt
-    function processVictim(sender, opfer) {
+    // target dies
+    function processVictim(sender, target) {
         var tries = 0,
-            strafe = $.randRange(minCostKill, maxCostKill);
+            penalty = $.randRange(minCostKill, maxCostKill);
         do {
             tries++;
             rand = $.randRange(1, victimMessageCount);
-        } while (rand == lastVictimRand && tries < 5);
-        $.say($.lang.get('killcommand.victim.' + rand, $.resolveRank(sender), $.resolveRank(opfer)));
-        doStrafzahlung(sender, strafe);
-        if (checkTimeout(sender, opfer)) {
-            doTimeout(opfer, killTimeout);
+        } while (rand === lastVictimRand && tries < 5);
+        $.say($.lang.get('killcommand.victim.' + rand, $.resolveRank(sender), $.resolveRank(target)));
+        doPenalty(sender, penalty);
+        if (checkTimeout(sender, target)) {
+            doTimeout(target, killTimeout);
         }
         lastVictimRand = rand;
     }
@@ -186,25 +186,20 @@
             command = event.getCommand(),
             args = event.getArgs();
 
-        // AAS Blockade
-        if ($.isOnAbuseList(sender)) {
-            $.sendBlockedMessage(sender);
-            return;
-        }
         /**
          * @commandpath kill [username] - Kill a fellow viewer (not for real!), omit the username to kill yourself
          */
         if (command.equalsIgnoreCase('kill')) {
-            var opfer = args[0];
-            if (opfer != null) {
-                opfer = opfer.toLowerCase().replace("@", "");
-                // Angegebener Benutzer existiert nicht
-                if (!$.userExists(opfer)) {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nouser', $.username.resolve(opfer)));
+            var target = args[0];
+            if (target != null) {
+                target = target.toLowerCase().replace("@", "");
+                // given user does not exist
+                if (!$.userExists(target)) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nouser', $.username.resolve(target)));
                     return;
                 }
             }
-            if (args.length <= 0 || opfer.equalsIgnoreCase(sender)) {
+            if (args.length <= 0 || target.equalsIgnoreCase(sender)) {
                 selfKill(sender);
             } else if ($.getUserPoints(sender) < 10) {
                 $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nopoints'));
@@ -212,13 +207,13 @@
                 var typeOfKill = getKillResult();
                 switch (typeOfKill) {
                     case killType.ATTACKER:
-                        processAttacker(sender, opfer);
+                        processAttacker(sender, target);
                         break;
                     case killType.INJURED:
-                        processInjured(sender, opfer);
+                        processInjured(sender, target);
                         break;
                     case killType.VICTIM:
-                        processVictim(sender, opfer);
+                        processVictim(sender, target);
                         break;
                 }
             }
@@ -229,7 +224,7 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        if (selfMessageCount == 0 && attackerMessageCount == 0 && injuredMessageCount == 0 && victimMessageCount == 0) {
+        if (selfMessageCount === 0 && attackerMessageCount === 0 && injuredMessageCount === 0 && victimMessageCount === 0) {
             loadResponses();
         }
         $.registerChatCommand('./games/killCommand.js', 'kill', 7);
