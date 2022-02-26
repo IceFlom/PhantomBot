@@ -79,7 +79,7 @@
     }
 
     /**
-     * Toggles the timeoutenabled variable and saves the current state in database
+     * @function toggleTimeoutEnabled
      */
     function toggleTimeoutEnabled() {
         timeoutEnabled = !timeoutEnabled;
@@ -87,7 +87,61 @@
     }
 
     /**
-     * getKillResult
+     * @function setKilltimeout
+     * @param {int} seconds
+     */
+    function setKilltimeout(seconds) {
+        killTimeout = seconds;
+        $.setIniDbBoolean('killsettings', 'killTimeoutTime', killTimeout);
+    }
+
+    /**
+     * @function setJailtimeout
+     * @param {int} seconds
+     */
+    function setJailtimeout(seconds) {
+        jailTimeout = seconds;
+        $.setIniDbBoolean('killsettings', 'jailTimeoutTime', jailTimeout);
+    }
+
+    /**
+     * @function setMinCostKill
+     * @param {int} cost
+     */
+    function setMinCostKill(cost) {
+        minCostKill = cost;
+        $.setIniDbBoolean('killsettings', 'minCostKill', minCostKill);
+    }
+
+    /**
+     * @function setMaxCostKill
+     * @param {int} cost
+     */
+    function setMaxCostKill(cost) {
+        maxCostKill = cost;
+        $.setIniDbBoolean('killsettings', 'maxCostKill', maxCostKill);
+    }
+
+    /**
+     * @function setMinCostInjured
+     * @param {int} cost
+     */
+    function setMinCostInjured(cost) {
+        minCostInjured = cost;
+        $.setIniDbBoolean('killsettings', 'minCostInjured', minCostInjured);
+    }
+
+    /**
+     * @function setMaxCostInjured
+     * @param {int} cost
+     */
+    function setMaxCostInjured(cost) {
+        maxCostInjured = cost;
+        $.setIniDbBoolean('killsettings', 'maxCostInjured', maxCostInjured);
+    }
+
+    /**
+     * @function getKillResult
      * @return {killType}
      */
     function getKillResult() {
@@ -101,6 +155,10 @@
         }
     }
 
+    /**
+     * @function selfKill
+     * @param {string} sender
+     */
     function selfKill(sender) {
         do {
             rand = $.randRange(1, selfMessageCount);
@@ -112,10 +170,21 @@
         lastSelfRand = rand;
     }
 
+    /**
+     * @function checkTimeout
+     * @param {string} sender
+     * @param {string} target
+     * @returns {boolean}
+     */
     function checkTimeout(sender, target) {
         return !$.isMod(sender) && !$.isMod(target) && killTimeout > 0;
     }
 
+    /**
+     * @function doTimeout
+     * @param {string} user
+     * @param {int} timeout
+     */
     function doTimeout(user, timeout) {
         if (timeoutEnabled) {
             // enable timeout
@@ -132,6 +201,11 @@
         }
     }
 
+    /**
+     * @function doPenalty
+     * @param {string} user
+     * @param {int} penalty
+     */
     function doPenalty(user, penalty) {
         var userPoints = $.getUserPoints(user),
             lang;
@@ -153,7 +227,11 @@
         }, 1000);
     }
 
-    // attacker dies
+    /**
+     * @function processAttacker
+     * @param {string} sender
+     * @param {string} target
+     */
     function processAttacker(sender, target) {
         var tries = 0;
         do {
@@ -168,7 +246,11 @@
         lastAttackerRand = rand;
     }
 
-    // kill failed, target is injured only
+    /**
+     * @function processInjured
+     * @param {string} sender
+     * @param {string} target
+     */
     function processInjured(sender, target) {
         var tries = 0,
             penalty = $.randRange(minCostInjured, maxCostInjured);
@@ -182,7 +264,11 @@
         lastInjuredRand = rand;
     }
 
-    // target dies
+    /**
+     * @function processVictim
+     * @param {string} sender
+     * @param {string} target
+     */
     function processVictim(sender, target) {
         var tries = 0,
             penalty = $.randRange(minCostKill, maxCostKill);
@@ -283,14 +369,71 @@
          */
         if (command.equalsIgnoreCase('killset')) {
             if (subcommand == null) {
-                // TODO usage message
+                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.usage'));
                 return;
             }
             if (subcommand.equalsIgnoreCase("toggletimeout")) {
                 toggleTimeoutEnabled();
-                // TODO info message "toggled"
+                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'timeoutenabled', timeoutEnabled));
                 return;
             }
+
+            var value = args[1];
+            if (subcommand.equalsIgnoreCase("killtimeout")) {
+                if (!isNaN(value)) {
+                    setKilltimeout(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'killtimeout', value));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'killtimeout', value));
+                }
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("jailtimeout")) {
+                if (!isNaN(value)) {
+                    setJailtimeout(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'jailtimeout', value));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'jailtimeout', value));
+                }
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("mincostkill")) {
+                if (!isNaN(value)) {
+                    setMinCostKill(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostkill', $.getPointsString(value)));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostkill', $.getPointsString(value)));
+                }
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("maxcostkill")) {
+                if (!isNaN(value)) {
+                    setMaxCostKill(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostkill', $.getPointsString(value)));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostkill', $.getPointsString(value)));
+                }
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("mincostinjured")) {
+                if (!isNaN(value)) {
+                    setMinCostInjured(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostinjured', $.getPointsString(value)));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostinjured', $.getPointsString(value)));
+                }
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("maxcostinjured")) {
+                if (!isNaN(value)) {
+                    setMaxCostInjured(value);
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostinjured', $.getPointsString(value)));
+                } else {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostinjured', $.getPointsString(value)));
+                }
+                return;
+            }
+            $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.usage'));
         }
     });
 
@@ -304,6 +447,12 @@
         $.registerChatCommand('./games/killCommand.js', 'kill', 7);
         $.registerChatCommand('./games/killCommand.js', 'killset', 1);
         $.registerChatSubcommand('killset', 'toggletimeout', 1);
+        $.registerChatSubcommand('killset', 'killtimeout', 1);
+        $.registerChatSubcommand('killset', 'jailtimeout', 1);
+        $.registerChatSubcommand('killset', 'mincostkill', 1);
+        $.registerChatSubcommand('killset', 'maxcostkill', 1);
+        $.registerChatSubcommand('killset', 'mincostinjured', 1);
+        $.registerChatSubcommand('killset', 'maxcostinjured', 1);
     });
 
     $.reloadKill = reloadKill;
