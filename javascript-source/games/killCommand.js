@@ -92,7 +92,7 @@
      */
     function setKilltimeout(seconds) {
         killTimeout = seconds;
-        $.setIniDbBoolean('killsettings', 'killTimeoutTime', killTimeout);
+        $.setIniDbNumber('killsettings', 'killTimeoutTime', killTimeout);
     }
 
     /**
@@ -101,7 +101,7 @@
      */
     function setJailtimeout(seconds) {
         jailTimeout = seconds;
-        $.setIniDbBoolean('killsettings', 'jailTimeoutTime', jailTimeout);
+        $.setIniDbNumber('killsettings', 'jailTimeoutTime', jailTimeout);
     }
 
     /**
@@ -110,7 +110,7 @@
      */
     function setMinCostKill(cost) {
         minCostKill = cost;
-        $.setIniDbBoolean('killsettings', 'minCostKill', minCostKill);
+        $.setIniDbNumber('killsettings', 'minCostKill', minCostKill);
     }
 
     /**
@@ -119,7 +119,7 @@
      */
     function setMaxCostKill(cost) {
         maxCostKill = cost;
-        $.setIniDbBoolean('killsettings', 'maxCostKill', maxCostKill);
+        $.setIniDbNumber('killsettings', 'maxCostKill', maxCostKill);
     }
 
     /**
@@ -128,7 +128,7 @@
      */
     function setMinCostInjured(cost) {
         minCostInjured = cost;
-        $.setIniDbBoolean('killsettings', 'minCostInjured', minCostInjured);
+        $.setIniDbNumber('killsettings', 'minCostInjured', minCostInjured);
     }
 
     /**
@@ -137,7 +137,7 @@
      */
     function setMaxCostInjured(cost) {
         maxCostInjured = cost;
-        $.setIniDbBoolean('killsettings', 'maxCostInjured', maxCostInjured);
+        $.setIniDbNumber('killsettings', 'maxCostInjured', maxCostInjured);
     }
 
     /**
