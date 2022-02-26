@@ -382,54 +382,54 @@
             if (subcommand.equalsIgnoreCase("killtimeout")) {
                 if (!isNaN(value)) {
                     setKilltimeout(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'killtimeout', value));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'killtimeout', killTimeout));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'killtimeout', value));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'killtimeout', killTimeout));
                 }
                 return;
             }
             if (subcommand.equalsIgnoreCase("jailtimeout")) {
                 if (!isNaN(value)) {
                     setJailtimeout(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'jailtimeout', value));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'jailtimeout', jailTimeout));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'jailtimeout', value));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'jailtimeout', jailTimeout));
                 }
                 return;
             }
             if (subcommand.equalsIgnoreCase("mincostkill")) {
                 if (!isNaN(value)) {
                     setMinCostKill(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostkill', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostkill', $.getPointsString(minCostKill)));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostkill', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostkill', $.getPointsString(minCostKill)));
                 }
                 return;
             }
             if (subcommand.equalsIgnoreCase("maxcostkill")) {
                 if (!isNaN(value)) {
                     setMaxCostKill(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostkill', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostkill', $.getPointsString(maxCostKill)));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostkill', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostkill', $.getPointsString(maxCostKill)));
                 }
                 return;
             }
             if (subcommand.equalsIgnoreCase("mincostinjured")) {
                 if (!isNaN(value)) {
                     setMinCostInjured(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostinjured', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostinjured', $.getPointsString(minCostInjured)));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostinjured', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'mincostinjured', $.getPointsString(minCostInjured)));
                 }
                 return;
             }
             if (subcommand.equalsIgnoreCase("maxcostinjured")) {
                 if (!isNaN(value)) {
                     setMaxCostInjured(value);
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostinjured', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostinjured', $.getPointsString(maxCostInjured)));
                 } else {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostinjured', $.getPointsString(value)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.nonumber', 'maxcostinjured', $.getPointsString(maxCostInjured)));
                 }
                 return;
             }

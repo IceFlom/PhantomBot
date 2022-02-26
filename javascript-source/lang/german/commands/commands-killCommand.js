@@ -96,6 +96,6 @@ $.lang.register('killcommand.respawned', '$1 wurde entlassen und kann wieder sch
 $.lang.register('killcommand.console.loaded', 'Kill-Nachrichten gefunden: $1 Selbst, $2 Angreifer, $3 Verletzt, $4 Opfer.');
 
 // Einstellungen
-$.lang.register('killcommand.set.usage', 'Nutzung: !killset [toggletimeout|killtimeout|jailtimeout|mincostkill|maxcostkill|mincostinjured|maxcostinjured] [Zahl]');
+$.lang.register('killcommand.set.usage', 'Nutzung: !killset [toggletimeout | killtimeout | jailtimeout | mincostkill | maxcostkill | mincostinjured | maxcostinjured] [Zahl]');
 $.lang.register('killcommand.set.updated', 'Wert für $1 aktualisiert. Neuer Wert: $2');
 $.lang.register('killcommand.set.nonumber', 'Ungültige Angabe, konnte $1 nicht aktualisieren. Aktueller Wert: $2');
