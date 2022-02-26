@@ -41,8 +41,9 @@
         maxCostInjured = $.getSetIniDbNumber('killSettings', 'maxCostInjured', 49),
         minCostKill = $.getSetIniDbNumber('killSettings', 'minCostKill', 50),
         maxCostKill = $.getSetIniDbNumber('killSettings', 'maxCostKill', 100),
+        timeoutEnabled = $.getSetIniDbBoolean('killSettings', 'timeoutenabled', true),
         rand,
-        currentlyDeadList = [];
+        currentlyDeadList = new java.util.concurrent.CopyOnWriteArrayList();
 
     /**
      * @function reloadKill
@@ -54,6 +55,7 @@
         maxCostInjured = $.getIniDbNumber('killSettings', 'maxCostInjured');
         minCostKill = $.getIniDbNumber('killSettings', 'minCostKill');
         maxCostKill = $.getIniDbNumber('killSettings', 'maxCostKill');
+        timeoutEnabled = $.getSetIniDbBoolean('killSettings', 'timeoutenabled');
     }
 
     /**
@@ -77,6 +79,14 @@
     }
 
     /**
+     * Toggles the timeoutenabled variable and saves the current state in database
+     */
+    function toggleTimeoutEnabled() {
+        timeoutEnabled = !timeoutEnabled;
+        $.setIniDbBoolean('killsettings', 'timeoutenabled', timeoutEnabled);
+    }
+
+    /**
      * getKillResult
      * @return {killType}
      */
@@ -95,7 +105,7 @@
         do {
             rand = $.randRange(1, selfMessageCount);
         } while (rand === lastSelfRand);
-        $.say($.lang.get('killcommand.self.' + rand, $.resolveRank(sender)));
+        $.say($.lang.get('killcommand.self.' + rand, $.username.resolve(sender)));
         if (!$.isMod(sender) && killTimeout > 0) {
             doTimeout(sender, killTimeout);
         }
@@ -107,9 +117,19 @@
     }
 
     function doTimeout(user, timeout) {
-        setTimeout(function() {
-            Packages.tv.phantombot.PhantomBot.instance().getSession().say('.timeout ' + user + ' ' + timeout);
-        }, 2000);
+        if (timeoutEnabled) {
+            // enable timeout
+            setTimeout(function() {
+                currentlyDeadList.add(user.toLowerCase());
+                $.say($.lang.get('killcommand.muteinfo', $.username.resolve(user), timeout));
+            }, 2000);
+
+            // disable timeout
+            setTimeout(function() {
+                currentlyDeadList.remove(user.toLowerCase());
+                $.say($.lang.get('killcommand.respawned', $.username.resolve(user)));
+            }, timeout * 1000);
+        }
     }
 
     function doPenalty(user, penalty) {
@@ -120,13 +140,13 @@
             $.setIniDbNumber('points', user.toLowerCase(), 0);
             if (!$.isMod(user)) {
                 doTimeout(user, jailTimeout);
-                lang = $.lang.get('killcommand.nopoints.jail', $.resolveRank(user), $.getPointsString(penalty), jailTimeout);
+                lang = $.lang.get('killcommand.nopoints.jail', $.username.resolve(user), $.getPointsString(penalty), jailTimeout);
             } else {
-                lang = $.lang.get('killcommand.nopoints.jailmod', $.resolveRank(user), $.getPointsString(penalty));
+                lang = $.lang.get('killcommand.nopoints.jailmod', $.username.resolve(user), $.getPointsString(penalty));
             }
         } else {
             $.inidb.decr('points', user.toLowerCase(), penalty);
-            lang = $.lang.get('killcommand.strafe', $.resolveRank(user), $.getPointsString(penalty));
+            lang = $.lang.get('killcommand.penalty', $.username.resolve(user), $.getPointsString(penalty));
         }
         setTimeout(function() {
             $.say(lang);
@@ -139,8 +159,8 @@
         do {
             tries++;
             rand = $.randRange(1, attackerMessageCount);
-        } while (rand == lastAttackerRand && tries < 5);
-        $.say($.lang.get('killcommand.attacker.' + rand, $.resolveRank(sender), $.resolveRank(target)));
+        } while (rand === lastAttackerRand && tries < 5);
+        $.say($.lang.get('killcommand.attacker.' + rand, $.username.resolve(sender), $.username.resolve(target)));
         // Keine Zahlung
         if (checkTimeout(sender, target)) {
             doTimeout(sender, killTimeout);
@@ -156,7 +176,7 @@
             tries++;
             rand = $.randRange(1, injuredMessageCount);
         } while (rand === lastInjuredRand && tries < 5);
-        $.say($.lang.get('killcommand.injured.' + rand, $.resolveRank(sender), $.resolveRank(target)));
+        $.say($.lang.get('killcommand.injured.' + rand, $.username.resolve(sender), $.username.resolve(target)));
         doPenalty(sender, penalty);
         // sender has to pay
         lastInjuredRand = rand;
@@ -170,13 +190,35 @@
             tries++;
             rand = $.randRange(1, victimMessageCount);
         } while (rand === lastVictimRand && tries < 5);
-        $.say($.lang.get('killcommand.victim.' + rand, $.resolveRank(sender), $.resolveRank(target)));
+        $.say($.lang.get('killcommand.victim.' + rand, $.username.resolve(sender), $.username.resolve(target)));
         doPenalty(sender, penalty);
         if (checkTimeout(sender, target)) {
             doTimeout(target, killTimeout);
         }
         lastVictimRand = rand;
     }
+
+    /**
+     * @event ircChannelMessage
+     */
+    $.bind('ircChannelMessage', function(event) {
+        // channel not online?
+        if (!$.isOnline($.channelName)) {
+            return;
+        }
+        if (!timeoutEnabled) {
+            return;
+        }
+
+        // check message
+        var username = event.getSender().toLowerCase(),
+            tags = event.getTags();
+
+        if (currentlyDeadList.indexOf(username) !== -1) {
+            // delete message
+            Packages.tv.phantombot.PhantomBot.instance().getSession().sayNow('.delete ' + tags.get('id'));
+        }
+    });
 
     /**
      * @event command
@@ -196,6 +238,11 @@
                 // given user does not exist
                 if (!$.userExists(target)) {
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nouser', $.username.resolve(target)));
+                    return;
+                }
+                // user is already dead
+                if (currentlyDeadList.contains(target)) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.alreadydead', $.username.resolve(target)));
                     return;
                 }
             }
