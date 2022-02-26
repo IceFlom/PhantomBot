@@ -226,43 +226,70 @@
     $.bind('command', function(event) {
         var sender = event.getSender().toLowerCase(),
             command = event.getCommand(),
-            args = event.getArgs();
+            args = event.getArgs(),
+            subcommand = args[0];
 
         /**
          * @commandpath kill [username] - Kill a fellow viewer (not for real!), omit the username to kill yourself
          */
         if (command.equalsIgnoreCase('kill')) {
-            var target = args[0];
-            if (target != null) {
-                target = target.toLowerCase().replace("@", "");
-                // given user does not exist
-                if (!$.userExists(target)) {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nouser', $.username.resolve(target)));
-                    return;
-                }
-                // user is already dead
-                if (currentlyDeadList.contains(target)) {
-                    $.say($.whisperPrefix(sender) + $.lang.get('killcommand.alreadydead', $.username.resolve(target)));
-                    return;
-                }
-            }
-            if (args.length <= 0 || target.equalsIgnoreCase(sender)) {
-                selfKill(sender);
-            } else if ($.getUserPoints(sender) < 10) {
-                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nopoints'));
+            var target;
+
+            if (subcommand != null) {
+                target = subcommand.toLowerCase().replace("@", "");
             } else {
-                var typeOfKill = getKillResult();
-                switch (typeOfKill) {
-                    case killType.ATTACKER:
-                        processAttacker(sender, target);
-                        break;
-                    case killType.INJURED:
-                        processInjured(sender, target);
-                        break;
-                    case killType.VICTIM:
-                        processVictim(sender, target);
-                        break;
-                }
+                target = "";
+            }
+
+            // given user does not exist
+            if (!$.userExists(target)) {
+                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nouser', $.username.resolve(target)));
+                return;
+            }
+            // user is already dead
+            if (currentlyDeadList.contains(target)) {
+                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.alreadydead', $.username.resolve(target)));
+                return;
+            }
+            // sender == target
+            if (target.equalsIgnoreCase(sender)) {
+                selfKill(sender);
+                return;
+            }
+
+            // not enough points
+            if ($.getUserPoints(sender) < 10) {
+                $.say($.whisperPrefix(sender) + $.lang.get('killcommand.nopoints'));
+                return;
+            }
+
+            // process kill
+            var typeOfKill = getKillResult();
+            switch (typeOfKill) {
+                case killType.ATTACKER:
+                    processAttacker(sender, target);
+                    break;
+                case killType.INJURED:
+                    processInjured(sender, target);
+                    break;
+                case killType.VICTIM:
+                    processVictim(sender, target);
+                    break;
+            }
+        }
+
+        /**
+         * @commandpath killset [subcommand] [value] - Change kill settings
+         */
+        if (command.equalsIgnoreCase('killset')) {
+            if (subcommand == null) {
+                // TODO usage message
+                return;
+            }
+            if (subcommand.equalsIgnoreCase("toggletimeout")) {
+                toggleTimeoutEnabled();
+                // TODO info message "toggled"
+                return;
             }
         }
     });
@@ -275,6 +302,8 @@
             loadResponses();
         }
         $.registerChatCommand('./games/killCommand.js', 'kill', 7);
+        $.registerChatCommand('./games/killCommand.js', 'killset', 1);
+        $.registerChatSubcommand('killset', 'toggletimeout', 1);
     });
 
     $.reloadKill = reloadKill;
