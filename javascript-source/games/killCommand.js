@@ -214,7 +214,7 @@
         var username = event.getSender().toLowerCase(),
             tags = event.getTags();
 
-        if (currentlyDeadList.indexOf(username) !== -1) {
+        if (currentlyDeadList.contains(username)) {
             // delete message
             Packages.tv.phantombot.PhantomBot.instance().getSession().sayNow('.delete ' + tags.get('id'));
         }
