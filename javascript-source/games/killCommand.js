@@ -288,10 +288,6 @@
      * @event ircChannelMessage
      */
     $.bind('ircChannelMessage', function(event) {
-        // channel not online?
-        if (!$.isOnline($.channelName)) {
-            return;
-        }
         if (!timeoutEnabled) {
             return;
         }
