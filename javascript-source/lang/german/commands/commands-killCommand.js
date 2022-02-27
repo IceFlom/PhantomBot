@@ -45,14 +45,14 @@ $.lang.register('killcommand.attacker.6', '$1 versuchte $2 vor den Zug zu schubs
 $.lang.register('killcommand.attacker.7', '$1 wollte einen Brandanschlag auf $2 verüben, hat sich dabei aber versehentlich selbst entzündet.');
 $.lang.register('killcommand.attacker.8', '$1 jagte $2 durch einen schweren Gewittersturm, bis $1 von einem großen Ast erschlagen wurde.');
 
-// Opfer wird nur verletzt
+// Ziel wird nur verletzt
 $.lang.register('killcommand.injured.1', '$1 stieß $2 von einer Brücke, $2 hat dies aber knapp überlebt.');
 $.lang.register('killcommand.injured.2', '$1 hat $2 vergiftet. Die Dosis war aber zu gering, sodass $2 vom Notarzt gerettet werden konnte.');
 $.lang.register('killcommand.injured.3', '$1 feuerte mit einer M16 5 Magazine auf $2. Dank eines Ganzkörper-Kevlar-Anzugs kam es nur zu leichten Verletzungen.');
 $.lang.register('killcommand.injured.4', '$1 fuhr mit einem Auto gegen $2. $2 überlebte dies knapp.');
 $.lang.register('killcommand.injured.5', '$2 wurde von einer Horde Stiere überrascht, die von $1 freigelassen wurden. $2 hat schwer verletzt überlebt.');
 
-// Opfer stirbt
+// Ziel stirbt
 $.lang.register('killcommand.victim.1', '$1 ermordete $2 mit dem Horn eines Einhorns!');
 $.lang.register('killcommand.victim.2', '$2 wurde von $1 getötet!');
 $.lang.register('killcommand.victim.3', '$2 wurde von $1 als Hühnchen verkleidet und anschließend zerfleischt.');
@@ -84,12 +84,18 @@ $.lang.register('killcommand.victim.28', '$1 schickte $2 zu einem tollen Bauernh
 
 // Allgemeine Ausgaben
 $.lang.register('killcommand.nouser', 'der Aufenthaltsort von "$1" ist nicht bekannt.');
-$.lang.register('killcommand.nopoints', 'du bist pleite! Du hast keine Möglichkeit jemanden zu töten.');
+$.lang.register('killcommand.alreadydead', '$1 ist bereits tot.');
+$.lang.register('killcommand.nopoints', 'du bist pleite, du kannst dir keine Waffen leisten.');
 $.lang.register('killcommand.nopoints.jail', '$1 kann die Strafe von $2 nicht zahlen und muss deswegen für $3 Sekunden ins Gefängnis.');
 $.lang.register('killcommand.nopoints.jailmod', '$1 kann die Strafe von $2 nicht zahlen, somit wurde das gesamte Restvermögen gepfändet.');
-$.lang.register('killcommand.strafe', '$1 wurde zu einer Strafzahlung von $2 verurteilt.');
-$.lang.register('killcommand.jail.timeout.usage', 'Verwendung: !jailtimeouttime (Länge in Sekunden)');
-$.lang.register('killcommand.jail.timeout.set', 'Gefängnisstrafe wurde auf $1 Sekunden festgelegt.');
+$.lang.register('killcommand.penalty', '$1 wurde zu einer Strafzahlung von $2 verurteilt.');
+$.lang.register('killcommand.muteinfo', 'du kannst jetzt für $1 Sekunden nichts schreiben.');
+$.lang.register('killcommand.respawned', 'du kannst wieder schreiben.');
 
 // Konsolenausgaben
 $.lang.register('killcommand.console.loaded', 'Kill-Nachrichten gefunden: $1 Selbst, $2 Angreifer, $3 Verletzt, $4 Opfer.');
+
+// Einstellungen
+$.lang.register('killcommand.set.usage', 'Nutzung: !killset [toggletimeout | killtimeout | jailtimeout | mincostkill | maxcostkill | mincostinjured | maxcostinjured] [Zahl]');
+$.lang.register('killcommand.set.updated', 'Wert für $1 aktualisiert. Neuer Wert: $2');
+$.lang.register('killcommand.set.nonumber', 'Ungültige Angabe, konnte $1 nicht aktualisieren. Aktueller Wert: $2');
