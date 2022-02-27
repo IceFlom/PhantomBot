@@ -83,7 +83,7 @@
      */
     function toggleTimeoutEnabled() {
         timeoutEnabled = !timeoutEnabled;
-        $.setIniDbBoolean('killsettings', 'timeoutenabled', timeoutEnabled);
+        $.setIniDbBoolean('killSettings', 'timeoutenabled', timeoutEnabled);
     }
 
     /**
@@ -92,7 +92,7 @@
      */
     function setKilltimeout(seconds) {
         killTimeout = seconds;
-        $.setIniDbNumber('killsettings', 'killTimeoutTime', killTimeout);
+        $.setIniDbNumber('killSettings', 'killTimeoutTime', killTimeout);
     }
 
     /**
@@ -101,7 +101,7 @@
      */
     function setJailtimeout(seconds) {
         jailTimeout = seconds;
-        $.setIniDbNumber('killsettings', 'jailTimeoutTime', jailTimeout);
+        $.setIniDbNumber('killSettings', 'jailTimeoutTime', jailTimeout);
     }
 
     /**
@@ -110,7 +110,7 @@
      */
     function setMinCostKill(cost) {
         minCostKill = cost;
-        $.setIniDbNumber('killsettings', 'minCostKill', minCostKill);
+        $.setIniDbNumber('killSettings', 'minCostKill', minCostKill);
     }
 
     /**
@@ -119,7 +119,7 @@
      */
     function setMaxCostKill(cost) {
         maxCostKill = cost;
-        $.setIniDbNumber('killsettings', 'maxCostKill', maxCostKill);
+        $.setIniDbNumber('killSettings', 'maxCostKill', maxCostKill);
     }
 
     /**
@@ -128,7 +128,7 @@
      */
     function setMinCostInjured(cost) {
         minCostInjured = cost;
-        $.setIniDbNumber('killsettings', 'minCostInjured', minCostInjured);
+        $.setIniDbNumber('killSettings', 'minCostInjured', minCostInjured);
     }
 
     /**
@@ -137,7 +137,7 @@
      */
     function setMaxCostInjured(cost) {
         maxCostInjured = cost;
-        $.setIniDbNumber('killsettings', 'maxCostInjured', maxCostInjured);
+        $.setIniDbNumber('killSettings', 'maxCostInjured', maxCostInjured);
     }
 
     /**
