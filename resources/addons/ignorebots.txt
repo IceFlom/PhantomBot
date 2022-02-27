@@ -41,8 +41,6 @@ hostmeraffle
 lurxx
 eisigerbot
 slidingowl
-tinnysnowflake
-tinnysnowflakelocal
 ub3rb0t
 p0sitivitybot
 v_and_k
