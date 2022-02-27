@@ -89,8 +89,8 @@ $.lang.register('killcommand.nopoints', 'du bist pleite, du kannst dir keine Waf
 $.lang.register('killcommand.nopoints.jail', '$1 kann die Strafe von $2 nicht zahlen und muss deswegen für $3 Sekunden ins Gefängnis.');
 $.lang.register('killcommand.nopoints.jailmod', '$1 kann die Strafe von $2 nicht zahlen, somit wurde das gesamte Restvermögen gepfändet.');
 $.lang.register('killcommand.penalty', '$1 wurde zu einer Strafzahlung von $2 verurteilt.');
-$.lang.register('killcommand.muteinfo', '$1, du kannst jetzt für $2 Sekunden nichts schreiben.');
-$.lang.register('killcommand.respawned', '$1 wurde entlassen und kann wieder schreiben.');
+$.lang.register('killcommand.muteinfo', 'du kannst jetzt für $1 Sekunden nichts schreiben.');
+$.lang.register('killcommand.respawned', 'du kannst wieder schreiben.');
 
 // Konsolenausgaben
 $.lang.register('killcommand.console.loaded', 'Kill-Nachrichten gefunden: $1 Selbst, $2 Angreifer, $3 Verletzt, $4 Opfer.');

@@ -190,13 +190,13 @@
             // enable timeout
             setTimeout(function() {
                 currentlyDeadList.add(user.toLowerCase());
-                $.say($.lang.get('killcommand.muteinfo', $.username.resolve(user), timeout));
+                $.say($.whisperPrefix(user) + $.lang.get('killcommand.muteinfo', timeout));
             }, 2000);
 
             // disable timeout
             setTimeout(function() {
                 currentlyDeadList.remove(user.toLowerCase());
-                $.say($.lang.get('killcommand.respawned', $.username.resolve(user)));
+                $.say($.whisperPrefix(user) + $.lang.get('killcommand.respawned'));
             }, timeout * 1000);
         }
     }
