@@ -87,7 +87,8 @@
             subcommand = args[0],
             senderPoints = $.getUserPoints(sender),
             numberOfChars = argsString.length(),
-            cost = calculatecost(numberOfChars);
+            cost = calculatecost(numberOfChars),
+            value = "";
 
         if (command.equalsIgnoreCase('tts')) {
             // Subcommand check
@@ -97,11 +98,22 @@
                     return;
                 }
                 if (subcommand.equalsIgnoreCase("wsurl")) {
-                    if (args[1] != null) {
-                        setWsurl(args[1]);
+                    value = args[1];
+                    if (value != null) {
+                        setWsurl(value);
                         $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.wsurl.updated', wsurl));
                     } else {
                         $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.wsurl.usage', wsurl));
+                    }
+                    return;
+                }
+                if (subcommand.equalsIgnoreCase("fixedcost")) {
+                    value = args[1];
+                    if (value != null && !isNaN(value)) {
+                        setFixedcost(value);
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.updated', wsurl));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.usage', wsurl));
                     }
                     return;
                 }
@@ -128,7 +140,7 @@
             }
             // enough points?
             if (!$.isModv3(sender, tags) && senderPoints < cost) {
-                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.notenoughpoints', $.getPointsString(senderPoints), $.getPointsString(cost)));
+                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.notenoughpoints', $.getPointsString(senderPoints), $.getPointsString(fixedcost), $.getPointsString(multipliercost), $.getPointsString(cost)));
                 return;
             }
 
