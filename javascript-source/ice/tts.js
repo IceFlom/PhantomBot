@@ -111,9 +111,29 @@
                     value = args[1];
                     if (value != null && !isNaN(value)) {
                         setFixedcost(value);
-                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.updated', wsurl));
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.updated', fixedcost));
                     } else {
-                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.usage', wsurl));
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.fixedcost.usage', fixedcost));
+                    }
+                    return;
+                }
+                if (subcommand.equalsIgnoreCase("multipliercost")) {
+                    value = args[1];
+                    if (value != null && !isNaN(value)) {
+                        setMultipliercost(value);
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.multipliercost.updated', multipliercost));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.multipliercost.usage', multipliercost));
+                    }
+                    return;
+                }
+                if (subcommand.equalsIgnoreCase("maxlength")) {
+                    value = args[1];
+                    if (value != null && !isNaN(value)) {
+                        setMaxlength(value);
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.maxlength.updated', maxlength));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.maxlength.usage', maxlength));
                     }
                     return;
                 }
@@ -161,6 +181,10 @@
         if ($.bot.isModuleEnabled('./ice/tts.js')) {
             $.registerChatCommand('./ice/tts.js', 'tts', 7);
             $.registerChatSubcommand('tts', 'info', 7);
+            $.registerChatSubcommand('tts', 'wsurl', 1);
+            $.registerChatSubcommand('tts', 'fixedcost', 1);
+            $.registerChatSubcommand('tts', 'multipliercost', 1);
+            $.registerChatSubcommand('tts', 'maxlength', 1);
         }
     });
     $.updateTts = updateTts;
