@@ -1,4 +1,4 @@
-$.lang.register('ttscommand.usage', 'Mit dem Befehl !tts kannst du deine Nachricht von Hans vorlesen lassen.');
+$.lang.register('ttscommand.usage', 'Mit dem Befehl !tts kannst du deine Nachricht vorlesen lassen.');
 $.lang.register('ttscommand.toolong', 'Deine Nachricht ist zu lang! Max: $1 Zeichen, deine Nachricht: $2 Zeichen.');
 $.lang.register('ttscommand.offlinewarning', 'Der Stream ist offline. TTS kann nicht funktionieren.');
 $.lang.register('ttscommand.notenoughpoints', 'Du hast nur $1. Gebühr: $2, Preis pro Zeichen: $3 = Gesamtkosten: $4');
