@@ -150,7 +150,7 @@
             if (!$.isModv3(sender, tags)) {
                 $.inidb.decr('points', sender, cost);
             }
-            $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.success', $.getPointsString(cost)));
+            $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.success', numberOfChars));
         }
     });
 

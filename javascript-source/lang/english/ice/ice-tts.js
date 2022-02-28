@@ -3,7 +3,7 @@ $.lang.register('ttscommand.toolong', 'Deine Nachricht ist zu lang! Max: $1 Zeic
 $.lang.register('ttscommand.offlinewarning', 'Der Stream ist offline. TTS kann nicht funktionieren.');
 $.lang.register('ttscommand.notenoughpoints', 'Du hast nur $1. Gebühr: $2, Preis pro Zeichen: $3 = Gesamtkosten: $4');
 $.lang.register('ttscommand.notenoughtime', 'du bist erst seit $2 hier, $1 sind notwendig.');
-$.lang.register('ttscommand.success', 'Nachricht wird abgespielt.');
+$.lang.register('ttscommand.success', 'Nachricht wird abgespielt. ($1 Zeichen)');
 $.lang.register('ttscommand.write', 'schreibt');
 $.lang.register('ttscommand.nowsurl', 'Es ist kein TTS-Webservice gespeichert. Hinterlege eine URL mit !tts wsurl [URL zu einem Webservice]');
 $.lang.register('ttscommand.wsurl.updated', 'TTS-Webservice-URL aktualisiert. Neuer Wert: $1');
