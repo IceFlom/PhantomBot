@@ -1,18 +1,17 @@
 $.lang.register('ttscommand.usage', 'Mit dem Befehl !tts kannst du deine Nachricht von Hans vorlesen lassen.');
-$.lang.register('ttscommand.toolong', 'Deine Nachricht ist zu lang! Max: $1 Zeichen, deine Nachricht: $2 Zeichen.');
-$.lang.register('ttscommand.offlinewarning', 'Der Stream ist offline. TTS kann nicht funktionieren.');
-$.lang.register('ttscommand.notenoughpoints', 'Du hast nur $1. Gebühr: $2, Preis pro Zeichen: $3 = Gesamtkosten: $4');
-$.lang.register('ttscommand.notenoughtime', 'du bist erst seit $2 hier, $1 sind notwendig.');
-$.lang.register('ttscommand.success', 'Nachricht wird abgespielt. ($1 Zeichen)');
-$.lang.register('ttscommand.write', 'schreibt');
+$.lang.register('ttscommand.toolong', 'Your message is too long! Max: $1 characters, your message: $2 characters.');
+$.lang.register('ttscommand.offlinewarning', 'The stream is offline. TTS cannot work without a stream.');
+$.lang.register('ttscommand.notenoughpoints', 'You have only $1. Fixed fee: $2, fee per character: $3 = Overall: $4');
+$.lang.register('ttscommand.success', 'Your message will be played. ($1 characters)');
+$.lang.register('ttscommand.write', 'writes');
 
 // admin
-$.lang.register('ttscommand.nowsurl', 'Es ist kein TTS-Webservice gespeichert. Hinterlege eine URL mit !tts wsurl [URL zu einem Webservice]');
-$.lang.register('ttscommand.wsurl.updated', 'TTS-Webservice-URL aktualisiert. Neuer Wert: $1');
-$.lang.register('ttscommand.wsurl.usage', 'Aktuell: $1. Um die TTS-Webservice-URL zu ändern, schreibe !tts wsurl [URL zu einem Webservice]');
-$.lang.register('ttscommand.fixedcost.updated', 'Feste Gebühr aktualisiert. Neuer Wert: $1');
-$.lang.register('ttscommand.fixedcost.usage', 'Aktuell: $1. Um die feste Gebühr zu ändern, schreibe !tts fixedcost [Zahl]');
-$.lang.register('ttscommand.multipliercost.updated', 'Variabler Preis pro Zeichen aktualisiert. Neuer Wert: $1');
-$.lang.register('ttscommand.multipliercost.usage', 'Aktuell: $1. Um den variablen Preis pro Zeichen zu ändern, schreibe !tts multipliercost [Zahl]');
-$.lang.register('ttscommand.maxlength.updated', 'Maximale Nachrichtenlänge aktualisiert. Neuer Wert: $1');
-$.lang.register('ttscommand.maxlength.usage', 'Aktuell: $1. Um die maximale Nachrichtenlänge zu ändern, schreibe !tts maxlength [Zahl]');
+$.lang.register('ttscommand.nowsurl', 'Webservice URL for tts servcie not configured. Use !tts wsurl [tts service url] to save a new service.');
+$.lang.register('ttscommand.wsurl.updated', 'tts service url updated. New value: $1');
+$.lang.register('ttscommand.wsurl.usage', 'Currently: $1, to change the tts service url, type !tts wsurl [tts service url]');
+$.lang.register('ttscommand.fixedcost.updated', 'Fixed fee updated. New value: $1');
+$.lang.register('ttscommand.fixedcost.usage', 'Currently: $1, to change the fixed fee, type !tts fixedcost [number]');
+$.lang.register('ttscommand.multipliercost.updated', 'Fee per character updated. New value: $1');
+$.lang.register('ttscommand.multipliercost.usage', 'Currently: $1, to change the fee per character, type !tts multipliercost [number]');
+$.lang.register('ttscommand.maxlength.updated', 'Message length limit updated. New value: $1');
+$.lang.register('ttscommand.maxlength.usage', 'Currently: $1, to change the message length limit, type !tts maxlength [number]');
