@@ -7,7 +7,6 @@
 (function() {
     var fixedcost = $.getSetIniDbNumber('ttssettings', 'fixedcost', 100),
         multipliercost = $.getSetIniDbNumber('ttssettings', 'multipliercost', 1),
-        mintime = $.getSetIniDbNumber('ttssettings', 'mintime', 20) * 3600,
         maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 140),
         wsurl = $.getSetIniDbString('ttssettings', 'wsurl', "");
 
@@ -17,7 +16,6 @@
     function updateTts() {
         fixedcost = $.getIniDbNumber('ttssettings', 'fixedcost');
         multipliercost = $.getIniDbNumber('ttssettings', 'multipliercost');
-        mintime = $.getIniDbNumber('ttssettings', 'mintime') * 3600;
         maxlength = $.getIniDbNumber('ttssettings', 'maxlength');
         wsurl = $.getSetIniDbString('ttssettings', 'wsurl');
     }
@@ -48,7 +46,7 @@
             // Subcommand check
             if (typeof subcommand !== 'undefined') {
                 if (subcommand.equalsIgnoreCase("info")) {
-                    $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage', $.getPointsString(multipliercost), $.getTimeString(mintime, true)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage'));
                     return;
                 }
                 if (subcommand.equalsIgnoreCase("wsurl")) {
@@ -66,14 +64,14 @@
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.nowsurl'));
                 return;
             }
-            // message empty?
-            if (argsString.length() < 1) {
-                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage', $.getPointsString(multipliercost), $.getTimeString(mintime, true)));
-                return;
-            }
             // channel live?
             if (!$.isOnline($.channelName)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.offlinewarning'));
+                return;
+            }
+            // message empty?
+            if (argsString.length() < 1) {
+                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage'));
                 return;
             }
             // enough points?
