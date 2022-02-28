@@ -7,7 +7,7 @@
 (function() {
     var fixedcost = $.getSetIniDbNumber('ttssettings', 'fixedcost', 100),
         multipliercost = $.getSetIniDbNumber('ttssettings', 'multipliercost', 1),
-        maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 140),
+        maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 280),
         wsurl = $.getSetIniDbString('ttssettings', 'wsurl', "");
 
     /**
@@ -40,7 +40,8 @@
             tags = event.getTags(),
             subcommand = args[0],
             senderPoints = $.getUserPoints(sender),
-            cost = argsString.length() * multipliercost;
+            numberOfChars = argsString.length(),
+            cost = numberOfChars * multipliercost;
 
         if (command.equalsIgnoreCase('tts')) {
             // Subcommand check
@@ -70,28 +71,27 @@
                 return;
             }
             // message empty?
-            if (argsString.length() < 1) {
+            if (numberOfChars < 1) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage'));
+                return;
+            }
+            // message too long?
+            if (numberOfChars > maxlength) {
+                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.toolong', maxlength, numberOfChars));
                 return;
             }
             // enough points?
             if (!$.isModv3(sender, tags) && senderPoints < cost) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.notenoughpoints', $.getPointsString(senderPoints), $.getPointsString(cost)));
                 return;
-            } else {
-                // mod pay only what they have, if they dont have enough points
-                if ($.isModv3(sender, tags)) {
-                    if (senderPoints < cost) {
-                        $.inidb.decr('points', sender, senderPoints);
-                    } else {
-                        $.inidb.decr('points', sender, cost);
-                    }
-                } else {
-                    $.inidb.decr('points', sender, cost);
-                }
             }
+
+            // process tts
             var urlAndMessage = wsurl + sender + $.lang.get('ttscommand.write') + ": " + argsString;
             $.alertspollssocket.triggerTts(urlAndMessage);
+            if (!$.isModv3(sender, tags)) {
+                $.inidb.decr('points', sender, cost);
+            }
             $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.success', $.getPointsString(cost)));
         }
     });
