@@ -5,7 +5,10 @@
  * Text-To-Speech
  */
 (function() {
-    var fixedcost = $.getSetIniDbNumber('ttssettings', 'fixedcost', 100),
+    // disabled by default
+    $.getSetIniDbBoolean('modules', './ice/tts.js', false);
+
+    var fixedcost = $.getSetIniDbNumber('ttssettings', 'fixedcost', 0),
         multipliercost = $.getSetIniDbNumber('ttssettings', 'multipliercost', 1),
         maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 280),
         wsurl = $.getSetIniDbString('ttssettings', 'wsurl', "");
@@ -57,6 +60,22 @@
     }
 
     /**
+     * @function calculatecost
+     * @param {int} msglength
+     * @returns {int}
+     */
+    function calculatecost(msglength) {
+        var cost = 0;
+        if (fixedcost > 0) {
+            cost += fixedcost;
+        }
+        if (multipliercost > 0) {
+            cost += msglength * multipliercost;
+        }
+        return cost;
+    }
+
+    /**
      * @event command
      */
     $.bind('command', function(event) {
@@ -68,7 +87,7 @@
             subcommand = args[0],
             senderPoints = $.getUserPoints(sender),
             numberOfChars = argsString.length(),
-            cost = numberOfChars * multipliercost;
+            cost = calculatecost(numberOfChars);
 
         if (command.equalsIgnoreCase('tts')) {
             // Subcommand check
@@ -114,7 +133,7 @@
             }
 
             // process tts
-            var urlAndMessage = wsurl + sender + $.lang.get('ttscommand.write') + ": " + argsString;
+            var urlAndMessage = wsurl + sender + $.lang.get('ttscommand.write') + ": " + argsString
             $.alertspollssocket.triggerTts(urlAndMessage);
             if (!$.isModv3(sender, tags)) {
                 $.inidb.decr('points', sender, cost);
