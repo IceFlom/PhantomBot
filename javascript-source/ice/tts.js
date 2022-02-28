@@ -8,7 +8,8 @@
     var fixedcost = $.getSetIniDbNumber('ttssettings', 'fixedcost', 100),
         multipliercost = $.getSetIniDbNumber('ttssettings', 'multipliercost', 1),
         mintime = $.getSetIniDbNumber('ttssettings', 'mintime', 20) * 3600,
-        maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 140);
+        maxlength = $.getSetIniDbNumber('ttssettings', 'maxlength', 140),
+        wsurl = $.getSetIniDbString('ttssettings', 'wsurl', "");
 
     /**
      * @function updateTts (reload settings)
@@ -18,6 +19,16 @@
         multipliercost = $.getIniDbNumber('ttssettings', 'multipliercost');
         mintime = $.getIniDbNumber('ttssettings', 'mintime') * 3600;
         maxlength = $.getIniDbNumber('ttssettings', 'maxlength');
+        wsurl = $.getSetIniDbString('ttssettings', 'wsurl');
+    }
+
+    /**
+     * @function setWsurl
+     * @param {string} url
+     */
+    function setWsurl(url) {
+        wsurl = url;
+        $.inidb.set('ttssettings', 'wsurl', wsurl);
     }
 
     /**
@@ -40,23 +51,37 @@
                     $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage', $.getPointsString(multipliercost), $.getTimeString(mintime, true)));
                     return;
                 }
+                if (subcommand.equalsIgnoreCase("wsurl")) {
+                    if (args[1] != null) {
+                        setWsurl(args[1]);
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.wsurl.updated', wsurl));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.wsurl.usage', wsurl));
+                    }
+                    return;
+                }
             }
-            // Nachricht vorhanden?
+            // ws url set?
+            if (wsurl.equalsIgnoreCase("")) {
+                $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.nowsurl'));
+                return;
+            }
+            // message empty?
             if (argsString.length() < 1) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.usage', $.getPointsString(multipliercost), $.getTimeString(mintime, true)));
                 return;
             }
-            // Kanal online?
+            // channel live?
             if (!$.isOnline($.channelName)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.offlinewarning'));
                 return;
             }
-            // Points check, Mods for free
+            // enough points?
             if (!$.isModv3(sender, tags) && senderPoints < cost) {
                 $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.notenoughpoints', $.getPointsString(senderPoints), $.getPointsString(cost)));
                 return;
             } else {
-                // Mod pay with rest if under cost
+                // mod pay only what they have, if they dont have enough points
                 if ($.isModv3(sender, tags)) {
                     if (senderPoints < cost) {
                         $.inidb.decr('points', sender, senderPoints);
@@ -67,7 +92,8 @@
                     $.inidb.decr('points', sender, cost);
                 }
             }
-            $.alertspollssocket.triggerTts(sender + " schreibt: " + argsString);
+            var urlAndMessage = wsurl + sender + $.lang.get('ttscommand.write') + ": " + argsString;
+            $.alertspollssocket.triggerTts(urlAndMessage);
             $.say($.whisperPrefix(sender) + $.lang.get('ttscommand.success', $.getPointsString(cost)));
         }
     });
@@ -76,8 +102,8 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        if ($.bot.isModuleEnabled('./commands/ttsCommand.js')) {
-            $.registerChatCommand('./commands/ttsCommand.js', 'tts', 7);
+        if ($.bot.isModuleEnabled('./ice/tts.js')) {
+            $.registerChatCommand('./ice/tts.js', 'tts', 7);
             $.registerChatSubcommand('tts', 'info', 7);
         }
     });

@@ -555,6 +555,16 @@ public class WsPanelHandler implements WsFrameHandler {
         }
     }
 
+    public void triggerTts(final String aMessage) throws JSONException {
+        try {
+            JSONStringer jsonObject = new JSONStringer();
+            jsonObject.object().key("tts_signal").value(aMessage).endObject();
+            sendJSONToAll(jsonObject.toString());
+        } catch (JSONException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
     public void doAudioHooksUpdate() {
         try {
             JSONObject jso = new JSONObject();
