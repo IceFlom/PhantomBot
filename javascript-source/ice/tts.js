@@ -30,6 +30,33 @@
     }
 
     /**
+     * @function setMaxlength
+     * @param {int} length
+     */
+    function setMaxlength(length) {
+        maxlength = length;
+        $.inidb.set('ttssettings', 'maxlength', maxlength);
+    }
+
+    /**
+     * @function setFixedcost
+     * @param {int} cost
+     */
+    function setFixedcost(cost) {
+        fixedcost = cost;
+        $.inidb.set('ttssettings', 'fixedcost', fixedcost);
+    }
+
+    /**
+     * @function setMultipliercost
+     * @param {int} cost
+     */
+    function setMultipliercost(cost) {
+        multipliercost = cost;
+        $.inidb.set('ttssettings', 'multipliercost', multipliercost);
+    }
+
+    /**
      * @event command
      */
     $.bind('command', function(event) {
