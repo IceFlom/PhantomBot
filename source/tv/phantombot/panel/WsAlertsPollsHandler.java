@@ -130,6 +130,17 @@ public class WsAlertsPollsHandler implements WsFrameHandler {
         }
     }
 
+    public void triggerTts(final String aMessage) throws JSONException {
+        try {
+            com.gmt2001.Console.debug.println("triggerAudioPanel: " + aMessage);
+            JSONStringer jsonObject = new JSONStringer();
+            jsonObject.object().key("tts_signal").value(aMessage).endObject();
+            sendJSONToAll(jsonObject.toString());
+        } catch (JSONException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
     public void triggerAudioPanel(String audioHook, float volume) {
         try {
             com.gmt2001.Console.debug.println("triggerAudioPanel: " + audioHook);

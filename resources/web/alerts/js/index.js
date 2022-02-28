@@ -187,12 +187,44 @@ $(function () {
             printDebug('Processing event ' + JSON.stringify(event));
 
             isPlaying = true;
-            if (event.alert_image !== undefined) {
+            if (event.tts_signal !== undefined) {
+                handleTts(event);
+            }
+            else if (event.alert_image !== undefined) {
                 handleGifAlert(event);
             } else {
                 handleAudioHook(event);
             }
             queue.splice(0, 1);
+        }
+    }
+
+    /*
+     * @function Handles TTS.
+     *
+     * @param {Object} json
+     */
+    function handleTts(json) {
+        // Make sure we can allow audio hooks.
+        if (getOptionSetting('allow-audio-hooks', 'false') === 'true') {
+            let message = json.tts_signal,
+                audio;
+
+            // Create a new audio file.
+            audio = new Audio(message);
+            // Set the volume.
+            audio.volume = getOptionSetting('audio-hook-volume', '1');
+            // Add an event handler.
+            $(audio).on('ended', function() {
+                audio.currentTime = 0;
+                isPlaying = false;
+            });
+            // Play the audio.
+            audio.play().catch(function(err) {
+                console.log(err);
+            });
+        } else {
+            isPlaying = false;
         }
     }
 
@@ -467,7 +499,7 @@ $(function () {
                 } else
 
                 // Queue all events and process them one at-a-time.
-                if (message.alert_image !== undefined || message.audio_panel_hook !== undefined) {
+                if (message.alert_image !== undefined || message.audio_panel_hook !== undefined || message.tts_signal !== undefined) {
                     queue.push(message);
                 }
 
