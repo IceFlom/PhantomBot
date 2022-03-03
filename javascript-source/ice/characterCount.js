@@ -230,7 +230,7 @@
             // send user specific character count to chat
             var userCount = $.getIniDbNumber('charcount', sender, 0);
             if (userCount > 0) {
-                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + $.lang.get('charactercount.unit'), getUserPosition(sender), getNumberOfRecords()));
+                $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.result', userCount + " " + $.lang.get('charactercount.unit'), getUserPosition(sender), getNumberOfRecords()));
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('charactercount.usercount.notfound'));
             }
