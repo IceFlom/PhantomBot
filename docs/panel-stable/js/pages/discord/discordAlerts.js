@@ -46,10 +46,15 @@ $(function () {
 $(function () {
     let discordChannels = null;
     let allowedChannelTypes = ['GUILD_NEWS', 'GUILD_TEXT'];
+    let callback = null;
 
-    function refreshChannels() {
+    function refreshChannels(oncomplete) {
+        callback = oncomplete;
         socket.getDiscordChannelList('discord_alerts_getchannels', function (d) {
             discordChannels = d.data;
+            if (callback !== undefined && callback !== null) {
+                callback();
+            }
         });
     }
 
@@ -85,6 +90,9 @@ $(function () {
     }
 
     function discordChannelTemplate(fchannel) {
+        if (discordChannels === undefined || discordChannels === null) {
+            return $('<span><i class="fa fa-triangle-exclamation fa-lg" style="margin-right: 5px;" /> Unable retrieve channel list</span>');
+        }
         if (fchannel.id) {
             for (const [category, channels] of Object.entries(discordChannels)) {
                 for (const [channel, info] of Object.entries(channels)) {
@@ -169,11 +177,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-
-                if (discordChannels !== null) {
-                    $('#follow-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#follow-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -273,10 +281,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#channel-alert').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#channel-alert').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -329,10 +338,11 @@ $(function () {
                         }
 
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#host-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#host-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -379,10 +389,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#bits-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#bits-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -429,10 +440,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#clip-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#clip-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -532,10 +544,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#channel-alert').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#channel-alert').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -617,10 +630,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#channel-alert').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#channel-alert').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -669,10 +683,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#streamlabs-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#streamlabs-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -721,10 +736,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#tipeeestream-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#tipeeestream-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -773,10 +789,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#streamelements-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#streamelements-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
@@ -820,10 +837,11 @@ $(function () {
                                 });
                         }
                     }).on('shown.bs.modal', function (e) {
-                refreshChannels();
-                if (discordChannels !== null) {
-                    $('#twitter-channel').select2({ templateResult: discordChannelTemplate });
-                }
+                refreshChannels(function () {
+                    if (discordChannels !== null) {
+                        $('#twitter-channel').select2({templateResult: discordChannelTemplate});
+                    }
+                });
             }).modal('toggle');
         });
     });
