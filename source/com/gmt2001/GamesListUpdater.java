@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,6 +81,10 @@ public class GamesListUpdater {
 
         JSONObject jso = new JSONObject(response.content);
         int myVersion = PhantomBot.instance().getDataStore().GetInteger("settings", "", "gamesList-version");
+
+        if (!Files.exists(Paths.get("./web/panel/js/utils/gamesList.txt"))) {
+            myVersion = 0;
+        }
 
         if (myVersion >= jso.getInt("version")) {
             com.gmt2001.Console.debug.println("Skipping update, currently up-to-date...");

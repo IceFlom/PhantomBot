@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,18 @@
  */
 
 // Function that querys all of the data we need.
-$(function() {
+$(function () {
     let discordChannels = null;
     let allowedChannelTypes = ['GUILD_NEWS', 'GUILD_TEXT'];
+    let callback = null;
 
-    function refreshChannels() {
+    function refreshChannels(oncomplete) {
+        callback = oncomplete;
         socket.getDiscordChannelList('discord_logs_getchannels', function (d) {
             discordChannels = d.data;
+            if (callback !== undefined && callback !== null) {
+                callback();
+            }
         });
     }
 
@@ -58,6 +63,9 @@ $(function() {
     }
 
     function discordChannelTemplate(fchannel) {
+        if (discordChannels === undefined || discordChannels === null) {
+            return $('<span><i class="fa fa-triangle-exclamation fa-lg" style="margin-right: 5px;" /> Unable retrieve channel list</span>');
+        }
         if (fchannel.id) {
             for (const [category, channels] of Object.entries(discordChannels)) {
                 for (const [channel, info] of Object.entries(channels)) {
@@ -84,53 +92,53 @@ $(function() {
 
     refreshChannels();
 
-    setTimeout(function() {
+    setTimeout(function () {
         // Get Discord logging settings.
         socket.getDBValues('get_discord_logging_settings', {
             tables: ['discordSettings', 'discordSettings', 'discordSettings'],
             keys: ['modLogs', 'customCommandLogs', 'modLogChannel']
-        }, true, function(e) {
+        }, true, function (e) {
             // Mod toggle.
             $('#twitch-mod-log').val((e['modLogs'] === 'true' ? 'Yes' : 'No'));
             // Commands toggle.
             $('#twitch-command-log').val((e['customCommandLogs'] === 'true' ? 'Yes' : 'No'));
             // Log channels
             $('#discord_logs_pubsub').appendChild(getChannelSelector('twitch-mod-channel', 'Logging Channel', '#logs', e['modLogChannel'],
-            'Which channel to post the moderation logs to.', allowedChannelTypes));
+                    'Which channel to post the moderation logs to.', allowedChannelTypes));
 
             if (discordChannels !== null) {
-                $('#twitch-mod-channel').select2({ templateResult: discordChannelTemplate });
+                $('#twitch-mod-channel').select2({templateResult: discordChannelTemplate});
             }
         });
     }, 500);
 });
 
 // Function that handles events.
-$(function() {
+$(function () {
     // Save button.
-    $('#discord-logging-save').on('click', function() {
-    	let moderationLogs = $('#twitch-mod-log').find(':selected').text() === 'Yes',
-    		customCommandLog = $('#twitch-command-log').find(':selected').text() === 'Yes',
-    		logChannel = $('#twitch-mod-channel');
+    $('#discord-logging-save').on('click', function () {
+        let moderationLogs = $('#twitch-mod-log').find(':selected').text() === 'Yes',
+                customCommandLog = $('#twitch-command-log').find(':selected').text() === 'Yes',
+                logChannel = $('#twitch-mod-channel');
 
-    	// Make sure all settings are entered corretly.
-    	switch (false) {
-    	    case helpers.handleInputString(logChannel):
-    	    	break;
-    	    default:
-    	    	socket.updateDBValues('discord_logs_update', {
-    	    		tables: ['discordSettings', 'discordSettings', 'discordSettings'],
-        			keys: ['modLogs', 'customCommandLogs', 'modLogChannel'],
-    	    		values: [moderationLogs, customCommandLog, logChannel.val()]
-    	    	}, function() {
-    	    		// Update the scripts variables.
-    	    		socket.wsEvent('discord_logs', './core/logging.js', '', [], function() {
+        // Make sure all settings are entered corretly.
+        switch (false) {
+            case helpers.handleInputString(logChannel):
+                break;
+            default:
+                socket.updateDBValues('discord_logs_update', {
+                    tables: ['discordSettings', 'discordSettings', 'discordSettings'],
+                    keys: ['modLogs', 'customCommandLogs', 'modLogChannel'],
+                    values: [moderationLogs, customCommandLog, logChannel.val()]
+                }, function () {
+                    // Update the scripts variables.
+                    socket.wsEvent('discord_logs', './core/logging.js', '', [], function () {
                         socket.sendCommand('moderation_reload_settings', 'reloadmoderation', function () {
-    	    			    // Alert the user.
-    	    			    toastr.success('Successfully updated the logs settings!');
+                            // Alert the user.
+                            toastr.success('Successfully updated the logs settings!');
                         });
-    	    		});
-    	    	});
-    	}
+                    });
+                });
+        }
     });
 });
