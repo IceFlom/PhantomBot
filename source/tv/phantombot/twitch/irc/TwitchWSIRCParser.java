@@ -84,6 +84,7 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
     public static synchronized TwitchWSIRCParser instance(WSClient client, String channelName, TwitchSession session) {
         if (instance == null) {
             instance = new TwitchWSIRCParser(client, channelName, session);
+            instance.subscribe(instance);
         } else {
             instance.setClient(client);
         }
@@ -129,6 +130,18 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
 
         // USERNOTICE event from Twitch.
         parserMap.put("USERNOTICE", (TwitchWSIRCCommand) this::onUserNotice);
+    }
+
+    /**
+     * Sends the message
+     *
+     * @param message The message to send
+     */
+    private void send(String message) {
+        if (PhantomBot.instance().getProperties().getPropertyAsBoolean("ircdebug", false)) {
+            com.gmt2001.Console.debug.println("<" + message);
+        }
+        this.client.send(message);
     }
 
     /**
@@ -241,6 +254,10 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
         String event;
         int offset = 0;
 
+        if (PhantomBot.instance().getProperties().getPropertyAsBoolean("ircdebug", false)) {
+            com.gmt2001.Console.debug.println(">" + rawMessage);
+        }
+
         if (rawMessage.startsWith("PONG")) {
             client.gotPong();
             return;
@@ -248,10 +265,6 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
 
         if (rawMessage.startsWith("PING")) {
             return;
-        }
-
-        if (PhantomBot.instance().getProperties().getPropertyAsBoolean("ircdebug", false)) {
-            com.gmt2001.Console.debug.println(">" + rawMessage);
         }
 
         // Get tags from the messages.
@@ -289,13 +302,18 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
             }
         }
 
+        String[] prefixcommand = messageParts[0 + offset].split(" ");
+        int eventindex = prefixcommand.length > 1 ? 1 : 0;
+
         // Get username if present.
-        if (messageParts[0 + offset].contains("!")) {
-            username = messageParts[0 + offset].substring(messageParts[0 + offset].indexOf("!") + 1, messageParts[0 + offset].indexOf("@"));
+        if (prefixcommand.length > 1 && prefixcommand[0].contains("!") && prefixcommand[0].contains("@")) {
+            username = prefixcommand[0].substring(prefixcommand[0].indexOf("!") + 1, prefixcommand[0].indexOf("@"));
+        } else if (prefixcommand.length > 1) {
+            username = prefixcommand[0];
         }
 
         // Get the event code.
-        event = messageParts[0 + offset].split(" ")[1];
+        event = prefixcommand[eventindex];
 
         // Execute the event parser if a parser exists.
         if (parserMap.containsKey(event)) {
@@ -338,12 +356,12 @@ public class TwitchWSIRCParser extends SubmissionPublisher<Map<String, String>> 
      */
     private void onChannelJoined(String message, String username, Map<String, String> tags) {
         // Request our tags
-        client.send("CAP REQ :twitch.tv/membership");
-        client.send("CAP REQ :twitch.tv/commands");
-        client.send("CAP REQ :twitch.tv/tags");
+        this.send("CAP REQ :twitch.tv/membership");
+        this.send("CAP REQ :twitch.tv/commands");
+        this.send("CAP REQ :twitch.tv/tags");
 
         // Join the channel.
-        client.send("JOIN #" + channelName);
+        this.send("JOIN #" + channelName);
 
         // Log in the console that web joined.
         com.gmt2001.Console.out.println("Channel Joined [#" + channelName + "]");

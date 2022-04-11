@@ -42,6 +42,7 @@ import tv.phantombot.event.twitch.clip.TwitchClipEvent;
 import tv.phantombot.event.twitch.gamechange.TwitchGameChangeEvent;
 import tv.phantombot.event.twitch.online.TwitchOnlineEvent;
 import tv.phantombot.event.twitch.titlechange.TwitchTitleChangeEvent;
+import tv.phantombot.twitch.api.Helix;
 
 /**
  * TwitchCache Class
@@ -88,6 +89,10 @@ public class TwitchCache implements Runnable {
             return instance;
         }
         return instance;
+    }
+
+    public static TwitchCache instance() {
+        return instance(PhantomBot.instance().getChannelName());
     }
 
     static {
@@ -294,6 +299,7 @@ public class TwitchCache implements Runnable {
                     com.gmt2001.Console.err.println("TwitchCache::updateCache: " + streamObj.getString("message"));
                 } else {
                     com.gmt2001.Console.debug.println("TwitchCache::updateCache: Failed to update.");
+                    com.gmt2001.Console.debug.println(streamObj.toString());
                 }
             }
         } catch (JSONException ex) {
@@ -567,5 +573,13 @@ public class TwitchCache implements Runnable {
 
     public void updateViewerCount(int viewers) {
         this.viewerCountPS = viewers;
+    }
+
+    public void updateGame() {
+        JSONObject channelInfo = Helix.instance().getChannelInformationAsync(UsernameCache.instance().getID(this.channel)).block();
+
+        if (channelInfo != null && channelInfo.has("data") && channelInfo.getJSONArray("data").length() > 0) {
+            this.gameTitle = channelInfo.getJSONArray("data").getJSONObject(0).optString("game_name");
+        }
     }
 }

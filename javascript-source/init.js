@@ -484,7 +484,7 @@
             // Check if the command exists or if the module is disabled.
             if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command))) {
                 return;
-            } else
+            }
 
             // Check if the command has an alias.
             if ($.aliasExists(command)) {
@@ -512,34 +512,46 @@
                     }
                 }
                 return;
-            } else
+            }
 
             // Check the command permission.
             if ($.permCom(sender, command, subCommand, event.getTags()) !== 0) {
                 $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.perm.404', (!$.subCommandExists(command, subCommand) ? $.getCommandGroupName(command) : $.getSubCommandGroupName(command, subCommand))), $.getIniDbBoolean('settings', 'permComMsgEnabled', false));
                 consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
                 return;
-            } else
+            }
 
             // Check the command cost.
             if ($.priceCom(sender, command, subCommand, isMod) === 1) {
                 $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.needpoints', $.getPointsString($.getCommandPrice(command, subCommand, ''))), $.getIniDbBoolean('settings', 'priceComMsgEnabled', false));
                 consoleDebug('Command !' + command + ' was not sent due to the user not having enough points.');
                 return;
-            } else
-                // Check the command cooldown.
-                var oncooldown = false;
-            if (args.length > 1 && $.coolDown.exists(command + ' ' + args[0] + ' ' + args[1])) {
-                oncooldown = $.coolDown.get(command + ' ' + args[0] + ' ' + args[1], sender, isMod) !== 0;
-            } else if (args.length > 0 && $.coolDown.exists(command + ' ' + args[0])) {
-                oncooldown = $.coolDown.get(command + ' ' + args[0], sender, isMod) !== 0;
-            } else {
-                oncooldown = $.coolDown.get(command, sender, isMod) !== 0;
             }
 
-            if (oncooldown) {
-                $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg', command, $.coolDown.getSecs(sender, command, isMod)), $.getIniDbBoolean('settings', 'coolDownMsgEnabled', false));
-                consoleDebug('Command !' + command + ' was not sent due to it being on cooldown.');
+            // Check the command cooldown.
+            var cooldownDuration,
+                isGlobalCooldown,
+                cooldownCommand = command;
+
+            if (args.length === 1 && $.coolDown.exists(cooldownCommand + ' ' + args[0])) {
+                cooldownCommand += ' ' + args[0];
+            }
+            if (args.length > 1 && $.coolDown.exists(cooldownCommand + ' ' + args[1])) {
+                cooldownCommand += ' ' + args[1];
+            } 
+
+            [cooldownDuration, isGlobalCooldown] = $.coolDown.get(cooldownCommand, sender, isMod);
+
+            if (cooldownDuration > 0) {
+                consoleDebug('Command ! ' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user' + sender) + '.');
+                if ($.getIniDbBoolean('settings', 'coolDownMsgEnabled')) {
+                    if (isGlobalCooldown) {
+                        $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration), true);
+                        
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                    }
+                }
                 return;
             }
 
@@ -601,7 +613,29 @@
                 return;
             }
 
-            if (isAdmin == false && $.discord.cooldown.get(command, senderId) !== 0) {
+            // Check the command cooldown.
+            var cooldownDuration,
+                isGlobalCooldown,
+                cooldownCommand = command;
+
+            if (args.length === 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[0])) {
+                cooldownCommand += ' ' + args[0];
+            }
+            if (args.length > 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[1])) {
+                cooldownCommand += ' ' + args[1];
+            } 
+
+            [cooldownDuration, isGlobalCooldown] = $.discord.cooldown.get(cooldownCommand, senderId);
+
+            if (isAdmin === false && cooldownDuration > 0) {
+                if ($.getIniDbBoolean('discordCooldownSettings', 'coolDownMsgEnabled')) {
+                    consoleDebug('Discord command ! ' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user' + username) + '.');
+                    if (isGlobalCooldown) {
+                        $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration));
+                    } else {
+                        $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                    }
+                }
                 return;
             }
 
@@ -610,6 +644,7 @@
             }
 
             if (!$.discord.getCommandChannelAllowed(command, channelName, channelId)) {
+                $.consoleLn('[Discord] Not processing command ' + command + ' due to !channelcom');
                 return;
             }
 

@@ -16,13 +16,16 @@
  */
 package com.gmt2001;
 
+import com.gmt2001.httpclient.HttpClient;
+import com.gmt2001.httpclient.HttpClientResponse;
+import com.gmt2001.httpclient.HttpUrl;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,7 +34,7 @@ import tv.phantombot.PhantomBot;
 /*
  * @author gmt2001
  */
-public class GamesListUpdater {
+public final class GamesListUpdater {
 
     private static final int UPDATE_INTERVAL_DAYS = 7;
     private static final String BASE_URL = "https://raw.githubusercontent.com/PhantomBot/games-list/master/";
@@ -46,7 +49,11 @@ public class GamesListUpdater {
     public static void update(boolean force) {
         Thread.setDefaultUncaughtExceptionHandler(com.gmt2001.UncaughtExceptionHandler.instance());
 
-        com.gmt2001.Console.debug.println("Starting GamesListUpdater");
+        if (force) {
+            com.gmt2001.Console.out.println("Starting GamesListUpdater");
+        } else {
+            com.gmt2001.Console.debug.println("Starting GamesListUpdater");
+        }
 
         if (!PhantomBot.instance().getDataStore().HasKey("settings", "", "gamesList-version")) {
             com.gmt2001.Console.debug.println("Version not set, initializing to 0");
@@ -64,25 +71,34 @@ public class GamesListUpdater {
 
         com.gmt2001.Console.debug.println("Last Update: " + cal.toString());
 
-        if (cal.getTime().after(new Date())) {
+        if (!force && cal.getTime().after(new Date())) {
             com.gmt2001.Console.debug.println("Skipping update, interval has not expired...");
             return;
         }
 
         PhantomBot.instance().getDataStore().SetLong("settings", "", "gamesList-lastCheck", new Date().getTime());
 
-        HttpResponse response = HttpRequest.getData(HttpRequest.RequestType.GET, BASE_URL + "index.json", "", new HashMap<>());
+        HttpClientResponse response;
+        try {
+            response = HttpClient.get(HttpUrl.fromUri(BASE_URL, "index.json"));
+        } catch (URISyntaxException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+            return;
+        }
 
-        if (!response.success) {
+        if (!response.isSuccess() || !response.hasJson()) {
+            if (force) {
+                com.gmt2001.Console.out.println("Failed to retrive the main index, update failed...");
+            }
             com.gmt2001.Console.debug.println("Skipping update, request failed...");
             com.gmt2001.Console.debug.println(response.toString());
             return;
         }
 
-        JSONObject jso = new JSONObject(response.content);
+        JSONObject jso = response.json();
         int myVersion = PhantomBot.instance().getDataStore().GetInteger("settings", "", "gamesList-version");
 
-        if (!Files.exists(Paths.get("./web/panel/js/utils/gamesList.txt"))) {
+        if (force || !Files.exists(Paths.get("./web/panel/js/utils/gamesList.txt"))) {
             myVersion = 0;
         }
 
@@ -104,15 +120,19 @@ public class GamesListUpdater {
             return;
         }
 
-        com.gmt2001.Console.debug.println("Executing updates to reach version " + jso.getInt("version") + "...");
+        if (force) {
+            com.gmt2001.Console.out.println("Executing updates to reach version " + jso.getInt("version") + "...");
+        } else {
+            com.gmt2001.Console.debug.println("Executing updates to reach version " + jso.getInt("version") + "...");
+        }
 
-        boolean fullUpdate = false;
+        boolean fullUpdate = force;
         while (myVersion < jso.getInt("version")) {
             int nextVersion = myVersion + 1;
             com.gmt2001.Console.debug.println("Current version is " + myVersion + ", updating to version " + nextVersion + "...");
 
             JSONArray indexesToUpdate;
-            if (jso.getJSONObject("index_changes").has("" + nextVersion)) {
+            if (!force && jso.getJSONObject("index_changes").has("" + nextVersion)) {
                 com.gmt2001.Console.debug.println("Found changelist for version " + nextVersion);
                 indexesToUpdate = jso.getJSONObject("index_changes").getJSONArray("" + nextVersion);
             } else {
@@ -124,8 +144,16 @@ public class GamesListUpdater {
 
             com.gmt2001.Console.debug.println("Processing indexes...");
             for (int i = 0; i < indexesToUpdate.length(); i++) {
-                UpdateFromIndex(data, indexesToUpdate.getInt(i));
+                if (force) {
+                    com.gmt2001.Console.out.println("Updating from index " + indexesToUpdate.getInt(i) + "...");
+                }
+                UpdateFromIndex(data, indexesToUpdate.getInt(i), force);
             }
+
+            if (force) {
+                com.gmt2001.Console.out.println("Updating from manual index...");
+            }
+            UpdateFromIndex(data, -1, force);
 
             if (jso.getJSONObject("deletes").has("" + nextVersion)) {
                 com.gmt2001.Console.debug.println("Found deletes for version " + nextVersion + ", processing...");
@@ -140,7 +168,11 @@ public class GamesListUpdater {
             }
 
             try {
-                com.gmt2001.Console.debug.println("Writing gamesList.txt version " + myVersion + "...");
+                if (force) {
+                    com.gmt2001.Console.out.println("Writing gamesList.txt version " + myVersion + "...");
+                } else {
+                    com.gmt2001.Console.debug.println("Writing gamesList.txt version " + myVersion + "...");
+                }
                 Files.write(Paths.get("./web/panel/js/utils/gamesList.txt"), data);
                 com.gmt2001.Console.debug.println("Saved " + data.size() + " entries");
             } catch (IOException ex) {
@@ -151,19 +183,32 @@ public class GamesListUpdater {
             PhantomBot.instance().getDataStore().SetInteger("settings", "", "gamesList-version", myVersion);
         }
 
-        com.gmt2001.Console.debug.println("Games list update complete, now at version " + myVersion);
+        if (force) {
+            com.gmt2001.Console.out.println("Games list update complete, now at version " + myVersion);
+        } else {
+            com.gmt2001.Console.debug.println("Games list update complete, now at version " + myVersion);
+        }
     }
 
-    private static void UpdateFromIndex(List<String> data, int index) {
-        HttpResponse response = HttpRequest.getData(HttpRequest.RequestType.GET, BASE_URL + "data/games" + index + ".json", "", new HashMap<>());
+    private static void UpdateFromIndex(List<String> data, int index, boolean force) {
+        HttpClientResponse response;
+        try {
+            response = HttpClient.get(HttpUrl.fromUri(BASE_URL, "data/games" + index + ".json"));
+        } catch (URISyntaxException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+            return;
+        }
 
-        if (!response.success) {
+        if (!response.isSuccess()) {
+            if (force) {
+                com.gmt2001.Console.out.println("Failed to retrive index " + index + ", skipping...");
+            }
             com.gmt2001.Console.debug.println("Skipping index " + index + ", request failed...");
             com.gmt2001.Console.debug.println(response.toString());
             return;
         }
 
-        JSONArray jsa = new JSONArray(response.content);
+        JSONArray jsa = new JSONArray(response.responseBody());
 
         for (int i = 0; i < jsa.length(); i++) {
             com.gmt2001.Console.debug.println("Processing game \"" + jsa.getJSONObject(i).getString("name") + "\"...");

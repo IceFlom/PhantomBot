@@ -33,16 +33,21 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.net.ssl.SSLException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.cache.TwitchCache;
 import tv.phantombot.event.EventBus;
@@ -71,8 +76,9 @@ public class TwitchPubSub {
     private String oAuth;
     private TwitchPubSubWS twitchPubSubWS;
     private final ReentrantLock reconnectLock = new ReentrantLock();
-    private final ExponentialBackoff backoff = new ExponentialBackoff(1000L, 120000L);
+    private final ExponentialBackoff backoff = new ExponentialBackoff(1000L, 900000L);
     private boolean lastConnectSuccess = false;
+    private final Pattern escapePattern = Pattern.compile("(\\[^btnfru\"\\'/])");
 
     /**
      * Constructor for the PubSub class.
@@ -360,21 +366,24 @@ public class TwitchPubSub {
                         switch (messageObj.getString("type")) {
                             case "stream-up":
                                 if (chanid == this.channelId) {
-                                    EventBus.instance().postAsync(new TwitchOnlineEvent());
-                                    TwitchCache.instance(PhantomBot.instance().getChannelName()).goOnline();
+                                    Mono.delay(Duration.ofSeconds(10)).doFinally((SignalType s) -> {
+                                        TwitchCache.instance().updateGame();
+                                        EventBus.instance().postAsync(new TwitchOnlineEvent());
+                                        TwitchCache.instance().goOnline();
+                                    });
                                 }
                                 EventBus.instance().postAsync(new PubSubStreamUpEvent(chanid, srvtime, messageObj.getInt("play_delay")));
                                 break;
                             case "stream-down":
                                 if (chanid == this.channelId) {
                                     EventBus.instance().postAsync(new TwitchOfflineEvent());
-                                    TwitchCache.instance(PhantomBot.instance().getChannelName()).goOffline();
+                                    TwitchCache.instance().goOffline();
                                 }
                                 EventBus.instance().postAsync(new PubSubStreamDownEvent(chanid, srvtime));
                                 break;
                             case "viewcount":
                                 if (chanid == this.channelId) {
-                                    TwitchCache.instance(PhantomBot.instance().getChannelName()).updateViewerCount(messageObj.getInt("viewers"));
+                                    TwitchCache.instance().updateViewerCount(messageObj.getInt("viewers"));
                                 }
                                 EventBus.instance().postAsync(new PubSubViewCountEvent(chanid, srvtime, messageObj.getInt("viewers")));
                                 break;
@@ -481,13 +490,39 @@ public class TwitchPubSub {
         }
 
         /**
+         * Fixes any literal line breaks or bad escapes that were inserted into one of the JSON values.
+         *
+         * @param message The message to fix.
+         * @return The fixed message.
+         */
+        private String fixLineBreaksEscapes(String message) {
+            StringBuilder sb = new StringBuilder();
+            String[] parts = message.replaceAll("\r", "").split("\n");
+
+            for (String s : parts) {
+                Matcher m = escapePattern.matcher(s);
+                int start = 0;
+                while (m.find(start)) {
+                    start = m.start() + 2;
+                    m.appendReplacement(sb, "\\\\");
+                    String g = m.group();
+                    sb.append(g.substring(g.length() - 1));
+                }
+                m.appendTail(sb);
+                sb.append("\\n");
+            }
+
+            return sb.substring(0, sb.length() - 2);
+        }
+
+        /**
          * Handles the event of when we get messages from the socket.
          *
          * @param message Message the socket sent.
          */
         private void onMessage(String message) {
             try {
-                JSONObject messageObj = new JSONObject(message);
+                JSONObject messageObj = new JSONObject(this.fixLineBreaksEscapes(message));
 
                 com.gmt2001.Console.debug.println("[PubSub Raw Message] " + messageObj);
 
@@ -529,6 +564,7 @@ public class TwitchPubSub {
                             return;
                         }
                     }
+                    backoff.Reset();
                 } else if (messageObj.has("error") && messageObj.getString("error").length() > 0) {
                     com.gmt2001.Console.err.println("TwitchPubSubWS Error: " + messageObj.getString("error"));
                     return;
