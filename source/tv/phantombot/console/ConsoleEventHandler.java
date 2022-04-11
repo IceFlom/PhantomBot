@@ -16,6 +16,7 @@
  */
 package tv.phantombot.console;
 
+import com.gmt2001.GamesListUpdater;
 import com.gmt2001.HttpRequest;
 import com.gmt2001.HttpResponse;
 import com.gmt2001.TwitchAPIv5;
@@ -102,7 +103,9 @@ public class ConsoleEventHandler implements Listener {
             }
         }
 
-        message = message.replaceAll("!", "").trim();
+        if (message.startsWith("!")) {
+            message = message.substring(1);
+        }
 
         // Check for arguments in the message string.
         if (message.contains(" ")) {
@@ -110,6 +113,13 @@ public class ConsoleEventHandler implements Listener {
             message = messageString.substring(0, messageString.indexOf(" "));
             arguments = messageString.substring(messageString.indexOf(" ") + 1);
             argument = arguments.split(" ");
+        }
+
+        /**
+         * @consolecommand updategameslist - Force a full update of the games list.
+         */
+        if (message.equalsIgnoreCase("updategameslist")) {
+            GamesListUpdater.update(true);
         }
 
         /**
@@ -174,7 +184,7 @@ public class ConsoleEventHandler implements Listener {
         }
 
         /**
-         * @consolecommand createcmdlist - Creates a list of all commands with their permissions.
+         * @consolecommand createcmdlist - Creates a list of all commands with their permissions as a CSV.
          */
         if (message.equalsIgnoreCase("createcmdlist")) {
             com.gmt2001.Console.out.println("[CONSOLE] Executing createcmdlist.");
@@ -585,7 +595,7 @@ public class ConsoleEventHandler implements Listener {
         }
 
         /**
-         * @consolecommand reconnect - Reconnects to RMI, Host TMI, and PubSub.
+         * @consolecommand reconnect - Reconnects to TMI, Host TMI, and PubSub.
          */
         if (message.equalsIgnoreCase("reconnect")) {
             com.gmt2001.Console.out.println("[CONSOLE] Executing TMI, Host TMI, and PubSub reconnect");
@@ -625,7 +635,7 @@ public class ConsoleEventHandler implements Listener {
         }
 
         /**
-         * @consolecommand dumplogs - Prints the latest logs to the console.
+         * @consolecommand printlogs - Prints the latest logs to the console.
          */
         if (message.equalsIgnoreCase("printlogs")) {
             com.gmt2001.Console.out.println("[CONSOLE] Executing printlogs");
