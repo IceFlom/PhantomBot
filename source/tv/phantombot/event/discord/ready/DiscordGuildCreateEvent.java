@@ -14,15 +14,27 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package tv.phantombot.event.discord.ready;
 
-window.panelSettings = {
-    channelName: '',
-    botName: '',
-    displayName: '',
-    auth: ''
-};
+import discord4j.core.object.entity.Role;
+import java.util.Collections;
+import java.util.List;
+import tv.phantombot.event.Event;
 
-function getChannelName() { return window.panelSettings.channelName; }
-function getBotName() { return window.panelSettings.botName; }
-function getAuth() { return window.panelSettings.auth; }
-function getDisplayName() { return window.panelSettings.displayName; }
+public class DiscordGuildCreateEvent extends Event {
+
+    private final List<Role> roles;
+
+    /**
+     * Class constructor.
+     *
+     * @param roles
+     */
+    public DiscordGuildCreateEvent(List<Role> roles) {
+        this.roles = Collections.unmodifiableList(roles);
+    }
+
+    public List<Role> getRoles() {
+        return this.roles;
+    }
+}
