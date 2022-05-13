@@ -17,6 +17,7 @@
 package com.gmt2001.datastore;
 
 import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager;
+import com.gmt2001.PathValidator;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -110,13 +111,13 @@ public final class SqliteStore extends DataStore {
                 if (!hasAutoVacuum) {
                     com.gmt2001.Console.debug.println("Enabling auto_vacuum");
                     try ( PreparedStatement pragmaStatement = connection.prepareStatement("PRAGMA auto_vacuum = 2;")) {
-                        pragmaStatement.executeUpdate();
+                        pragmaStatement.execute();
                     }
                 }
 
                 com.gmt2001.Console.debug.println("STARTUP VACUUM");
                 try ( PreparedStatement vacuumStatement = connection.prepareStatement("VACUUM;")) {
-                    vacuumStatement.executeUpdate();
+                    vacuumStatement.execute();
                 }
             } finally {
                 this.rwl.writeLock().unlock();
@@ -1235,12 +1236,12 @@ public final class SqliteStore extends DataStore {
             try ( Connection connection = this.poolMgr.getConnection()) {
                 boolean vacuumed = false;
                 try {
-                    Path walPath = Paths.get(this.dbFile + "-wal").toAbsolutePath().normalize().toRealPath();
+                    Path walPath = PathValidator.getRealPath(Paths.get(this.dbFile + "-wal"));
                     if (Files.exists(walPath) && Files.size(walPath) > MAXWALSIZE) {
                         vacuumed = true;
                         com.gmt2001.Console.debug.println("MAXWALSIZE VACUUM");
                         try ( PreparedStatement vacuumStatement = connection.prepareStatement("VACUUM;")) {
-                            vacuumStatement.executeUpdate();
+                            vacuumStatement.execute();
                             this.nextVacuum = Instant.now().plus(1, ChronoUnit.DAYS);
                         }
                     }
@@ -1252,13 +1253,13 @@ public final class SqliteStore extends DataStore {
                     if (this.nextVacuum.isBefore(Instant.now())) {
                         com.gmt2001.Console.debug.println("DAILY VACUUM");
                         try ( PreparedStatement vacuumStatement = connection.prepareStatement("VACUUM;")) {
-                            vacuumStatement.executeUpdate();
+                            vacuumStatement.execute();
                             this.nextVacuum = Instant.now().plus(1, ChronoUnit.DAYS);
                         }
                     } else {
                         com.gmt2001.Console.debug.println("PRAGMA incremental_vacuum(2048)");
                         try ( PreparedStatement vacuumStatement = connection.prepareStatement("PRAGMA incremental_vacuum(2048);")) {
-                            vacuumStatement.executeUpdate();
+                            vacuumStatement.execute();
                         }
                     }
                 }
@@ -1280,7 +1281,7 @@ public final class SqliteStore extends DataStore {
 
             try ( Connection connection = this.poolMgr.getConnection()) {
                 try ( PreparedStatement vacuumStatement = connection.prepareStatement("VACUUM;")) {
-                    vacuumStatement.executeUpdate();
+                    vacuumStatement.execute();
                 }
             }
         } catch (SQLException ex) {
