@@ -60,7 +60,7 @@ public final class JSFileSystem {
         }
 
         try {
-            Files.createDirectories(Paths.get(path));
+            Files.createDirectories(PathValidator.getRealPath(Paths.get(path)));
         } catch (IOException ex) {
             return false;
         }

@@ -18,8 +18,10 @@ package com.gmt2001;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import tv.phantombot.CaselessProperties;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.RepoVersion;
 
@@ -49,6 +51,28 @@ public final class PathValidator {
     };
 
     private PathValidator() {
+    }
+
+    public static Path getRealPath(String path) {
+        return getRealPath(Paths.get(path));
+    }
+
+    public static Path getRealPath(Path path) {
+        Path originalPath = path.toAbsolutePath().normalize();
+        try {
+            return originalPath.toRealPath();
+        } catch (IOException ex) {
+            if (NoSuchFileException.class.isAssignableFrom(ex.getClass())) {
+                Path parentPath = originalPath.getParent();
+
+                if (parentPath != null) {
+                    Path realPath = getRealPath(parentPath);
+                    return realPath.resolve(originalPath.getFileName());
+                }
+            }
+        }
+
+        return path;
     }
 
     public static String getDockerPath() {
@@ -137,13 +161,31 @@ public final class PathValidator {
             String executionPath = PhantomBot.GetExecutionPath();
             Path p = Paths.get(pathToFile).toAbsolutePath();
 
+            if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                com.gmt2001.Console.debug.println("orig=" + p.toString());
+            }
+
             boolean useReal = true;
             if (!Files.exists(p)) {
+                if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                    com.gmt2001.Console.debug.println("!exists");
+                }
+
                 if (p.compareTo(Paths.get(executionPath).toAbsolutePath()) <= 0) {
-                    return false;
+                    if (!RepoVersion.isDocker() || p.compareTo(Paths.get(getDockerPath()).toAbsolutePath()) <= 0) {
+                        if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                            com.gmt2001.Console.debug.println("escaped");
+                        }
+
+                        return false;
+                    }
                 }
 
                 if (!isValidPathInternal(p.getParent().toString(), validPaths)) {
+                    if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                        com.gmt2001.Console.debug.println("!validparent");
+                    }
+
                     return false;
                 }
 
@@ -156,7 +198,26 @@ public final class PathValidator {
                 p = p.normalize();
             }
 
+            if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                com.gmt2001.Console.debug.println("normalreal=" + p.toString());
+                com.gmt2001.Console.debug.println("execution=" + executionPath);
+                com.gmt2001.Console.debug.println("testpath=" + Paths.get(executionPath, VALID_PATHS_SHARED[0]).toAbsolutePath().normalize().toString());
+
+                if (RepoVersion.isDocker()) {
+                    com.gmt2001.Console.debug.println("docker=" + getDockerPath());
+                    com.gmt2001.Console.debug.println("dockertestpath=" + Paths.get(getDockerPath(), VALID_PATHS_SHARED[0]).toAbsolutePath().normalize().toString());
+                }
+            }
+
             if (Files.exists(p) && (Files.isHidden(p) || !Files.isReadable(p))) {
+                if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+                    if (Files.isHidden(p)) {
+                        com.gmt2001.Console.debug.println("hidden");
+                    } else if (!Files.isReadable(p)) {
+                        com.gmt2001.Console.debug.println("!readable");
+                    }
+                }
+
                 return false;
             }
 
@@ -171,6 +232,10 @@ public final class PathValidator {
             }
         } catch (IOException ex) {
             com.gmt2001.Console.debug.printOrLogStackTrace(ex);
+        }
+
+        if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
+            com.gmt2001.Console.debug.println("!valid");
         }
 
         return false;

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
 #
@@ -17,18 +17,20 @@
 #
 
 #
-# PhantomBot Service Restart - BSD
+# PhantomBot Service Restart - Docker
 #
-# Please run the following to prep this script.
-# % sudo chown 0 restartbot-bsd.sh
-# % sudo chmod +x restartbot-bsd.sh
-# % sudo chmod ug+s restartbot-bsd.sh
 #
-# Also, check if the command below is the correct command to restart your PhantomBot service, and adjust accordingly
+# To enable this script:
+# % Stop the bot
+# % Add the following line to botlogin.txt: restartcmd=/opt/PhantomBot/restartbot-docker.sh
+# % Replace the path as appropriate, the full path must be used
+# % Start the bot
+#
+# Also, ensure your Docker container is configured with a restart policy of "always" or "unless-stopped"
 #
 # WARNING: This script, when setup as above, will run with full root privileges.
 # It is a MAJOR security risk to allow any variables to be used in this script.
 # HARD CODE THE PROPER COMMAND FOR THIS BOT INSTALLATION AND DO NOT USE VARIABLES OR LOGIC AT ALL!
 #
 
-service phantombot restart
+kill $(pidof java)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
 #
@@ -17,12 +17,18 @@
 #
 
 #
-# PhantomBot Service Restart - Linux
+# PhantomBot Service Restart - BSD
 #
 # Please run the following to prep this script.
-# % sudo chown 0 restartbot.sh
-# % sudo chmod +x restartbot.sh
-# % sudo chmod ug+s restartbot.sh
+# % sudo chown 0 restartbot-bsd.sh
+# % sudo chmod +x restartbot-bsd.sh
+# % sudo chmod ug+s restartbot-bsd.sh
+#
+# To enable this script:
+# % Stop the bot
+# % Add the following line to botlogin.txt: restartcmd=/path/to/restartbot-bsd.sh
+# % Replace the path as appropriate, the full path must be used
+# % Start the bot
 #
 # Also, check if the command below is the correct command to restart your PhantomBot service, and adjust accordingly
 #
@@ -31,4 +37,4 @@
 # HARD CODE THE PROPER COMMAND FOR THIS BOT INSTALLATION AND DO NOT USE VARIABLES OR LOGIC AT ALL!
 #
 
-systemctl restart phantombot.service
+service phantombot restart

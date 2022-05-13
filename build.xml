@@ -25,9 +25,9 @@
 
     <property environment="env" />
     <!-- Please see this for version numbers: https://semver.org/ -->
-    <property name="version" value="3.6.2" />
+    <property name="version" value="3.6.2.6" />
     <!-- Please see this for version numbers: https://semver.org/ -->
-    <property name="webpanel.version" value="1.6.1" />
+    <property name="webpanel.version" value="1.6.3" />
     <property name="src" location="source" />
     <property name="reference" location="lib" />
     <property name="build" location="build" />
@@ -110,6 +110,7 @@
     </target>
 
     <target depends="init-ivy" name="ivy-retrieve">
+        <ivy:settings file="ivysettings.xml"/>
         <ivy:retrieve sync="true"/>
         <ivy:report graph="false" todir="resources/licenses/"/>
         <exec executable="git" outputproperty="git.ivychange" failifexecutionfails="false" errorproperty="">
@@ -124,10 +125,12 @@
     </target>
 
     <target depends="init-ivy" name="ivy-cleancache">
+        <ivy:settings file="ivysettings.xml"/>
         <ivy:cleancache/>
     </target>
 
     <target depends="init-ivy" name="ivy-list-updates">
+        <ivy:settings file="ivysettings.xml"/>
         <ivy:checkdepsupdate/>
     </target>
 
@@ -262,6 +265,26 @@
             file="source/com/gmt2001/RollbarProvider.java"
             match="ENDPOINT = &quot;(.*)&quot;;"
             replace="ENDPOINT = &quot;@endpoint@&quot;;" />
+    </target>
+
+    <target name="copy-javascript" depends="prepare-javascript-true, prepare-javascript-false">
+    </target>
+
+    <target name="prepare-javascript-true" depends="check-compiled" if="${compiled}">
+        <echo level="info" message="Phantombot ${version} already compiled, copying javascript"/>
+        <delete dir="${version.folder}/scripts" />
+        <copy todir="${version.folder}/scripts">
+            <fileset dir="./javascript-source" />
+        </copy>
+    </target>
+
+    <target name="prepare-javascript-false" depends="check-compiled" unless="${compiled}">
+        <echo level="info" message="Phantombot ${version} has not yet been compiled, compiling now"/>
+        <antcall target="jar"/>
+    </target>
+
+    <target name="check-compiled">
+        <available file="${version.folder}/PhantomBot.jar" property="compiled"/>
     </target>
 
     <target depends="compile.src,post.compile,git.revision" name="jar">

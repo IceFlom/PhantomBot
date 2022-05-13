@@ -55,7 +55,7 @@ class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> 
     }
 
     /**
-     * Handles incoming WebSocket frames and passes them to the {@link WsClientFrameHandler}
+     * Handles incoming WebSocket frames
      *
      * @param ctx The {@link ChannelHandlerContext} of the session
      * @param frame The {@link WebSocketFrame} containing the request frame

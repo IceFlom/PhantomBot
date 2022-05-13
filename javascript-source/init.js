@@ -48,11 +48,12 @@
      * @param {String}   hookName
      * @param {Function} handler
      */
-    function Hook(scriptName, hookName, handler) {
+    function Hook(scriptName, hookName, handler, scriptPath) {
         hookName = $api.formatEventName(hookName) + '';
         this.scriptName = scriptName;
         this.hookName = hookName;
         this.handler = handler;
+        this.scriptPath = scriptPath;
     }
 
     /*
@@ -267,7 +268,7 @@
             if (hooks[hookName] === undefined) {
                 hooks[hookName] = new HookHandler(hookName);
             }
-            hooks[hookName].handlers.push(new Hook(scriptName, hookName, handler));
+            hooks[hookName].handlers.push(new Hook(scriptName, hookName, handler, $script.getRealFileName()));
         }
     }
 
@@ -310,9 +311,9 @@
             } catch (ex) {
                 var errmsg;
                 try {
-                    errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptName + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']';
+                    errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']';
                 } catch (ex2) {
-                    errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptName + ']';
+                    errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + ']';
                 }
                 $.log.error(errmsg);
                 if (ex.javaException !== undefined) {
@@ -333,9 +334,9 @@
                     } catch (ex) {
                         var errmsg;
                         try {
-                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptName + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']'
+                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']'
                         } catch (ex2) {
-                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptName + ']';
+                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + ']';
                         }
                         $.log.error(errmsg);
                         if (ex.javaException !== undefined) {
@@ -658,9 +659,9 @@
         loadedHooks.push('discordChannelCommand');
 
         /*
-         * @event discordReady
+         * @event discordGuildCreate
          */
-        $api.on($script, 'discordReady', function (event) {
+        $api.on($script, 'discordGuildCreate', function (event) {
             var roles = $.discordAPI.getGuildRoles();
             var perms = {
                 roles: []
@@ -676,9 +677,9 @@
 
             $.inidb.set('discordPermsObj', 'obj', JSON.stringify(perms));
 
-            callHook('discordReady', event, false);
+            callHook('discordGuildCreate', event, false);
         });
-        loadedHooks.push('discordReady');
+        loadedHooks.push('discordGuildCreate');
 
         var hookNames = $api.getEventNames();
         for (var i = 0; i < hookNames.size(); i++) {
