@@ -2,8 +2,8 @@ name: Build/Upload Edge
 on:
   push:
     branches:
-      - 'edge'
-      - 'edge-*'
+      - 'iv-dev'
+      - 'iv-dev-*'
 jobs:
   buildtest:
     name: Test Build on ubuntu-latest with JDK 11
@@ -82,9 +82,7 @@ jobs:
     - name: Build with Ant
       env:
         BUILDTYPE: ${{ format('{0}_build', steps.build_env.outputs.branch) }}
-        ROLLBAR_TOKEN: ${{ secrets.ROLLBAR_TOKEN }}
-        ROLLBAR_ENDPOINT: ${{ secrets.ROLLBAR_ENDPOINT }}
-      run: ant -noinput -Dbuildtype=$BUILDTYPE -Drollbar_token=$ROLLBAR_TOKEN -Drollbar_endpoint=$ROLLBAR_ENDPOINT -buildfile build.xml dist
+      run: ant -noinput -Dbuildtype=$BUILDTYPE -buildfile build.xml dist
     - name: Prep Artifacts
       env:
         FOLDERFULL: ${{ format('PhantomBot-{0}', steps.build_env.outputs.branch) }}
