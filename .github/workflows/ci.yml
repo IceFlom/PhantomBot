@@ -4,6 +4,7 @@ on:
     branches:
       - '*'
       - '!edge'
+      - '!iv-dev'
   pull_request:
     branches:
       - '*'
