@@ -72,12 +72,9 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          platforms:
-            - linux/amd64
-            #- linux/arm64
-            #- linux/arm/v7
-          build-args:
-            - TARGETPLATFORM="linux/amd64"
-            - PROJECT_VERSION="3.6.2.6"
+          platforms: linux/amd64
+          build-args: | 
+            TARGETPLATFORM="linux/amd64"
+            PROJECT_VERSION="3.6.2.6"
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_IMAGE }}:latest
