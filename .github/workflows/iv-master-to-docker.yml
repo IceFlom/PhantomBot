@@ -2,8 +2,8 @@ name: Build/Upload Edge
 on:
   push:
     branches:
-      - 'iv-dev'
-      - 'iv-dev-*'
+      - 'iv-master'
+      - 'iv-master-*'
 jobs:
   buildtest:
     name: Test Build on ubuntu-latest with JDK 11
