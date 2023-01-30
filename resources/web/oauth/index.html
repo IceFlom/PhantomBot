@@ -1,5 +1,5 @@
 <!--
-    Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+    Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -119,7 +119,8 @@
                                             <li>Click the <i>Applications</i> tab</li>
                                             <li>Click <i>Register Your Application</i></li>
                                             <li>In the <i>Name</i> box, put the name of your bot, or another name that will be recognized</li>
-                                            <li>In the <i>OAuth Redirect URLs</i> box, put <input type="text" id="selfurl" class="form-control" readonly="readonly"></li>
+                                            <li>In the <i>OAuth Redirect URLs</i> box, put <input type="text" id="selfurl" class="form-control" readonly="readonly">
+                                                <em>NOTE:</em> <i>It is critically important that the URL is <em>EXACTLY</em> what is in the box above, otherwise, authorization may fail</i></li>
                                             <li>In the <i>Category</i> drop-down, select <i>Chat Bot</i></li>
                                             <li>Click <i>Create</i></li>
                                         </ol>
@@ -140,12 +141,12 @@
                                         <ol>
                                             <li>Click <i>New Secret</i></li>
                                             <li>Click <i>OK</i> when prompted to generate a new secret</li>
-                                            <li>Enter the Client Secret here: <input type="text" id="clientsecret" class="form-control" placeholder="Client Secret"></li>
-                                            <li id="secretmsg" class="hide"><em>NOTE:</em> <i>You already have a secret saved, it is hidden for security reasons. If you do not need to update the secret, skip ahead to the authorize buttons</i></li>
+                                            <li>Enter the Client Secret here: <input type="text" id="clientsecret" class="form-control" placeholder="Client Secret">
+                                            <span id="secretmsg" class="hide"><em>NOTE:</em> <i>You already have a secret saved, it is hidden for security reasons. If you do not need to update the secret, skip ahead to the authorize buttons</i></span></li>
                                         </ol>
                                     </li>
                                     <li>
-                                        Click the disk icon at the end of this line to save the Client ID and Client Secret: <i id="saveclient" class="fas fa-save"></i>
+                                        Click this button to save the Client ID and Client Secret: <button id="saveclient" class="btn btn-primary">Save Client ID and Secret</button>
                                     </li>
                                     <li>
                                         Re-authorize the bot <span id="auththebroadcaster">and broadcaster </span>using the buttons below
@@ -160,7 +161,7 @@
                                             <li>Next to the existing <i>OAuth Redirect URLs</i> box, click the <i>Add</i> button</li>
                                             <li>Put this URL into the new blank box that appeared <input type="text" id="selfurlbroadcaster" class="form-control" readonly="readonly"></li>
                                             <li>Click <i>Save</i></li>
-                                            <li>Click here to generate a broadcaster password for this page: <i id="resetbroadcastertoken" class="fas fa-sync"></i></li>
+                                            <li>Click this button generate a broadcaster password for this page: <button id="resetbroadcastertoken" class="btn btn-primary">Generate Broadcaster Temporary Password</button></li>
                                             <li>Have the broadcaster visit this link <input type="text" id="selfurlbroadcastervisit" class="form-control" readonly="readonly"></li>
                                             <li>Give the broadcaster this username <input type="text" value="broadcaster" class="form-control" readonly="readonly"> and this password <input type="text" id="broadcastertoken" class="form-control" readonly="readonly"></li>
                                             <li>After the broadcaster logs in, they just have to click the <i>Connect With Twitch Broadcaster</i> button and authorize it</li>
@@ -184,7 +185,11 @@
                                                 <ul><li>This is the account the bot will show up as in chat, and the account the bot will speak as.</li></ul>
                                             </li>
                                             <li id="connectbroadcasterinstruction"><div class="text-bold" style="display: inline;">Connect with Twitch Broadcaster</div> - make sure before you click the button that you are logged into the Twitch broadcaster account, if not, click the <div class="text-bold" style="display: inline;">"Not you?"</div> at the top of the Twitch page.
-                                                <ul><li>This is the account of the broadcaster, whose channel the bot will participate in and will be used to authorize API requests.</li></ul>
+                                                <ul>
+                                                    <li>This is the account of the broadcaster, whose channel the bot will participate in and will be used to authorize API requests.</li>
+                                                    <li>You can use a moderators account instead if required, but some features may not work. For example, Channel Points.</li>
+                                                    <li>Yes, we know that viewers on the website can see some of these events, but Twitch puts higher restrictions on the APIs to mitigate bad actors.</li>
+                                                </ul>
                                             </li>
                                         </ul>
                                     </div>
@@ -234,24 +239,12 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <!-- Load Bootsrap 3.3.7 -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/pace.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/pace.min.js" data-pace-options='{ "eventLag": false }'></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/admin-lte/2.4.0/js/adminlte.min.js"></script>
         <script>
                     'use strict';
                     $(function () {
                         var scopesBot = {
-                            "channel_editor": {
-                                "desc": "Write channel metadata (game, status, etc).",
-                                "tooltip": "Used start/end raids and hosting."
-                            },
-                            "channel:manage:broadcast": {
-                                "desc": "Manage a channel's broadcast configuration, including updating channel configuration and managing stream markers and stream tags.",
-                                "tooltip": "Used by custom scripts to start raids."
-                            },
-                            "channel:moderate": {
-                                "desc": "Perform moderation actions in a channel.",
-                                "tooltip": "Used to perform moderation actions (purge, timeout, ban)."
-                            },
                             "chat:edit": {
                                 "desc": "Send live Stream Chat and Rooms messages.",
                                 "tooltip": "Used to send responses in chat."
@@ -260,8 +253,24 @@
                                 "desc": "View live Stream Chat and Rooms messages.",
                                 "tooltip": "Used to login to chat and read messages."
                             },
-                            "whispers:edit": {
-                                "desc": "Send whisper messages.",
+                            "moderator:manage:announcements": {
+                                "desc": "Send announcements in channels where you have the moderator role.",
+                                "tooltip": "Used to send announcements."
+                            },
+                            "moderator:manage:banned_users": {
+                                "desc": "Ban and unban users.",
+                                "tooltip": "Used to ban, timeout, and unban users."
+                            },
+                            "moderator:manage:chat_messages": {
+                                "desc": "Delete chat messages in channels where you have the moderator role.",
+                                "tooltip": "Used to delete individual messages or clear the entire chat."
+                            },
+                            "moderator:manage:chat_settings": {
+                                "desc": "Manage a broadcaster's chat room settings.",
+                                "tooltip": "Used to enable/disable emote-only, follower-only, slow, subscriber-only, and unique (r9k) chat modes."
+                            },
+                            "user:manage:whispers": {
+                                "desc": "Read whispers that you send and receive, and send whispers on your behalf.",
                                 "tooltip": "Used to send whispers from the bot."
                             },
                             "whispers:read": {
@@ -283,37 +292,65 @@
                                 "desc": "Run commercials on a channel.",
                                 "tooltip": "Used to run commercials."
                             },
+                            "channel:manage:raids": {
+                                "desc": "Manage a channel raiding another channel.",
+                                "tooltip": "Used to start or cancel raids."
+                            },
+                            "channel:manage:redemptions": {
+                                "desc": "Manage Channel Points custom rewards and their redemptions on a channel.",
+                                "tooltip": "Used to create and manage custom Channel Points rewards."
+                            },
                             "channel:moderate": {
                                 "desc": "Perform moderation actions in a channel.",
                                 "tooltip": "Used to watch for moderation actions in PubSub."
                             },
                             "channel:read:hype_train": {
-                                "desc": "Fetch information about current/past hype trains",
-                                "tooltip": "Used to watch for hype train notifications in EventSub"
+                                "desc": "Fetch information about current/past hype trains.",
+                                "tooltip": "Used to watch for hype train notifications in EventSub."
                             },
                             "channel:read:polls": {
-                                "desc": "Fetch information about current/past polls",
-                                "tooltip": "Used to watch for Twitch poll notifications in EventSub"
+                                "desc": "Fetch information about current/past polls.",
+                                "tooltip": "Used to watch for Twitch poll notifications in EventSub."
                             },
                             "channel:read:predictions": {
-                                "desc": "Fetch information about current/past predictions",
-                                "tooltip": "Used to watch for Twitch prediction notifications in EventSub"
+                                "desc": "Fetch information about current/past predictions.",
+                                "tooltip": "Used to watch for Twitch prediction notifications in EventSub."
                             },
                             "channel:read:redemptions": {
                                 "desc": "View your channel points custom reward redemptions.",
-                                "tooltip": "Used to watch for redemption of custom Channel Points rewards in PubSub."
+                                "tooltip": "Used to get a list of Channel Points rewards and watch for redemption of custom Channel Points rewards in PubSub."
                             },
                             "channel:read:subscriptions": {
                                 "desc": "View a list of all subscribers to a channel and check if a user is subscribed to a channel.",
                                 "tooltip": "Used to watch for new subscribers that haven't shared with chat."
                             },
-                            "chat:read": {
-                                "desc": "View live Stream Chat and Rooms messages.",
-                                "tooltip": "Used by the second chat connection to watch for host notifications."
-                            },
                             "moderation:read": {
-                                "desc": "Read the list of channel moderators",
-                                "tooltip": "Used to watch for moderator add/remove events in EventSub"
+                                "desc": "Read the list of channel moderators.",
+                                "tooltip": "Used to watch for moderator add/remove events in EventSub."
+                            },
+                            "moderator:manage:announcements": {
+                                "desc": "Send announcements in channels where you have the moderator role.",
+                                "tooltip": "Used to send announcements."
+                            },
+                            "moderator:manage:banned_users": {
+                                "desc": "Ban and unban users.",
+                                "tooltip": "Used to ban, timeout, and unban users."
+                            },
+                            "moderator:manage:chat_messages": {
+                                "desc": "Delete chat messages in channels where you have the moderator role.",
+                                "tooltip": "Used to delete individual messages or clear the entire chat."
+                            },
+                            "moderator:manage:chat_settings": {
+                                "desc": "Manage a broadcaster's chat room settings.",
+                                "tooltip": "Used to enable/disable emote-only, follower-only, slow, subscriber-only, and unique (r9k) chat modes."
+                            },
+                            "moderator:manage:shield_mode": {
+                                "desc": "Manage a broadcaster's Shield Mode status.",
+                                "tooltip": "Used to enable/disable shield mode."
+                            },
+                            "moderator:manage:shoutouts": {
+                                "desc": "Manage a broadcaster's shoutouts.",
+                                "tooltip": "Used to send shoutouts."
                             }
                         };
 
@@ -580,6 +617,14 @@
 
                         $('[data-toggle="tooltip"]').tooltip();
                     });
+        </script>
+        <script>
+            if (!window.location.pathname.endsWith("/")) {
+                let newURL = window.location.toString();
+                newURL = newURL.substring(0, newURL.indexOf(window.location.pathname)) + window.location.pathname + '/' + newURL.substring(newURL.indexOf(window.location.pathname) + window.location.pathname.length);
+                document.body.innerHTML = 'Fixing the URL, click <a href="' + newURL + '" target="_self">here</a> if you didn\'t redirect automatically...';
+                window.location.replace(newURL);
+            }
         </script>
     </body>
 </html>

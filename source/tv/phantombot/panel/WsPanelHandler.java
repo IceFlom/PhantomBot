@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 package tv.phantombot.panel;
 
+import com.gmt2001.httpwsserver.HTTPWSServer;
 import com.gmt2001.httpwsserver.WebSocketFrameHandler;
 import com.gmt2001.httpwsserver.WsFrameHandler;
 import com.gmt2001.httpwsserver.auth.WsAuthenticationHandler;
@@ -27,8 +28,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -47,7 +48,9 @@ import tv.phantombot.RepoVersion;
 import tv.phantombot.cache.TwitchCache;
 import tv.phantombot.discord.DiscordAPI;
 import tv.phantombot.event.EventBus;
+import tv.phantombot.event.webpanel.websocket.WebPanelSocketConnectEvent;
 import tv.phantombot.event.webpanel.websocket.WebPanelSocketUpdateEvent;
+import tv.phantombot.twitch.api.Helix;
 
 /**
  *
@@ -55,12 +58,15 @@ import tv.phantombot.event.webpanel.websocket.WebPanelSocketUpdateEvent;
  */
 public class WsPanelHandler implements WsFrameHandler {
 
+    @SuppressWarnings("MismatchedReadAndWriteOfArray")
     private static final String[] BLOCKED_DB_QUERY_TABLES = new String[]{"commandtoken"};
     private static final String[] BLOCKED_DB_UPDATE_TABLES = new String[]{};
     private final WsAuthenticationHandler authHandler;
 
     public WsPanelHandler(String panelAuthRO, String panelAuth) {
-        this.authHandler = new WsSharedRWTokenAuthenticationHandler(panelAuthRO, panelAuth, 10);
+        this.authHandler = new WsSharedRWTokenAuthenticationHandler(panelAuthRO, panelAuth, 10, () -> {
+            EventBus.instance().postAsync(new WebPanelSocketConnectEvent());
+        });
     }
 
     @Override
@@ -88,6 +94,10 @@ public class WsPanelHandler implements WsFrameHandler {
                 return;
             }
 
+            /**
+             * @botproperty wsdebug - If `true`, information about inbound WS frames for the panel are sent to the debug log. Default `false`
+             * @botpropertycatsort wsdebug 200 900 Debug
+             */
             if (CaselessProperties.instance().getPropertyAsBoolean("wsdebug", false)) {
                 com.gmt2001.Console.debug.println(jso.toString());
             }
@@ -101,24 +111,40 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     private void handleRestrictedCommands(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
-        if (jso.has("command") || jso.has("command_sync")) {
-            handleCommand(ctx, frame, jso);
-        } else if (jso.has("dbupdate")) {
-            handleDBUpdate(ctx, frame, jso);
-        } else if (jso.has("dbincr")) {
-            handleDBIncr(ctx, frame, jso);
-        } else if (jso.has("dbdecr")) {
-            handleDBDecr(ctx, frame, jso);
-        } else if (jso.has("dbdelkey")) {
-            handleDBDelKey(ctx, frame, jso);
-        } else if (jso.has("socket_event")) {
-            handleSocketEvent(ctx, frame, jso);
-        } else if (jso.has("discordchannellist")) {
-            handleDiscordChannelList(ctx, frame, jso);
+        try {
+            if (jso.has("command") || jso.has("command_sync")) {
+                handleCommand(ctx, frame, jso);
+            } else if (jso.has("dbupdate")) {
+                handleDBUpdate(ctx, frame, jso);
+            } else if (jso.has("dbincr")) {
+                handleDBIncr(ctx, frame, jso);
+            } else if (jso.has("dbdecr")) {
+                handleDBDecr(ctx, frame, jso);
+            } else if (jso.has("dbdelkey")) {
+                handleDBDelKey(ctx, frame, jso);
+            } else if (jso.has("socket_event")) {
+                handleSocketEvent(ctx, frame, jso);
+            } else if (jso.has("discordchannellist")) {
+                handleDiscordChannelList(ctx, frame, jso);
+            } else if (jso.has("channelpointslist")) {
+                handleChannelPointsList(ctx, frame, jso);
+            }
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.println("Exception processing /ws/panel frame: " + jso.toString(), !PhantomBot.getEnableDebugging());
+            com.gmt2001.Console.err.printStackTrace(ex);
+            try {
+                this.panelNotification("error", "An exception was thrown while attempting to handle the request. See the core-error log for details", "Processing Error");
+            } catch (Exception ex2) {
+                com.gmt2001.Console.err.printStackTrace(ex2);
+            }
         }
     }
 
     private void handleCommand(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null) {
+            return;
+        }
+
         String command = jso.has("command_sync") ? jso.getString("command_sync") : jso.getString("command");
         String username = jso.has("username") ? jso.getString("username") : PhantomBot.instance().getBotName();
         String uniqueID = jso.has("query_id") ? jso.getString("query_id") : "";
@@ -141,6 +167,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     private void handleDBUpdate(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("update").getString("table");
         String key = jso.getJSONObject("update").getString("key");
         String value = jso.getJSONObject("update").getString("value");
@@ -157,6 +187,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     private void handleDBIncr(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("incr").getString("table");
         String key = jso.getJSONObject("incr").getString("key");
         String value = jso.getJSONObject("incr").getString("value");
@@ -173,6 +207,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     private void handleDBDecr(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("decr").getString("table");
         String key = jso.getJSONObject("decr").getString("key");
         String value = jso.getJSONObject("decr").getString("value");
@@ -189,6 +227,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     private void handleDBDelKey(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("delkey").getString("table");
         String key = jso.getJSONObject("delkey").getString("key");
         String uniqueID = jso.has("dbdelkey") ? jso.getString("dbdelkey") : "";
@@ -205,31 +247,41 @@ public class WsPanelHandler implements WsFrameHandler {
 
     private void handleSocketEvent(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
         String script = jso.getString("script");
-        String arguments = jso.getJSONObject("args").getString("arguments");
-        JSONArray jsonArray = jso.getJSONObject("args").getJSONArray("args");
+        JSONObject jargs = jso.getJSONObject("args");
+        String arguments = jargs.isNull("arguments") ? null : jargs.getString("arguments");
+        JSONArray jsonArray = jargs.isNull("args") ? null : jargs.getJSONArray("args");
         String uniqueID = jso.has("socket_event") ? jso.getString("socket_event") : "";
+        boolean requiresReply = jso.has("requiresReply") ? jso.getBoolean("requiresReply") : false;
 
         JSONStringer jsonObject = new JSONStringer();
         List<String> tempArgs = new LinkedList<>();
-        String[] args = null;
+        String[] args = new String[0];
 
-        for (int i = 0; i < jsonArray.length(); i++) {
-            tempArgs.add(jsonArray.getString(i));
-        }
+        if (jsonArray != null) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                if (jsonArray.isNull(i)) {
+                    tempArgs.add(null);
+                } else {
+                    tempArgs.add(jsonArray.getString(i));
+                }
+            }
 
-        if (!tempArgs.isEmpty()) {
-            int i = 0;
-            args = new String[tempArgs.size()];
+            if (!tempArgs.isEmpty()) {
+                int i = 0;
+                args = new String[tempArgs.size()];
 
-            for (String str : tempArgs) {
-                args[i] = str;
-                ++i;
+                for (String str : tempArgs) {
+                    args[i] = str;
+                    ++i;
+                }
             }
         }
 
-        EventBus.instance().postAsync(new WebPanelSocketUpdateEvent(uniqueID, script, arguments, args));
-        jsonObject.object().key("query_id").value(uniqueID).endObject();
-        WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+        EventBus.instance().postAsync(new WebPanelSocketUpdateEvent(uniqueID, script, arguments, args, requiresReply));
+        if (!requiresReply) {
+            jsonObject.object().key("query_id").value(uniqueID).endObject();
+            WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+        }
     }
 
     private void handleDiscordChannelList(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
@@ -267,27 +319,62 @@ public class WsPanelHandler implements WsFrameHandler {
         }).subscribe();
     }
 
+    private void handleChannelPointsList(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        Helix.instance().getCustomRewardAsync(null, null).doOnSuccess(json -> {
+            String uniqueID = jso.has("channelpointslist") ? jso.getString("channelpointslist") : "";
+
+            JSONStringer jsonObject = new JSONStringer();
+            jsonObject.object().key("query_id").value(uniqueID);
+            jsonObject.key("results").object();
+            if (json.has("data")) {
+                jsonObject.key("data").array();
+                json.getJSONArray("data").forEach(jsonObject::value);
+                jsonObject.endArray();
+            } else {
+                jsonObject.key("error").value(json.has("error") ? json.getString("error") : "UNKWN");
+                jsonObject.key("message").value(json.has("message") ? json.getString("message") : "UNKNOWN");
+                jsonObject.key("status").value(json.has("status") ? json.getInt("status") : -1);
+            }
+            jsonObject.endObject().endObject();
+            WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+        }).doOnError(com.gmt2001.Console.err::printStackTrace).subscribe();
+    }
+
     private void handleUnrestrictedCommands(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
-        if (jso.has("version")) {
-            handleVersion(ctx, frame, jso);
-        } else if (jso.has("remote")) {
-            handleRemote(ctx, frame, jso);
-        } else if (jso.has("dbquery")) {
-            handleDBQuery(ctx, frame, jso);
-        } else if (jso.has("dbkeys")) {
-            handleDBKeysQuery(ctx, frame, jso);
-        } else if (jso.has("dbkeyslist")) {
-            handleDBKeysListQuery(ctx, frame, jso);
-        } else if (jso.has("dbkeysbyorder")) {
-            handleDBKeysByOrderQuery(ctx, frame, jso);
-        } else if (jso.has("dbvaluesbyorder")) {
-            handleDBValuesByOrderQuery(ctx, frame, jso);
-        } else if (jso.has("dbkeyssearch")) {
-            handleDBKeysSearchQuery(ctx, frame, jso);
+        try {
+            if (jso.has("version")) {
+                handleVersion(ctx, frame, jso);
+            } else if (jso.has("remote")) {
+                handleRemote(ctx, frame, jso);
+            } else if (jso.has("dbquery")) {
+                handleDBQuery(ctx, frame, jso);
+            } else if (jso.has("dbkeys")) {
+                handleDBKeysQuery(ctx, frame, jso);
+            } else if (jso.has("dbkeyslist")) {
+                handleDBKeysListQuery(ctx, frame, jso);
+            } else if (jso.has("dbkeysbyorder")) {
+                handleDBKeysByOrderQuery(ctx, frame, jso);
+            } else if (jso.has("dbvaluesbyorder")) {
+                handleDBValuesByOrderQuery(ctx, frame, jso);
+            } else if (jso.has("dbkeyssearch")) {
+                handleDBKeysSearchQuery(ctx, frame, jso);
+            }
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.println("Exception processing /ws/panel frame: " + jso.toString(), !PhantomBot.getEnableDebugging());
+            com.gmt2001.Console.err.printStackTrace(ex);
+            try {
+                this.panelNotification("error", "An exception was thrown while attempting to handle the request. See the core-error log for details", "Processing Error");
+            } catch (Exception ex2) {
+                com.gmt2001.Console.err.printStackTrace(ex2);
+            }
         }
     }
 
     private void handleVersion(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null) {
+            return;
+        }
+
         JSONStringer jsonObject = new JSONStringer();
         String version = PhantomBot.instance().getBotInfo();
         String uniqueID = jso.has("version") ? jso.getString("version") : "";
@@ -295,15 +382,18 @@ public class WsPanelHandler implements WsFrameHandler {
         jsonObject.object().key("versionresult").value(uniqueID);
         jsonObject.key("version").value(version);
         jsonObject.key("version-data").object().key("version").value(RepoVersion.getPhantomBotVersion()).key("commit").value(RepoVersion.getRepoVersion());
-        jsonObject.key("build-type").value(RepoVersion.getBuildType()).key("panel-version").value(RepoVersion.getPanelVersion()).endObject();
+        jsonObject.key("build-type").value(RepoVersion.getBuildType()).endObject();
         jsonObject.key("java-version").value(System.getProperty("java.runtime.version"));
         jsonObject.key("os-version").value(System.getProperty("os.name"));
-        jsonObject.key("autorefreshoauth").value(CaselessProperties.instance().getProperty("clientsecret") != null && !CaselessProperties.instance().getProperty("clientsecret").isBlank());
         jsonObject.endObject();
         WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
     }
 
     private void handleRemote(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null) {
+            return;
+        }
+
         JSONStringer jsonObject = new JSONStringer();
         String uniqueID = jso.has("id") ? jso.getString("id") : "";
         String query = jso.has("query") ? jso.getString("query") : "";
@@ -315,14 +405,23 @@ public class WsPanelHandler implements WsFrameHandler {
             jsonObject.key("channelName").value(PhantomBot.instance().getChannelName());
             jsonObject.key("botName").value(PhantomBot.instance().getBotName());
             jsonObject.key("displayName").value(TwitchCache.instance().getDisplayName());
+        } else if (query.equalsIgnoreCase("sslSettings")) {
+            jsonObject.key("sslEnabled").value(HTTPWSServer.instance().isSsl());
+            jsonObject.key("autoSSL").value(HTTPWSServer.instance().isAutoSsl());
         } else if (query.equalsIgnoreCase("userLogo")) {
             jsonObject.key("results").array();
-            try ( FileInputStream inputStream = new FileInputStream("./web/panel/img/logo.jpeg")) {
+            try ( InputStream inputStream = Files.newInputStream(Paths.get("./web/panel/img/logo.jpeg"))) {
                 ByteBuf buf = Unpooled.copiedBuffer(inputStream.readAllBytes());
-                ByteBuf buf2 = Base64.encode(buf);
-                jsonObject.object().key("logo").value(buf2.toString(Charset.forName("UTF-8"))).endObject();
-                buf2.release();
-                buf.release();
+                try {
+                    ByteBuf buf2 = Base64.encode(buf);
+                    try {
+                        jsonObject.object().key("logo").value(buf2.toString(Charset.forName("UTF-8"))).endObject();
+                    } finally {
+                        HTTPWSServer.releaseObj(buf2);
+                    }
+                } finally {
+                    HTTPWSServer.releaseObj(buf);
+                }
             } catch (IOException ex) {
                 jsonObject.object().key("errors").array().object()
                         .key("status").value("500")
@@ -381,6 +480,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("query").getString("table");
         String key = jso.getJSONObject("query").getString("key");
         String uniqueID = jso.has("dbquery") ? jso.getString("dbquery") : "";
@@ -399,6 +502,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBKeysQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("query").getString("table");
         String uniqueID = jso.has("dbkeys") ? jso.getString("dbkeys") : "";
 
@@ -426,6 +533,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBKeysListQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         JSONArray jsonArray = jso.getJSONArray("query");
         String uniqueID = jso.has("dbkeyslist") ? jso.getString("dbkeyslist") : "";
 
@@ -458,6 +569,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBKeysByOrderQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("query").getString("table");
         String limit = jso.getJSONObject("query").getString("limit");
         String offset = jso.getJSONObject("query").getString("offset");
@@ -483,6 +598,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBValuesByOrderQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("query").getString("table");
         String limit = jso.getJSONObject("query").getString("limit");
         String offset = jso.getJSONObject("query").getString("offset");
@@ -514,6 +633,10 @@ public class WsPanelHandler implements WsFrameHandler {
     }
 
     public void handleDBKeysSearchQuery(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        if (PhantomBot.instance() == null || PhantomBot.instance().getDataStore() == null) {
+            return;
+        }
+
         String table = jso.getJSONObject("query").getString("table");
         String key = jso.getJSONObject("query").getString("key");
         String limit = jso.getJSONObject("query").getString("limit");
@@ -547,26 +670,6 @@ public class WsPanelHandler implements WsFrameHandler {
         }
     }
 
-    public void triggerAudioPanel(String audioHook) {
-        try {
-            JSONStringer jsonObject = new JSONStringer();
-            jsonObject.object().key("audio_panel_hook").value(audioHook).endObject();
-            sendJSONToAll(jsonObject.toString());
-        } catch (JSONException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-        }
-    }
-
-    public void triggerTts(final String aMessage) throws JSONException {
-        try {
-            JSONStringer jsonObject = new JSONStringer();
-            jsonObject.object().key("tts_signal").value(aMessage).endObject();
-            sendJSONToAll(jsonObject.toString());
-        } catch (JSONException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-        }
-    }
-
     public void doAudioHooksUpdate() {
         try {
             JSONObject jso = new JSONObject();
@@ -580,13 +683,91 @@ public class WsPanelHandler implements WsFrameHandler {
         }
     }
 
-    public void alertImage(String imageInfo) {
-        try {
-            JSONStringer jsonObject = new JSONStringer();
-            jsonObject.object().key("alert_image").value(imageInfo).endObject();
-            sendJSONToAll(jsonObject.toString());
-        } catch (JSONException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-        }
+    public void panelNotification(String type, String message) {
+        this.panelNotification(type, message, null);
+    }
+
+    public void panelNotification(String type, String message, String title) {
+        this.panelNotification(type, message, title, null);
+    }
+
+    public void panelNotification(String type, String message, String title, Integer timeout) {
+        this.panelNotification(type, message, title, null, null);
+    }
+
+    public void panelNotification(String type, String message, String title, Integer timeout, Integer extendedTimeout) {
+        this.panelNotification(type, message, title, null, null, null);
+    }
+
+    /**
+     * Sends a toastr notification to everyone currently authenticated to the panel
+     *
+     * @param type The type of notification to show. Valid values: {@code success}, {@code error}, {@code warning}, {@code info}. Invalid values are
+     * treated as {@code info}
+     * @param message The message content of the notification
+     * @param title The title of the notification. {@code null} or empty string for no title
+     * @param timeout The timeout before the notification automatically closes. {@code null} for default; {@code 0} to not close until the {@code X}
+     * is clicked
+     * @param extendedTimeout The timeout before the notification automatically closes, if the user hover over it with their mouse. This should be
+     * longer than {@code timeout} because the timer is shared. {@code null} for default; {@code 0} to not close until the {@code X} is clicked
+     * @param progressBar {@code true} to show a progress bar indicating the time remaining in {@code timeout} until the notification closes
+     * automatically; {@code false} to explicitly disable the progress bar on this notification; {@code null} for default
+     */
+    public void panelNotification(String type, String message, String title, Integer timeout, Integer extendedTimeout, Boolean progressBar) {
+        JSONStringer jsonObject = new JSONStringer();
+        jsonObject.object().key("query_id").value("notification").key("results").object()
+                .key("type").value(type)
+                .key("message").value(message)
+                .key("title").value(title)
+                .key("timeout").value(timeout)
+                .key("extendedTimeout").value(extendedTimeout)
+                .key("progressBar").value(progressBar)
+                .endObject().endObject();
+        WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+    }
+
+    /**
+     * Sends an ack response to a WS query
+     *
+     * @param uniqueID The ID the callback is registered under, sent by the requester
+     */
+    public void sendAck(String uniqueID) {
+        JSONStringer jsonObject = new JSONStringer();
+        jsonObject.object().key("query_id").value(uniqueID).endObject();
+        WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+    }
+
+    /**
+     * Sends an object response to a WS query
+     *
+     * @param uniqueID The ID the callback is registered under, sent by the requester
+     * @param obj A map of key/value pairs to send
+     */
+    public void sendObject(String uniqueID, Map<String, Object> obj) {
+        JSONStringer jsonObject = new JSONStringer();
+        jsonObject.object().key("query_id").value(uniqueID);
+        jsonObject.key("results").object();
+        obj.forEach((k, v) -> {
+            jsonObject.key(k).value(v);
+        });
+        jsonObject.endObject().endObject();
+        WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+    }
+
+    /**
+     * Sends an array response to a WS query
+     *
+     * @param uniqueID The ID the callback is registered under, sent by the requester
+     * @param obj A list of values to send
+     */
+    public void sendArray(String uniqueID, List<Object> obj) {
+        JSONStringer jsonObject = new JSONStringer();
+        jsonObject.object().key("query_id").value(uniqueID);
+        jsonObject.key("results").object();
+        jsonObject.key("data").array();
+        obj.forEach(jsonObject::value);
+        jsonObject.endArray();
+        jsonObject.endObject().endObject();
+        WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
     }
 }

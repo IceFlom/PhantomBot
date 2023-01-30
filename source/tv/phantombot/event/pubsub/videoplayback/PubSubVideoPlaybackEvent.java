@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@ public abstract class PubSubVideoPlaybackEvent extends PubSubEvent {
     /**
      * Abstract constructor.
      *
-     * @param {int} channelId
-     * @param {float} serverTime
+     * @param channelId
+     * @param serverTime
      */
     protected PubSubVideoPlaybackEvent(int channelId, float serverTime) {
         this.channelId = channelId;
@@ -37,7 +37,7 @@ public abstract class PubSubVideoPlaybackEvent extends PubSubEvent {
     /**
      * Method that returns the channel ID that the event was triggered for.
      *
-     * @return {int} channelId
+     * @return channelId
      */
     public int getChannelId() {
         return this.channelId;
@@ -46,7 +46,7 @@ public abstract class PubSubVideoPlaybackEvent extends PubSubEvent {
     /**
      * Method that returns the timestamp of the event actually happening
      *
-     * @return {float} serverTime
+     * @return serverTime
      */
     public float getServerTime() {
         return this.serverTime;

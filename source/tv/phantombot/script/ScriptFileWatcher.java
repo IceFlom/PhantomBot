@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ScriptFileWatcher implements Runnable {
+
     private static ScriptFileWatcher instance;
     private final List<Script> scripts = new CopyOnWriteArrayList<>();
     private final Thread thread;
@@ -30,12 +31,12 @@ public class ScriptFileWatcher implements Runnable {
     /**
      * Method that returns this object.
      *
-     * @return {Object}
+     * @return
      */
     public static synchronized ScriptFileWatcher instance() {
         if (instance == null) {
             instance = new ScriptFileWatcher();
-        } 
+        }
         return instance;
     }
 

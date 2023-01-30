@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,20 +16,23 @@
  */
 package com.gmt2001.wsclient;
 
+import com.gmt2001.dns.CompositeAddressResolverGroup;
+import com.gmt2001.dns.EventLoopDetector;
+import com.gmt2001.wspinger.WSPinger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.resolver.DefaultAddressResolverGroup;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 import org.json.JSONObject;
+import tv.phantombot.CaselessProperties;
 
 /**
  * Provides a WebSocket client
@@ -63,16 +66,20 @@ public class WSClient {
      */
     WebSocketFrameHandler frameHandler = null;
     /**
+     * The {@link WSPinger} that will send PING on an interval, or {@code null} if this is not desired
+     */
+    final WSPinger pinger;
+    /**
      * The {@link Channel} for the session
      */
     private Channel channel = null;
     /**
      * The client's {@link EventLoopGroup}
      */
-    private final EventLoopGroup group = new NioEventLoopGroup();
+    private final EventLoopGroup group = EventLoopDetector.createEventLoopGroup();
 
     /**
-     * Constructor
+     * Constructor that does not initialize a {@link WSPinger}
      *
      * @param uri The URI to connect to
      * @param handler An object implementing {@link WsClientFrameHandler} which will receive frames
@@ -80,6 +87,19 @@ public class WSClient {
      * @throws IllegalArgumentException URI scheme is not ws or wss
      */
     public WSClient(URI uri, WsClientFrameHandler handler) throws SSLException, IllegalArgumentException {
+        this(uri, handler, null);
+    }
+
+    /**
+     * Constructor
+     *
+     * @param uri The URI to connect to
+     * @param handler An object implementing {@link WsClientFrameHandler} which will receive frames
+     * @param pinger The {@link WSPinger} that will send PING on an interval, or {@code null} if this is not desired
+     * @throws SSLException Failed to create the {@link SslContext}
+     * @throws IllegalArgumentException URI scheme is not ws or wss
+     */
+    public WSClient(URI uri, WsClientFrameHandler handler, WSPinger pinger) throws SSLException, IllegalArgumentException {
         try {
             this.uri = uri;
 
@@ -104,6 +124,7 @@ public class WSClient {
             }
 
             this.handler = handler;
+            this.pinger = pinger;
             if ("wss".equalsIgnoreCase(scheme)) {
                 this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
             } else {
@@ -129,8 +150,15 @@ public class WSClient {
             }
 
             Bootstrap b = new Bootstrap();
-            b.group(this.group)
-                    .channel(NioSocketChannel.class)
+            b.group(this.group);
+
+            if (CaselessProperties.instance().getPropertyAsBoolean("usedefaultdnsresolver", false)) {
+                b.resolver(DefaultAddressResolverGroup.INSTANCE);
+            } else {
+                b.resolver(CompositeAddressResolverGroup.INSTANCE);
+            }
+
+            b.channel(EventLoopDetector.getChannelClass())
                     .handler(new WSClientInitializer(this));
 
             this.channel = b.connect(this.host, this.port).sync().channel();
@@ -143,7 +171,7 @@ public class WSClient {
     }
 
     /**
-     * Indicates if the socket is connected
+     * Indicates if the socket is connected.
      *
      * NOTE: Only indicates that the socket is ready to send/receive frames. Does not indicate authentication status or anything else
      *
@@ -241,6 +269,7 @@ public class WSClient {
      * @param closeFrame The close frame to send
      */
     public void close(WebSocketFrame closeFrame) {
+        com.gmt2001.Console.debug.println("caller " + com.gmt2001.Console.debug.findCallerInfo("com.gmt2001.wsclient.WSClient"));
         WebSocketFrameHandler.close(this.channel(), closeFrame).awaitUninterruptibly(5, TimeUnit.SECONDS);
 
         group.shutdownGracefully(3, 5, TimeUnit.SECONDS);

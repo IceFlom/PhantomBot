@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
         timerInterval = $.getSetIniDbNumber('dualStreamCommand', 'timerInterval', 20),
         reqMessages = $.getSetIniDbNumber('dualStreamCommand', 'reqMessages', 10),
         messageCount = 0,
+        _messageCountLock = new Packages.java.util.concurrent.locks.ReentrantLock(),
         lastSent = 0;
 
     /*
@@ -37,7 +38,12 @@
      * @event ircChannelMessage
      */
     $.bind('ircChannelMessage', function(event) {
-        messageCount++;
+        _messageCountLock.lock();
+        try {
+            messageCount++;
+        } finally {
+            _messageCountLock.unlock();
+        }
     });
 
     /*
@@ -58,10 +64,10 @@
             if (action === undefined) {
                 if (!otherChannels.equals('Channel-1 Channel-2')) {
                     $.say($.lang.get('dualstreamcommand.link') + $.channelName + '/' + otherChannels.split(' ').join('/'));
-                } else {
-                    if ($.isModv3(sender, event.getTags())) {
-                        $.say($.whisperPrefix(sender) + $.lang.get('dualstreamcommand.usage'));
-                    }
+                    return;
+                }
+                if ($.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod)) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('dualstreamcommand.usage'));
                 }
                 return;
             }
@@ -157,24 +163,29 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./commands/dualstreamCommand.js', 'multi', 7);
-        $.registerChatCommand('./commands/dualstreamCommand.js', 'reloadmulti', 1);
+        $.registerChatCommand('./commands/dualstreamCommand.js', 'multi', $.PERMISSION.Viewer);
+        $.registerChatCommand('./commands/dualstreamCommand.js', 'reloadmulti', $.PERMISSION.Admin);
 
-        $.registerChatSubcommand('multi', 'set', 2);
-        $.registerChatSubcommand('multi', 'clear', 2);
-        $.registerChatSubcommand('multi', 'timer', 2);
-        $.registerChatSubcommand('multi', 'timerinterval', 1);
-        $.registerChatSubcommand('multi', 'reqmessage', 1);
+        $.registerChatSubcommand('multi', 'set', $.PERMISSION.Mod);
+        $.registerChatSubcommand('multi', 'clear', $.PERMISSION.Mod);
+        $.registerChatSubcommand('multi', 'timer', $.PERMISSION.Mod);
+        $.registerChatSubcommand('multi', 'timerinterval', $.PERMISSION.Admin);
+        $.registerChatSubcommand('multi', 'reqmessage', $.PERMISSION.Admin);
 
         /*
          * interval timer.
          */
         var interval = setInterval(function() {
             if (timerToggle && !otherChannels.equals('Channel-1 Channel-2')) {
-                if ($.isOnline($.channelName) && messageCount >= reqMessages && $.systemTime() >= lastSent) {
-                    $.say($.lang.get('dualstreamcommand.link') + $.channelName + '/' + otherChannels.split(' ').join('/'));
-                    lastSent = ($.systemTime() + (timerInterval * 6e4));
-                    messageCount = 0;
+                _messageCountLock.lock();
+                try {
+                    if ($.isOnline($.channelName) && messageCount >= reqMessages && $.systemTime() >= lastSent) {
+                        $.say($.lang.get('dualstreamcommand.link') + $.channelName + '/' + otherChannels.split(' ').join('/'));
+                        lastSent = ($.systemTime() + (timerInterval * 6e4));
+                        messageCount = 0;
+                    }
+                } finally {
+                    _messageCountLock.unlock();
                 }
             }
         }, 10e3);

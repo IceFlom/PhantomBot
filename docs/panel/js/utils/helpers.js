@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global toastr, swal */
 
 $(function () {
     const helpers = {};
@@ -31,11 +33,16 @@ $(function () {
     helpers.DEBUG_STATE = (localStorage.getItem('phantombot_debug_state') !== null ? parseInt(localStorage.getItem('phantombot_debug_state')) : helpers.DEBUG_STATES.NONE);
     // Debug types.
     helpers.LOG_TYPE = helpers.DEBUG_STATES;
-    // Panel version. SEE: https://semver.org/
-    // Example: MAJOR.MINOR.PATCH
-    helpers.PANEL_VERSION = "NONE";
 
-    helpers.hashmap = [];
+    helpers.querymap = {};
+    helpers.hashmap = {};
+    helpers.version = {};
+
+    helpers.getBotVersion = function () {
+        socket.getBotVersion('helpers_version', function (e) {
+            helpers.version = structuredClone(e);
+        });
+    };
 
     /*
      * @function adds commas to thousands.
@@ -125,7 +132,7 @@ $(function () {
                 return (event.username + ' just followed!');
             case 'bits':
                 return (event.username + ' just cheered ' + event.amount + ' bits!');
-            case 'host':
+            case 'host': //@deprecated
                 return (event.username + ' just hosted with ' + event.viewers + ' viewers!');
             case 'tip':
                 return (event.username + ' just tipped ' + event.amount + ' ' + event.currency + '!');
@@ -163,7 +170,7 @@ $(function () {
                 return 'background-color: #c62828;';
             case 'bits':
                 return 'background-color: #6441a5;';
-            case 'host':
+            case 'host': //@deprecated
                 return 'background-color: #ed4c1c;';
             case 'tip':
                 return 'background-color: #846195;';
@@ -236,10 +243,19 @@ $(function () {
      * @param {Object} obj
      * @return {Boolean}
      */
-    helpers.handleInputString = function (obj) {
+    helpers.handleInputString = function (obj, min, max) {
+        if (min === undefined) {
+            min = 1;
+        }
+        if (max === undefined) {
+            max = Number.MAX_SAFE_INTEGER;
+        }
         return helpers.handleInput(obj, function (obj) {
-            if (obj.val().length < 1) {
-                return 'You cannot leave this field empty.';
+            if (obj.val().length < min) {
+                return 'You cannot have less than ' + min + ' characters.';
+            }
+            if (obj.val().length > max) {
+                return 'You cannot have more than ' + max + ' characters.';
             }
             return null;
         });
@@ -273,7 +289,7 @@ $(function () {
         return helpers.handleInput(obj, function (obj) {
             let matched = obj.val().match(/^((\d{2}|\d{4})(\\|\/|\.|-)(\d{2})(\\|\/|\.|-)(\d{4}|\d{2}))$/);
 
-            if (matched === null || ((matched[6].length < 4 && matched[2].length == 2) || (matched[6].length == 2 && matched[2].length < 4))) {
+            if (matched === null || ((matched[6].length < 4 && matched[2].length === 2) || (matched[6].length === 2 && matched[2].length < 4))) {
                 return 'Please enter a valid date (mm/dd/yyyy or dd/mm/yyyy).';
             }
             return null;
@@ -290,10 +306,14 @@ $(function () {
         id = 'phantombot_' + id.substring(id.indexOf('-') + 1);
 
         if (localStorage.getItem(id) === 'false') {
-            if (parseInt(obj.data('number').replace(/,/g, '')) < 9999) {
-                obj.html(obj.data('number'));
+            let numval = obj.data('number');
+            if (numval === undefined || numval === null || numval.trim().length === 0) {
+                numval = '0';
+            }
+            if (parseInt(numval.replace(/,/g, '')) < 9999) {
+                obj.html(numval);
             } else {
-                obj.html($('.small-box').width() < 230 ? obj.data('parsed') : obj.data('number'));
+                obj.html($('.small-box').width() < 230 ? obj.data('parsed') : numval);
             }
             localStorage.setItem(id, 'true');
         } else {
@@ -313,14 +333,19 @@ $(function () {
                 isSmall = $('.small-box').width() < 230;
 
         if (item === 'true' || item === null) {
-            if (parseInt(obj.data('number').replace(/,/g, '')) < 9999) {
-                obj.html(obj.data('number'));
+            let numval = obj.data('number');
+            if (numval === undefined || numval === null || numval.trim().length === 0) {
+                numval = '0';
+            }
+            if (parseInt(numval.replace(/,/g, '')) < 9999) {
+                obj.html(numval);
             } else {
-                obj.html(isSmall ? parsed : obj.data('number'));
+                obj.html(isSmall ? parsed : numval);
             }
         } else {
             obj.html('Hidden');
         }
+
         obj.data('parsed', parsed);
     };
 
@@ -345,14 +370,58 @@ $(function () {
     /*
      * @function Generates a basic modal, you have to append your own body with jQuery.
      *
-     * @param  {String}   id
-     * @param  {String}   title
-     * @param  {String}   btn
-     * @param  {Object}   body
-     * @param  {Function} onClose
-     * @return {Object}
+     * @param  {String}        id - Element ID for the modal
+     * @param  {String}        title - Dialog title
+     * @param  {String}        btn - The text displayed on the priamry button, typically "Save". Use `null` to remove
+     * @param  {jQuery Object} body - HTML for the modal body
+     * @param  {Function}      onClose - Executes when `btn` is pressed. Does nothing if `btn` is `null`
+     * @param  {JS Object}     override - optionally overrides some options of the dialog
+     * {
+     *      footerpre: [],                 // Array of additional HTML elements for the footer, appended before the `btn` button
+     *      footercenter: [],              // Array of additional HTML elements for the footer, appended in between the `btn` button and the "Cancel" button
+     *      footerpost: [],                // Array of additional HTML elements for the footer, appended after the "Cancel" button
+     *      cancelclass: 'primary',        // Overrides the `btn-default` class on the "Cancel" button. Can be used to add other classes as well
+     *      canceltext: 'Close',           // Overrides the text displayed on the "Cancel" button
+     *      cancelclick: function(){}      // Overrides the function triggered on click for the "Cancel" button. Default `undefined`
+     * }
+     * @return {jQuery Object} A modal which is ready to be shown using `.modal('show')`
      */
-    helpers.getModal = function (id, title, btn, body, onClose) {
+    helpers.getModal = function (id, title, btn, body, onClose, override) {
+        if (override === undefined || override === null) {
+            override = {};
+        }
+
+        let footerbuttons = [];
+
+        if (override.hasOwnProperty('footerpre') && override.footerpre.length > 0) {
+            footerbuttons.push(...override.footerpre);
+        }
+
+        if (btn !== undefined && btn !== null) {
+            footerbuttons.push($('<button/>', {
+                'class': 'btn btn-primary',
+                'type': 'button',
+                'text': btn,
+                'click': onClose
+            }));
+        }
+
+        if (override.hasOwnProperty('footercenter') && override.footercenter.length > 0) {
+            footerbuttons.push(...override.footercenter);
+        }
+
+        footerbuttons.push($('<button/>', {
+            'class': 'btn ' + (override.hasOwnProperty('cancelclass') ? override.cancelclass : 'btn-default'),
+            'type': 'button',
+            'text': (override.hasOwnProperty('canceltext') ? override.canceltext : 'Cancel'),
+            'data-dismiss': 'modal',
+            'click': (override.hasOwnProperty('cancelclick') ? override.cancelclick : undefined)
+        }));
+
+        if (override.hasOwnProperty('footerpost') && override.footerpost.length > 0) {
+            footerbuttons.push(...override.footerpost);
+        }
+
         return $('<div/>', {
             'class': 'modal fade',
             'tabindex': '99',
@@ -376,17 +445,7 @@ $(function () {
             'html': body
         })).append($('<div/>', {
             'class': 'modal-footer'
-        }).append($('<button/>', {
-            'class': 'btn btn-primary',
-            'type': 'button',
-            'text': btn,
-            'click': onClose
-        })).append($('<button/>', {
-            'class': 'btn btn-default',
-            'type': 'button',
-            'text': 'Cancel',
-            'data-dismiss': 'modal'
-        }))))).on('shown.bs.modal', function () {
+        }).append(footerbuttons)))).on('shown.bs.modal', function () {
             $('#' + id).focus();
         }).on('hidden.bs.modal', function () {
             $('#' + id).remove();
@@ -394,16 +453,72 @@ $(function () {
     };
 
     /*
-     * @function Generates an advance modal, you have to append your own body with jQuery.
+     * @function Generates an advanced modal, you have to append your own body with jQuery.
      *
-     * @param  {String}   id
-     * @param  {String}   title
-     * @param  {String}   btn
-     * @param  {Object}   body
-     * @param  {Function} onClose
-     * @return {Object}
+     * Elements which should be hidden behind the "Show Advanced" collapse section should be enclosed in an element defined as
+     * $('<div/>', {
+     *    'class': 'collapse',
+     *    'id': 'advance-collapse',
+     *    'html': $('<form/>', {
+     *    'role': 'form'
+     *    })
+     *    // jQuery .append() elements here
+     * })
+     *
+     * @param  {String}        id - Element ID for the modal
+     * @param  {String}        title - Dialog title
+     * @param  {String}        btn - The text displayed on the priamry button, typically "Save". Use `null` to remove
+     * @param  {jQuery Object} body - HTML for the modal body
+     * @param  {Function}      onClose - Executes when `btn` is pressed. Does nothing if `btn` is `null`
+     * @param  {JS Object}     override - optionally overrides some options of the dialog
+     * {
+     *      footerpre: [],                 // Array of additional HTML elements for the footer, appended before the `btn` button
+     *      footercenter: [],              // Array of additional HTML elements for the footer, appended in between the `btn` button and the "Cancel" button
+     *      footerpost: [],                // Array of additional HTML elements for the footer, appended after the "Cancel" button
+     *      cancelclass: 'primary',        // Overrides the `btn-default` class on the "Cancel" button. Can be used to add other classes as well
+     *      canceltext: 'Close',           // Overrides the text displayed on the "Cancel" button
+     *      cancelclick: function(){},     // Overrides the function triggered on click for the "Cancel" button. Default `undefined`
+     *      advancedshowtext: 'Show More', // Overrides the "Show Advanced" text
+     *      advancedhidetext: 'Hide More'  // Overrides the "Hide Advanced" text
+     * }
+     * @return {jQuery Object} A modal which is ready to be shown using `.modal('show')`
      */
-    helpers.getAdvanceModal = function (id, title, btn, body, onClose) {
+    helpers.getAdvanceModal = function (id, title, btn, body, onClose, override) {
+        if (override === undefined || override === null) {
+            override = {};
+        }
+
+        let footerbuttons = [];
+
+        if (override.hasOwnProperty('footerpre') && override.footerpre.length > 0) {
+            footerbuttons.push(...override.footerpre);
+        }
+
+        if (btn !== undefined && btn !== null) {
+            footerbuttons.push($('<button/>', {
+                'class': 'btn btn-primary',
+                'type': 'button',
+                'text': btn,
+                'click': onClose
+            }));
+        }
+
+        if (override.hasOwnProperty('footercenter') && override.footercenter.length > 0) {
+            footerbuttons.push(...override.footercenter);
+        }
+
+        footerbuttons.push($('<button/>', {
+            'class': 'btn btn-' + (override.hasOwnProperty('cancelclass') ? override.cancelclass : 'default'),
+            'type': 'button',
+            'text': (override.hasOwnProperty('canceltext') ? override.canceltext : 'Cancel'),
+            'data-dismiss': 'modal',
+            'click': (override.hasOwnProperty('cancelclick') ? override.cancelclick : null)
+        }));
+
+        if (override.hasOwnProperty('footerpost') && override.footerpost.length > 0) {
+            footerbuttons.push(...override.footerpost);
+        }
+
         return $('<div/>', {
             'class': 'modal fade',
             'tabindex': '99',
@@ -438,27 +553,19 @@ $(function () {
             })
         }).append($('<span/>', {
             'class': 'collapse-btn',
-            'html': 'Show Advanced'
-        }))).append($('<button/>', {
-            'class': 'btn btn-primary',
-            'type': 'button',
-            'text': btn,
-            'click': onClose
-        })).append($('<button/>', {
-            'class': 'btn btn-default',
-            'type': 'button',
-            'text': 'Cancel',
-            'data-dismiss': 'modal'
-        }))))).on('shown.bs.modal', function () {
+            'html': (override.hasOwnProperty('advancedshowtext') ? override.advancedshowtext : 'Show Advanced'),
+            'data-showtext': (override.hasOwnProperty('advancedshowtext') ? override.advancedshowtext : 'Show Advanced'),
+            'data-hidetext': (override.hasOwnProperty('advancedhidetext') ? override.advancedhidetext : 'Hide Advanced')
+        }))).append(footerbuttons)))).on('shown.bs.modal', function () {
             $('#' + id).focus();
         }).on('hidden.bs.modal', function () {
             $('#' + id).remove();
         }).on('show.bs.collapse', function () {
             $(this).find('.glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
-            $(this).find('.collapse-btn').html('Hide Advanced');
+            $(this).find('.collapse-btn').html($(this).find('.collapse-btn').data('hidetext'));
         }).on('hide.bs.collapse', function () {
             $(this).find('.glyphicon').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
-            $(this).find('.collapse-btn').html('Show Advanced');
+            $(this).find('.collapse-btn').html($(this).find('.collapse-btn').data('showtext'));
         });
     };
 
@@ -561,9 +668,28 @@ $(function () {
             'disabled': 'true',
             'hidden': 'true'
         })).append(options.map(function (option) {
-            return $('<option/>', {
-                'html': option
-            });
+            let o = $('<option/>');
+
+            if (typeof (option) === 'object') {
+                o.html(option.name);
+                o.attr('id', option._id);
+
+                if (option.value !== undefined) {
+                    o.attr('value', option.value);
+                }
+
+                if (option.selected !== undefined && (option.selected === true || option.selected === 'true')) {
+                    o.attr('selected', 'selected');
+                }
+
+                if (option.disabled !== undefined && (option.disabled === true || option.disabled === 'true')) {
+                    o.attr('disabled', 'disabled');
+                }
+            } else {
+                o.html(option);
+            }
+
+            return o;
         }))));
     };
 
@@ -599,13 +725,13 @@ $(function () {
                     o.attr('value', roles[i].value);
                 }
 
-                if (roles[i].selected !== undefined && roles[i].selected === true) {
+                if (roles[i].selected !== undefined && (roles[i].selected === true || roles[i].selected === 'true')) {
                     o.attr('selected', 'selected');
                 } else if (selected !== undefined && selected.indexOf(roles[i]._id) > -1) {
                     o.attr('selected', 'selected');
                 }
 
-                if (roles[i].disabled !== undefined && roles[i].disabled === true) {
+                if (roles[i].disabled !== undefined && (roles[i].disabled === true || roles[i].disabled === 'true')) {
                     o.attr('disabled', 'disabled');
                 }
 
@@ -666,10 +792,18 @@ $(function () {
                     'id': roles[i]._id
                 });
 
-                if (roles[i].selected !== undefined && roles[i].selected === 'true') {
+                if (roles[i].value !== undefined) {
+                    o.attr('value', roles[i].value);
+                }
+
+                if (roles[i].selected !== undefined && (roles[i].selected === true || roles[i].selected === 'true')) {
                     o.attr('selected', 'selected');
                 } else if (selected !== undefined && selected.indexOf(roles[i]._id) > -1) {
                     o.attr('selected', 'selected');
+                }
+
+                if (roles[i].disabled !== undefined && (roles[i].disabled === true || roles[i].disabled === 'true')) {
+                    o.attr('disabled', 'disabled');
                 }
 
                 group.append(o);
@@ -715,9 +849,19 @@ $(function () {
                 'html': option.name,
                 'id': option._id
             });
-            if (option.selected !== undefined && option.selected === 'true') {
+
+            if (option.value !== undefined) {
+                o.attr('value', option.value);
+            }
+
+            if (option.selected !== undefined && (option.selected === true || option.selected === 'true')) {
                 o.attr('selected', 'selected');
             }
+
+            if (option.disabled !== undefined && (option.disabled === true || option.disabled === 'true')) {
+                o.attr('disabled', 'disabled');
+            }
+
             return o;
         }))));
     };
@@ -824,10 +968,16 @@ $(function () {
             'dangerMode': true
         }).then(function (isRemoved) {
             if (isRemoved) {
-                onClose();
-                swal(closeMessage, {
-                    'icon': 'success'
-                });
+                let result = onClose();
+                if (result === undefined || result.message === undefined || result.icon === undefined) {
+                    swal(closeMessage, {
+                        'icon': 'success'
+                    });
+                } else {
+                    swal(result.message, {
+                        'icon': result.icon
+                    });
+                }
             }
         });
     };
@@ -948,40 +1098,8 @@ $(function () {
      * @return {Number}
      */
     helpers.getGroupIdByName = function (name, asString) {
-        let swap = helpers.isSwappedSubscriberVIP();
-        switch (name.toLowerCase()) {
-            case 'casters':
-            case 'caster':
-                return (asString ? '0' : 0);
-            case 'administrators':
-            case 'administrator':
-                return (asString ? '1' : 1);
-            case 'moderators':
-            case 'moderator':
-                return (asString ? '2' : 2);
-            case 'subscribers':
-            case 'subscriber':
-                if (swap) {
-                    return (asString ? '5' : 5);
-                } else {
-                    return (asString ? '3' : 3);
-                }
-            case 'donators':
-            case 'donator':
-                return (asString ? '4' : 4);
-            case 'vips':
-            case 'vip':
-                if (!swap) {
-                    return (asString ? '5' : 5);
-                } else {
-                    return (asString ? '3' : 3);
-                }
-            case 'regulars':
-            case 'regular':
-                return (asString ? '6' : 6);
-            default:
-                return (asString ? '7' : 7);
-        }
+        let idx = permGroupNames.indexOf(name);
+        return (asString ? idx.toString() : parseInt(idx));
     };
 
     /*
@@ -1003,6 +1121,27 @@ $(function () {
         return 'null';
     };
 
+    let updatePermGroups = function () {
+        socket.getDBTableValues('permissions_get_all_groups', 'groups', function (results) {
+            permGroups;
+            for (let i = 0; i < results.length; i++) {
+                permGroups[i] = results[i].value;
+                permGroupNames[i] = i.toString() + ' (' + results[i].value + ')';
+            }
+        });
+    };
+
+    let permGroups = [];
+    let permGroupNames = [];
+
+    setTimeout(function () {
+        updatePermGroups();
+    }, 1e3);
+
+    setInterval(function () {
+        updatePermGroups();
+    }, 30e3);
+
     /*
      * @function Gets the group name by its ID.
      *
@@ -1010,33 +1149,11 @@ $(function () {
      * @return {Number}
      */
     helpers.getGroupNameById = function (id) {
-        let swap = helpers.isSwappedSubscriberVIP();
-        switch (id.toString()) {
-            case '0':
-                return 'Caster';
-            case '1':
-                return 'Administrators';
-            case '2':
-                return 'Moderators';
-            case '3':
-                if (swap) {
-                    return 'VIPs';
-                } else {
-                    return 'Subscribers';
-                }
-            case '4':
-                return 'Donators';
-            case '5':
-                if (!swap) {
-                    return 'VIPs';
-                } else {
-                    return 'Subscribers';
-                }
-            case '6':
-                return 'Regulars';
-            default:
-                return 'Viewers';
-        }
+        return permGroupNames[parseInt(id)]; //The database always holds the names in the correct order
+    };
+
+    helpers.getPermGroupNames = function () {
+        return permGroupNames;
     };
 
     /*
@@ -1051,7 +1168,7 @@ $(function () {
         let perms = [];
 
         for (let i = 0; i < json.roles.length; i++) {
-            if (json.roles[i].selected == 'true')
+            if (json.roles[i].selected === 'true')
                 roles.push(json.roles[i].name);
         }
 
@@ -1060,7 +1177,7 @@ $(function () {
         }
 
         for (let i = 0; i < json.permissions.length; i++) {
-            if (json.permissions[i].selected == 'true')
+            if (json.permissions[i].selected === 'true')
                 perms.push(json.permissions[i].name);
         }
 
@@ -1168,20 +1285,20 @@ $(function () {
 
                 let html = '';
                 if (version.startsWith("nightly-")) {
-                    html = 'Nightly build ' + version.slice(8) + ' of PhantomBot is now availabel to download! <br>' +
+                    html = 'Nightly build ' + version.slice(8) + ' of PhantomBot is now available to download! <br>' +
                             'You can grab your own copy of nightly build ' + version.slice(8) + ' of PhantomBot ' +
                             $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', downloadLink).append('here.')[0].outerHTML + ' <br>' +
                             '<b>Please check ' +
-                            $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', 'https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/updatebot').append('this guide')[0].outerHTML +
+                            $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', 'https://phantombot.dev/guides/#guide=content/setupbot/updatebot').append('this guide')[0].outerHTML +
                             ' on how to properly update PhantomBot.</b>';
                 } else {
-                    html = 'Version ' + version + ' of PhantomBot is now availabel to download! <br>' +
+                    html = 'Version ' + version + ' of PhantomBot is now available to download! <br>' +
                             'You can view the changes of this version ' +
                             $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', 'https://github.com/PhantomBot/PhantomBot/releases/' + version).append('here')[0].outerHTML + '. <br>' +
                             'You can grab your own copy of version ' + version + ' of PhantomBot ' +
                             $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', downloadLink).append('here.')[0].outerHTML + ' <br>' +
                             '<b>Please check ' +
-                            $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', 'https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/updatebot').append('this guide')[0].outerHTML +
+                            $('<a/>', {'target': '_blank', 'rel': 'noopener noreferrer'}).prop('href', 'https://phantombot.dev/guides/#guide=content/setupbot/updatebot').append('this guide')[0].outerHTML +
                             ' on how to properly update PhantomBot.</b>';
                 }
 
@@ -1269,10 +1386,50 @@ $(function () {
         return parsedDate;
     };
 
+    /**
+     * Returns a function prototype that sets a timeout in the future and executes the given function then
+     *
+     * @param func the function to debounce
+     * @param timeout the timespan to debounce in ms
+     * @returns {(function(...[*]=): void)|*} the given function wrapped in the debounce functionality
+     */
+    helpers.debounce = function (func, timeout = 300) {
+        let timer;
+        return (...args) => {
+            window.clearInterval(timer);
+            timer = window.setTimeout(() => {
+                func.apply(this, args);
+            }, timeout);
+        };
+    };
+
+    helpers.parseQuerymap = function () {
+        if (window.location.search.length === 0) {
+            return;
+        }
+        var query = window.location.search.slice(1);
+        if (query.includes('?')) {
+            query = query.replace('?', '&');
+        }
+        var kvs = query.split('&');
+        var querymap = {};
+        var spl;
+
+        for (var i = 0; i < kvs.length; i++) {
+            spl = kvs[i].split('=', 2);
+            querymap[spl[0]] = spl[1];
+        }
+
+        helpers.querymap = querymap;
+    };
+
     helpers.parseHashmap = function () {
+        if (window.location.hash.length === 0) {
+            return;
+        }
         var hash = window.location.hash.slice(1);
         var kvs = hash.split('&');
-        var hashmap = [];
+        var hashmap = {};
         var spl;
 
         for (var i = 0; i < kvs.length; i++) {
@@ -1305,11 +1462,17 @@ $(function () {
         var bothostname = window.localStorage.getItem('bothostname') || 'localhost';
         var botport = window.localStorage.getItem('botport') || '25000';
 
-        return botport === '443' && bothostname.match(/(([0-9]{1,3})\.){3}([0-9]{1,3})/) === null;
+        return botport === '443' && bothostname.match(/(([0-9]{1,3})\.){3}([0-9]{1,3})/) === null && bothostname !== 'localhost';
     };
 
-    helpers.getBotSchemePath = function () {
-        return 'http' + (helpers.shouldUseHttpsPrefix() ? 's' : '') + '://' + helpers.getBotHost();
+    helpers.getBotSchemePath = function (sslSettings) {
+        let useSsl = helpers.shouldUseHttpsPrefix();
+
+        if (sslSettings !== undefined && sslSettings !== null) {
+            useSsl = helpers.shouldUseHttpsPrefix() && !sslSettings.autoSSL;
+        }
+
+        return 'http' + (useSsl ? 's' : '') + '://' + helpers.getBotHost();
     };
 
     helpers.getUserLogo = function () {
@@ -1338,6 +1501,8 @@ $(function () {
         return new Promise(startPoll);
     };
 
+    helpers.sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
     helpers.toggleDebug = function () {
         localStorage.setItem('phantombot_debug_state', localStorage.getItem('phantombot_debug_state') !== '1' ? '1' : '0');
         helpers.DEBUG_STATE = (localStorage.getItem('phantombot_debug_state') !== null ? parseInt(localStorage.getItem('phantombot_debug_state')) : helpers.DEBUG_STATES.NONE);
@@ -1346,6 +1511,37 @@ $(function () {
 
     helpers.isLocalPanel = function () {
         return helpers.getBotHost() === window.location.host;
+    };
+
+    // Takes an object {} and an array [] of keys.
+    // Foreach key in keys:
+    //   If obj has the key, and its value is typeof string that starts with '{',
+    //   attempts to parse the value as JSON. On success, the string value is replaced
+    //   with the resulting object. On failure info is sent to debug, the value is left unchanged,
+    //   and the next key is processed.
+    // Does not return anything, the original object will be changed.
+    helpers.parseJSONValues = function (obj, keys) {
+        for (let key in keys) {
+            key = keys[key];
+            if (obj.hasOwnProperty(key)) {
+                try {
+                    if (typeof obj[key] === 'string' && obj[key].startsWith('{')) {
+                        let tmp = JSON.parse(obj[key]);
+                        obj[key] = tmp;
+                    }
+                } catch (e) {
+                    helpers.logError(key + ': "' + obj[key] + '" -> ' + e, helpers.LOG_TYPE.DEBUG);
+                }
+            }
+        }
+    };
+
+    helpers.isNightly = function () {
+        return helpers.version.hasOwnProperty('build-type') && helpers.version['build-type'].startsWith('nightly');
+    };
+
+    helpers.getBranch = function () {
+        return helpers.isNightly() ? 'nightly' : 'stable';
     };
 
     // Export.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,12 @@
  */
 package tv.phantombot;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Calendar;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -250,7 +251,7 @@ public class CaselessProperties extends Properties {
 
     public void store(boolean reload) {
         try {
-            try ( FileOutputStream outputStream = new FileOutputStream("./config/botlogin.txt")) {
+            try ( OutputStream outputStream = Files.newOutputStream(Paths.get("./config/botlogin.txt"))) {
                 this.store(outputStream, HEADER);
             }
 
@@ -274,7 +275,11 @@ public class CaselessProperties extends Properties {
             });
 
             newValues.forEach((k, v) -> {
-                this.setProperty(k, v);
+                if (v == null) {
+                    this.remove(k);
+                } else {
+                    this.setProperty(k, v);
+                }
             });
 
             this.store();
@@ -283,9 +288,7 @@ public class CaselessProperties extends Properties {
                 @Override
                 public void run() {
                     transactions.forEach(ot -> {
-                        Calendar c = Calendar.getInstance();
-                        c.add(Calendar.MILLISECOND, -TRANSACTION_LIFETIME_MS);
-                        if (c.getTime().before(ot.getCommitTime())) {
+                        if (Instant.now().minusMillis(TRANSACTION_LIFETIME_MS).isBefore(ot.getCommitTime())) {
                             transactions.remove(ot);
                         }
                     });
@@ -307,7 +310,7 @@ public class CaselessProperties extends Properties {
         private final Map<String, String> newValues = new HashMap<>();
         private boolean isCommitted = false;
         private final CaselessProperties parent;
-        private Date commitTime;
+        private Instant commitTime;
 
         private Transaction(CaselessProperties parent, int priority) {
             this.parent = parent;
@@ -350,13 +353,13 @@ public class CaselessProperties extends Properties {
             return this.isCommitted;
         }
 
-        public Date getCommitTime() {
+        public Instant getCommitTime() {
             return this.commitTime;
         }
 
         public void commit() {
             this.isCommitted = true;
-            this.commitTime = new Date();
+            this.commitTime = Instant.now();
             parent.commit(this);
         }
     }

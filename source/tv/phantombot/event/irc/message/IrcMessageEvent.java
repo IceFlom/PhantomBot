@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,45 +22,46 @@ import tv.phantombot.event.irc.IrcEvent;
 import tv.phantombot.twitch.irc.TwitchSession;
 
 public abstract class IrcMessageEvent extends IrcEvent {
-    private final String sender;
-    private final String message;
-    private final Map<String, String> tags;
+
+    protected final String sender;
+    protected final String message;
+    protected final Map<String, String> tags;
 
     /**
      * Class constructor.
      *
-     * @param {TwitchSession} session
-     * @param {String}  sender
-     * @param {String}  message
+     * @param session
+     * @param sender
+     * @param message
      */
     protected IrcMessageEvent(TwitchSession session, String sender, String message) {
         super(session);
 
         this.sender = sender;
         this.message = message;
-        this.tags = new HashMap<String, String>();
+        this.tags = new HashMap<>();
     }
 
     /**
      * Class constructor.
      *
-     * @param {TwitchSession} session
-     * @param {String}  sender
-     * @param {String}  message
-     * @param {Map}     tags
+     * @param session
+     * @param sender
+     * @param message
+     * @param tags
      */
     protected IrcMessageEvent(TwitchSession session, String sender, String message, Map<String, String> tags) {
         super(session);
 
         this.sender = sender;
         this.message = message;
-        this.tags = (tags == null ? new HashMap<String, String>() : tags);
+        this.tags = (tags == null ? new HashMap<>() : tags);
     }
 
     /**
      * Method that returns the sender.
      *
-     * @return {String} sender
+     * @return sender
      */
     public String getSender() {
         return this.sender;
@@ -69,7 +70,7 @@ public abstract class IrcMessageEvent extends IrcEvent {
     /**
      * Method that returns the message.
      *
-     * @return {String} sender
+     * @return sender
      */
     public String getMessage() {
         return this.message;
@@ -78,7 +79,7 @@ public abstract class IrcMessageEvent extends IrcEvent {
     /**
      * Method that returns the IRCv3 tags.
      *
-     * @return {Map} tags
+     * @return tags
      */
     public Map<String, String> getTags() {
         return this.tags;

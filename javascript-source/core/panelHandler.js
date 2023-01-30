@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Packages, parseFloat */
 
 // Only tracks data for now.
 (function () {
@@ -40,10 +42,10 @@
         if (array.length > 50) {
             // Sort for newer events
             /*array.sort(function (a, b) {
-                var d1 = new Date(a.date);
-                var d2 = new Date(b.date);
-                return d1 - d2;
-            });*/
+             var d1 = new Date(a.date);
+             var d2 = new Date(b.date);
+             return d1 - d2;
+             });*/
 
             // Remove old events.
             array = array.slice(array.length - 50);
@@ -65,9 +67,9 @@
             try {
                 if (value.getClass() !== null) {
                     switch (value) {
-                        case value instanceof java.lang.Number:
+                        case value instanceof Packages.java.lang.Number:
                             return parseInt(value);
-                        case value instanceof java.lang.Boolean:
+                        case value instanceof Packages.java.lang.Boolean:
                             return value.booleanValue();
                         default:
                             return (value + '');
@@ -98,8 +100,8 @@
     function updateStreamData() {
         if ($.twitchcache !== undefined) {
             saveObject('panelData', 'stream', {
-                'views': $.twitchcache.getViews(),
                 'followers': $.getFollows($.channelName),
+                'subs': $.getSubscriberCount(),
                 'viewers': $.twitchcache.getViewerCount(),
                 'title': $.twitchcache.getStreamStatus(),
                 'isLive': $.twitchcache.isStreamOnline(),
@@ -147,27 +149,19 @@
     });
 
     /*
-     * @event twitchHosted
-     */
-    $.bind('twitchHosted', function (event) {
-        addObjectToArray('panelData', 'data', 'Host', {
-            'username': event.getHoster(),
-            'viewers': event.getUsers(),
-            'date': $.systemTime(),
-            'isAuto': false
-        });
-    });
-
-    /*
      * @event twitchSubscriber
      */
     $.bind('twitchSubscriber', function (event) {
+        var tier = $.subscription.planToTier(event.getPlan(), false);
+        if (tier === null) {
+            return;
+        }
         addObjectToArray('panelData', 'data', 'Subscriber', {
-            'username': event.getSubscriber(),
+            'username': event.getUsername(),
             'date': $.systemTime(),
             'isReSub': false,
             'months': 0,
-            'tier': event.getPlan() / 1000,
+            'tier': tier,
             'message': event.getMessage()
         });
     });
@@ -176,8 +170,8 @@
      * @event twitchPrimeSubscriber
      */
     $.bind('twitchPrimeSubscriber', function (event) {
-        addObjectToArray('panelData', 'data', 'Prime ' + (event.getMonths() > 1 ? 'Re' : '') +'Subscriber', {
-            'username': event.getSubscriber(),
+        addObjectToArray('panelData', 'data', 'Prime ' + (event.getMonths() > 1 ? 'Re' : '') + 'Subscriber', {
+            'username': event.getUsername(),
             'date': $.systemTime(),
             'isReSub': false,
             'months': event.getMonths(),
@@ -190,11 +184,11 @@
      */
     $.bind('twitchReSubscriber', function (event) {
         addObjectToArray('panelData', 'data', 'ReSubscriber', {
-            'username': event.getReSubscriber(),
+            'username': event.getUsername(),
             'months': event.getMonths(),
             'date': $.systemTime(),
             'isReSub': true,
-            'tier': event.getPlan() / 1000,
+            'tier': $.subscription.planToTier(event.getPlan()),
             'message': event.getMessage()
         });
     });
@@ -209,7 +203,7 @@
             'months': event.getMonths(),
             'date': $.systemTime(),
             'isReSub': (parseInt(event.getMonths()) > 1),
-            'tier': event.getPlan() / 1000
+            'tier': $.subscription.planToTier(event.getPlan())
         });
     });
 
@@ -221,7 +215,7 @@
             'username': event.getUsername(),
             'amount': event.getAmount(),
             'date': $.systemTime(),
-            'tier': event.getPlan() / 1000
+            'tier': $.subscription.planToTier(event.getPlan())
         });
     });
 
@@ -234,7 +228,7 @@
             'months': event.getMonths(),
             'date': $.systemTime(),
             'isReSub': (parseInt(event.getMonths()) > 1),
-            'tier': event.getPlan() / 1000
+            'tier': $.subscription.planToTier(event.getPlan())
         });
     });
 
@@ -245,7 +239,7 @@
         addObjectToArray('panelData', 'data', 'Anonymous Mass Gifted Subscription', {
             'amount': event.getAmount(),
             'date': $.systemTime(),
-            'tier': event.getPlan() / 1000
+            'tier': $.subscription.planToTier(event.getPlan())
         });
     });
 
@@ -302,6 +296,78 @@
         });
     });
 
+    $.bind('webPanelSocketUpdate', function (event) {
+        if (event.getId().equalsIgnoreCase('panelDataRefresh')) {
+            updateStreamData();
+        }
+    });
+
     // Interval that updates stream data.
     setInterval(updateStreamData, 2e4);
+
+    /**
+     * Sends an ack response to a WS query
+     *
+     * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+     */
+    var sendAck = function (uniqueID) {
+        $.panelsocketserver.sendAck($.javaString(uniqueID));
+    };
+
+    /**
+     * Sends an object response to a WS query
+     *
+     * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+     * @param {object} object A js object of key/value pairs to send
+     */
+    var sendObject = function (uniqueID, object) {
+        var map = new Packages.java.util.HashMap();
+
+        var x;
+        for (x in object) {
+            map.put(x, object[x]);
+        }
+
+        $.panelsocketserver.sendObject($.javaString(uniqueID), map);
+    };
+
+    /**
+     * Sends an array response to a WS query
+     *
+     * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+     * @param {array} arr A js array of values to send
+     */
+    var sendArray = function (uniqueID, arr) {
+        var array = new Packages.java.util.ArrayList();
+
+        var x;
+        for (x in arr) {
+            array.add(arr[x]);
+        }
+
+        $.panelsocketserver.sendArray($.javaString(uniqueID), array);
+    };
+
+    $.panel = {
+        /**
+         * Sends an ack response to a WS query
+         *
+         * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+         */
+        sendAck: sendAck,
+        /**
+         * Sends an object response to a WS query
+         *
+         * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+         * @param {object} object A js object of key/value pairs to send
+         */
+        sendObject: sendObject,
+        /**
+         * Sends an array response to a WS query
+         *
+         * @param {string} uniqueID The ID the callback is registered under, sent by the requester
+         * @param {array} arr A js array of values to send
+         */
+        sendArray: sendArray
+    };
 })();

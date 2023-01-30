@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -157,14 +157,13 @@ $(function () {
                         'class': 'fa fa-edit'
                     })
                 })).html()
-            ])
+            ]);
         }
 
         // if the table exists, destroy it.
         if ($.fn.DataTable.isDataTable('#langTable')) {
-            $('#langTable').DataTable().destroy();
-            // Remove all of the old events.
-            $('#langTable').off();
+            $('#langTable').DataTable().clear().rows.add(tableData).invalidate().draw(false);
+            return;
         }
 
         // Create table.

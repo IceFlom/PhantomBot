@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 
             // Update the default tables with that users new name if it's currently in any tables.
             for (i in tables) {
-                if ($.inidb.exists(tables[i], action.toLowerCase()) == true) {
+                if ($.inidb.exists(tables[i], action.toLowerCase()) === true) {
                     $.inidb.set(tables[i], subAction.toLowerCase(), $.inidb.get(tables[i], action.toLowerCase()));
                     $.inidb.del(tables[i], action.toLowerCase());
                     changed++;
@@ -69,6 +69,6 @@
     });
 
     $.bind('initReady', function() {
-        $.registerChatCommand('./commands/nameConverter.js', 'namechange', 1);
+        $.registerChatCommand('./commands/nameConverter.js', 'namechange', $.PERMISSION.Admin);
     });
 })();

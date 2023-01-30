@@ -1,7 +1,7 @@
 /* astyle --style=java --indent=spaces=4 --mode=java */
 
  /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,22 +18,20 @@
  */
 package tv.phantombot.cache;
 
-import com.gmt2001.BTTVAPIv3;
+import com.illusionaryone.BTTVAPIv3;
 import com.illusionaryone.FrankerZAPIv1;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.json.JSONException;
 import org.json.JSONObject;
-import tv.phantombot.PhantomBot;
 import tv.phantombot.event.EventBus;
 import tv.phantombot.event.emotes.EmotesGetEvent;
 
 public class EmotesCache implements Runnable {
 
-    private static final long LOOP_SLEEP_EMOTES_DISABLED = 60L;
-    private static final long LOOP_SLEEP_EMOTES_ENABLED = 60L * 60L;
+    private static final long LOOP_SLEEP_EMOTES = 60L * 60L * 1000L;
     private static final Map<String, EmotesCache> instances = new ConcurrentHashMap<>();
 
     public static EmotesCache instance(String channel) {
@@ -48,11 +46,10 @@ public class EmotesCache implements Runnable {
 
     private final String channel;
     private final Thread updateThread;
-    private Date timeoutExpire = new Date();
-    private Date lastFail = new Date();
+    private Instant timeoutExpire = Instant.now();
+    private Instant lastFail = Instant.now();
     private int numfail = 0;
     private boolean killed = false;
-    private long loopSleep = 0;
 
     @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
     private EmotesCache(String channel) {
@@ -70,25 +67,21 @@ public class EmotesCache implements Runnable {
     }
 
     private void checkLastFail() {
-        Calendar cal = Calendar.getInstance();
-        numfail = (lastFail.after(new Date()) ? numfail + 1 : 1);
+        this.numfail = (lastFail.isAfter(Instant.now()) ? this.numfail + 1 : 1);
 
-        cal.add(Calendar.MINUTE, 1);
-        lastFail = cal.getTime();
+        lastFail = Instant.now().plus(1, ChronoUnit.MINUTES);
 
         if (numfail > 5) {
-            timeoutExpire = cal.getTime();
+            timeoutExpire = Instant.now().plus(1, ChronoUnit.MINUTES);
         }
     }
 
     @Override
     @SuppressWarnings("SleepWhileInLoop")
     public void run() {
-        loopSleep = 600L;
-
         while (!killed) {
             try {
-                if (new Date().after(timeoutExpire)) {
+                if (Instant.now().isAfter(timeoutExpire)) {
                     this.updateCache();
                 }
             } catch (Exception ex) {
@@ -97,7 +90,7 @@ public class EmotesCache implements Runnable {
             }
 
             try {
-                Thread.sleep(loopSleep * 1000L);
+                Thread.sleep(LOOP_SLEEP_EMOTES);
             } catch (InterruptedException ex) {
                 com.gmt2001.Console.debug.println("EmotesCache.run: Failed to execute initial sleep: [InterruptedException] " + ex.getMessage());
             }
@@ -121,28 +114,9 @@ public class EmotesCache implements Runnable {
         JSONObject bttvLocalJsonResult;
         JSONObject ffzJsonResult;
         JSONObject ffzLocalJsonResult;
-        String emotesModEnabled;
-
-        emotesModEnabled = PhantomBot.instance().getDataStore().GetString("chatModerator", "", "emotesToggle");
-
-        if (emotesModEnabled == null) {
-            loopSleep = LOOP_SLEEP_EMOTES_DISABLED;
-            return;
-        }
-        if (!emotesModEnabled.equals("true")) {
-            loopSleep = LOOP_SLEEP_EMOTES_DISABLED;
-            return;
-        }
-
-        // We will pull emotes, set the sleep to every 10 minutes.
-        loopSleep = LOOP_SLEEP_EMOTES_ENABLED;
 
         com.gmt2001.Console.debug.println("Polling Emotes from BTTV and FFZ");
 
-        /**
-         * @info Don't need this anymore since we use the IRCv3 tags for Twitch emotes. twitchJsonResult = TwitchAPIv5.instance().GetEmotes(); if
-         * (!checkJSONExceptions(twitchJsonResult, false, "Twitch")) { com.gmt2001.Console.err.println("Failed to get Twitch Emotes"); return; }
-         */
         bttvJsonResult = BTTVAPIv3.instance().GetGlobalEmotes();
         if (!checkJSONExceptions(bttvJsonResult, true, "Global BTTV")) {
             com.gmt2001.Console.err.println("Failed to get BTTV Emotes");

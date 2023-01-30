@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,8 @@
 
 (function() {
     var modCooldown = $.getIniDbBoolean('cooldownSettings', 'modCooldown', false),
-        cooldown = [];
+        cooldown = [],
+        _lock = new Packages.java.util.concurrent.locks.ReentrantLock();
 
     /**
      * @function permCheck
@@ -33,8 +34,8 @@
      * @return boolean
      */
     function permCheck(username) {
-        return (!modCooldown && $.isMod(username)) || $.isAdmin(username);
-    };
+        return (!modCooldown && $.checkUserPermission(username, undefined, $.PERMISSION.Mod)) || $.checkUserPermission(username, undefined, $.PERMISSION.Admin);
+    }
 
     /**
      * @function getCooldown
@@ -47,7 +48,7 @@
         } else {
             return 0;
         }
-    };
+    }
 
     /**
      * @function set
@@ -57,18 +58,24 @@
      * @param username
      */
     function set(keyword, hasCooldown, time, username) {
-        if (time == null || time == 0 || time == 1 || isNaN(time)) {
+        if (time === null || time === 0 || time === 1 || isNaN(time)) {
             return;
         }
 
         time = ((time * 1000) + $.systemTime());
 
-        cooldown.push({
-            keyword: keyword,
-            time: time
-        });
+        _lock.lock();
+        try {
+            cooldown.push({
+                keyword: keyword,
+                time: time
+            });
+        } finally {
+            _lock.unlock();
+        }
+
         $.consoleDebug('Pushed keyword ' + keyword + ' to cooldown.');
-    };
+    }
 
     /**
      * @function get
@@ -84,18 +91,23 @@
         if (!hasCooldown)
             return 0;
 
-        for (i in cooldown) {
-            if (cooldown[i].keyword.equalsIgnoreCase(keyword)) {
-                if ((cooldown[i].time - $.systemTime()) > 0) {
-                    if (permCheck(username)) return 0;
-                    return parseInt(cooldown[i].time - $.systemTime());
+        _lock.lock();
+        try {
+            for (i in cooldown) {
+                if (cooldown[i].keyword.equalsIgnoreCase(keyword)) {
+                    if ((cooldown[i].time - $.systemTime()) > 0) {
+                        if (permCheck(username)) return 0;
+                        return parseInt(cooldown[i].time - $.systemTime());
+                    }
                 }
             }
+        } finally {
+            _lock.unlock();
         }
 
         set(keyword, hasCooldown, getCooldown(keyword));
         return 0;
-    };
+    }
 
     /**
      * @function clear
@@ -104,28 +116,37 @@
      */
     function clear(keyword) {
         var i;
-        for (i in cooldown) {
-            if (cooldown[i].keyword.equalsIgnoreCase(keyword)) {
-                cooldown.splice(i, 1);
-                return;
+
+        _lock.lock();
+        try {
+            for (i in cooldown) {
+                if (cooldown[i].keyword.equalsIgnoreCase(keyword)) {
+                    cooldown.splice(i, 1);
+                    return;
+                }
             }
+        } finally {
+            _lock.unlock();
         }
-    };
+    }
 
     /**
      * @function clearAll
      */
     function clearAll() {
-        var i;
-        for (i in cooldown) {
-            cooldown.splice(i, 1);
+        _lock.lock();
+        try {
+            cooldown = [];
+        } finally {
+            _lock.unlock();
         }
-    };
+    }
 
     /** EXPORT TO $. API*/
     $.coolDownKeywords = {
         set: set,
         get: get,
         clear: clear,
+        clearAll: clearAll
     };
 })();

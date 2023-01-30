@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@ package com.gmt2001;
 
 import com.gmt2001.httpwsserver.WebSocketFrameHandler;
 import java.io.IOException;
-import java.util.concurrent.Executors;
 import net.engio.mbassy.listener.Handler;
 import org.json.JSONStringer;
 import tv.phantombot.CaselessProperties;
@@ -85,6 +84,10 @@ public final class RestartRunner implements Listener {
      * @return
      */
     public boolean canRestart() {
+        /**
+         * @botproperty restartcmd - A command that can be used to restart the bot, if it is running as a service
+         * @botpropertycatsort restartcmd 50 50 Misc
+         */
         return CaselessProperties.instance().containsKey("restartcmd")
                 && !CaselessProperties.instance().getProperty("restartcmd").isBlank();
     }
@@ -112,7 +115,7 @@ public final class RestartRunner implements Listener {
                 return;
             }
 
-            Executors.newSingleThreadExecutor().execute(() -> {
+            ExecutorService.execute(() -> {
                 try {
                     int exitCode = Runtime.getRuntime().exec(String.format(cmd, CaselessProperties.instance().getProperty("restartcmd"))).waitFor();
                     if (exitCode == 0 || exitCode == 143) {

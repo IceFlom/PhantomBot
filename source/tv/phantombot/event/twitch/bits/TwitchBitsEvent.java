@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,12 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package tv.phantombot.event.twitch.bits;
 
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchBitsEvent extends TwitchEvent {
+
     private final String username;
     private final String bits;
     private final String message;
@@ -27,9 +27,9 @@ public class TwitchBitsEvent extends TwitchEvent {
     /**
      * Class constructor.
      *
-     * @param {String} username
-     * @param {String} bits
-     * @param {String} message
+     * @param username
+     * @param bits
+     * @param message
      */
     public TwitchBitsEvent(String username, String bits, String message) {
         this.username = username;
@@ -40,7 +40,7 @@ public class TwitchBitsEvent extends TwitchEvent {
     /**
      * Method that returns the username who cheered.
      *
-     * @return {String} username
+     * @return username
      */
     public String getUsername() {
         return this.username;
@@ -49,16 +49,17 @@ public class TwitchBitsEvent extends TwitchEvent {
     /**
      * Method that returns the amount of bit the user cheered.
      *
-     * @return {String} bits
+     * @return bits
      */
     public String getBits() {
         return this.bits;
     }
 
-    /***
+    /**
+     * *
      * Method that returns the message that was sent as part of the Bits tag.
      *
-     * @return {String} message
+     * @return message
      */
     public String getMessage() {
         return this.message;

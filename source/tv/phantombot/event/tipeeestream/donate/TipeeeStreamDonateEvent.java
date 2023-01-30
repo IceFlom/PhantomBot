@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,13 @@ package tv.phantombot.event.tipeeestream.donate;
 import tv.phantombot.event.tipeeestream.TipeeeStreamEvent;
 
 public abstract class TipeeeStreamDonateEvent extends TipeeeStreamEvent {
+
     private final String jsonString;
 
     /**
      * Abstract constructor.
      *
-     * @param {String} jsonString
+     * @param jsonString
      */
     protected TipeeeStreamDonateEvent(String jsonString) {
         this.jsonString = jsonString;
@@ -33,7 +34,7 @@ public abstract class TipeeeStreamDonateEvent extends TipeeeStreamEvent {
     /**
      * Method that returns the donation's JSON string.
      *
-     * @return {String} jsonString
+     * @return jsonString
      */
     public String getJsonString() {
         return this.jsonString;
@@ -42,7 +43,7 @@ public abstract class TipeeeStreamDonateEvent extends TipeeeStreamEvent {
     /**
      * Method that converts the class into a string.
      *
-     * @return {String}
+     * @return
      */
     @Override
     public String toString() {

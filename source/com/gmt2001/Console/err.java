@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,13 @@
  */
 package com.gmt2001.Console;
 
-import com.gmt2001.Logger;
 import com.gmt2001.RollbarProvider;
+import com.illusionaryone.Logger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.HashMap;
 import java.util.Map;
 import tv.phantombot.PhantomBot;
 
@@ -35,13 +36,10 @@ public final class err {
     }
 
     public static void print(Object o) {
-        String stackInfo;
-        StackTraceElement st = debug.findCaller();
+        String stackInfo = debug.findCallerInfo();
 
-        stackInfo = "[" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "] ";
-
-        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + o.toString());
-        System.err.print("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + o);
+        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + " " + o.toString());
+        System.err.print("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + " " + o);
     }
 
     public static void println() {
@@ -54,26 +52,20 @@ public final class err {
     }
 
     public static void println(Object o) {
-        String stackInfo;
-        StackTraceElement st = debug.findCaller();
+        String stackInfo = debug.findCallerInfo();
 
-        stackInfo = "[" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "] ";
-
-        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + o.toString());
+        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + " " + o.toString());
         Logger.instance().log(Logger.LogType.Error, "");
-        System.err.println("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + o);
+        System.err.println("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + " " + o);
     }
 
     public static void println(Object o, boolean logOnly) {
-        String stackInfo;
-        StackTraceElement st = debug.findCaller();
+        String stackInfo = debug.findCallerInfo();
 
-        stackInfo = "[" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "] ";
-
-        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + o.toString());
+        Logger.instance().log(Logger.LogType.Error, "[" + logTimestamp.log() + "] " + stackInfo + " " + o.toString());
         Logger.instance().log(Logger.LogType.Error, "");
         if (!logOnly) {
-            System.err.println("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + o);
+            System.err.println("[" + logTimestamp.log() + "] [ERROR] " + stackInfo + " " + o);
         }
     }
 
@@ -105,9 +97,19 @@ public final class err {
         printStackTrace(e, custom, description, isUncaught, false);
     }
 
+    public static void oops(Object o, Map<String, Object> custom, String description, boolean isUncaught) {
+        try {
+            throw new RuntimeException(o.toString());
+        } catch (RuntimeException e) {
+            printStackTrace(e, custom, description, isUncaught);
+        }
+    }
+
     public static void printStackTrace(Throwable e, Map<String, Object> custom, String description, boolean isUncaught, boolean force) {
         if (PhantomBot.getEnableDebugging() || force) {
             e.printStackTrace(System.err);
+        } else {
+            println(e.getClass().getName() + ": " + e.getMessage());
         }
 
         logStackTrace(e, custom, description, isUncaught);
@@ -134,6 +136,12 @@ public final class err {
     }
 
     public static void logStackTrace(Throwable e, Map<String, Object> custom, String description, boolean isUncaught) {
+        if (custom == null) {
+            custom = new HashMap<>();
+        }
+
+        custom.putIfAbsent("__caller", debug.findCallerInfo());
+
         RollbarProvider.instance().error(e, custom, description, isUncaught);
 
         try ( Writer trace = new StringWriter()) {

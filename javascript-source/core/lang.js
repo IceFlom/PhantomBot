@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,14 +26,14 @@
  */
 (function() {
     var data = [],
-        curLang = ($.inidb.exists('settings', 'lang') ? $.inidb.get('settings', 'lang') : 'english');
+        curLang = $.jsString($.inidb.exists('settings', 'lang') ? $.inidb.get('settings', 'lang') : 'english');
 
     /**
      * @function load
      */
     function load(force) {
         $.bot.loadScriptRecursive('./lang/english', true, (force ? force : false));
-        if (curLang != 'english') {
+        if (curLang !== 'english') {
             $.bot.loadScriptRecursive('./lang/' + curLang, true, (force ? force : false));
         }
 
@@ -77,7 +77,7 @@
             return '';
         }
 
-        if (string == '<<EMPTY_PLACEHOLDER>>') {
+        if (string === '<<EMPTY_PLACEHOLDER>>') {
             return '';
         }
 
@@ -180,9 +180,9 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./core/lang.js', 'lang', 1);
-        $.registerChatCommand('./core/lang.js', 'mute', 1);
-        $.registerChatCommand('./core/lang.js', 'toggleme', 1);
+        $.registerChatCommand('./core/lang.js', 'lang', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/lang.js', 'mute', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/lang.js', 'toggleme', $.PERMISSION.Admin);
     });
 
     /** Export functions to API */
@@ -193,6 +193,6 @@
         paramCount: paramCount
     };
 
-    // Run the load function to enable modules, loaded after lang.js, to access the language strings immediatly
+    // Run the load function to enable modules, loaded after lang.js, to access the language strings immediately
     load();
 })();

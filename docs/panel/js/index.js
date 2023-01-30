@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Pace, toastr */
 
 // Main socket and functions.
 $(function () {
@@ -188,14 +190,18 @@ $(function () {
      * @param {Array}    args
      * @param {Function} callback
      */
-    socket.wsEvent = function (callback_id, script, argsString, args, callback) {
+    socket.wsEvent = function (callback_id, script, argsString, args, callback, requiresReply, makeUnique) {
+        if (makeUnique === true) {
+            callback_id = callback_id + '_' + helpers.getRandomString(4);
+        }
         // Genetate a callback.
-        generateCallBack(callback_id, [], true, false, callback);
+        generateCallBack(callback_id, [], requiresReply !== true, true, callback);
 
         // Send event.
         sendToSocket({
             socket_event: callback_id,
             script: script,
+            requiresReply: requiresReply,
             args: {
                 arguments: String(argsString),
                 args: args
@@ -205,7 +211,7 @@ $(function () {
 
     socket.getDiscordChannelList = function (callback_id, callback) {
         // Genetate a callback.
-        socket.addListener(callback_id, callback);
+        generateCallBack(callback_id, [], false, true, callback);
 
         // Send event.
         sendToSocket({
@@ -486,6 +492,58 @@ $(function () {
         });
     };
 
+    /*
+     * Sends a query requiring a reply
+     * @param {String} type The message type
+     * @param {String} query_id The unique Query ID
+     * @param {Object} params Optional object of params to send
+     * @param {Function} callback Callback function
+     * @returns {undefined}
+     */
+    socket.query = function (type, query_id, params, callback, makeUnique) {
+        if (makeUnique === true) {
+            query_id = query_id + '_' + helpers.getRandomString(4);
+        }
+        generateCallBack(query_id, [], false, true, callback);
+
+        let param = {};
+        param[type] = query_id;
+
+        if (params !== undefined && params !== null) {
+            for (let x in params) {
+                param[x] = params[x];
+            }
+        }
+
+        sendToSocket(param);
+    };
+
+    /*
+     * Sends a query not requiring a reply
+     * @param {String} type The message type
+     * @param {String} query_id The unique Query ID
+     * @param {Object} params Optional object of params to send
+     * @param {Function} callback Callback function
+     * @returns {undefined}
+     */
+    socket.update = function (type, query_id, params, callback, makeUnique) {
+        if (makeUnique === true) {
+            query_id = query_id + '_' + helpers.getRandomString(4);
+        }
+        generateCallBack(query_id, [], true, true, callback);
+
+        let param = {};
+        param[type] = query_id;
+
+        if (params !== undefined && params !== null) {
+            for (let x in params) {
+                param[x] = params[x];
+            }
+        }
+
+        sendToSocket(param);
+    };
+
     socket.close = function () {
         webSocket.close(1000);
     };
@@ -609,7 +667,7 @@ $(function () {
 
                         if (message.query_id.indexOf('module_toggle') !== -1 || message.query_id.indexOf('module_status') !== -1
                                 || message.query_id.endsWith('module')) {
-                            if (message.results !== undefined && message.results.value == 'false') {
+                            if (message.results !== undefined && message.results.value === 'false') {
                                 $('.load-ajax').remove();
                             }
                         }

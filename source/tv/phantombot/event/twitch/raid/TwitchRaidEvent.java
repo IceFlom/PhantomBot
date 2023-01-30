@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,14 +19,15 @@ package tv.phantombot.event.twitch.raid;
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchRaidEvent extends TwitchEvent {
+
     private final String username;
     private final String viewers;
 
     /**
      * Class constructor.
      *
-     * @param {String} username
-     * @param {String} viewers
+     * @param username
+     * @param viewers
      */
     public TwitchRaidEvent(String username, String viewers) {
         this.username = username;
@@ -34,9 +35,9 @@ public class TwitchRaidEvent extends TwitchEvent {
     }
 
     /**
-     * Method that returns the username who hosted.
+     * Method that returns the username who raided.
      *
-     * @return {String} username
+     * @return username
      */
     public String getUsername() {
         return this.username;
@@ -45,7 +46,7 @@ public class TwitchRaidEvent extends TwitchEvent {
     /**
      * Method that returns the amount of users who raided.
      *
-     * @return {String} viewers
+     * @return viewers
      */
     public String getViewers() {
         return this.viewers;

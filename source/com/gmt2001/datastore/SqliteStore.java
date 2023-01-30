@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 package com.gmt2001.datastore;
 
 import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager;
+import com.gmt2001.ExecutorService;
 import com.gmt2001.PathValidator;
 import java.io.File;
 import java.io.IOException;
@@ -35,11 +36,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteDataSource;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 import org.sqlite.javax.SQLiteConnectionPoolDataSource;
@@ -68,6 +69,30 @@ public final class SqliteStore extends DataStore {
         }
 
         return instance;
+    }
+
+    public static boolean isAvailable() {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException ex) {
+            com.gmt2001.Console.debug.printStackTrace(ex);
+            return false;
+        }
+
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite::memory:");
+        try ( Connection connection = dataSource.getConnection()) {
+            try ( Statement statement = connection.createStatement()) {
+                statement.execute("SELECT 1;");
+            }
+        } catch (SQLException ex) {
+            com.gmt2001.Console.debug.printStackTrace(ex);
+            if (ex.getCause() != null && ex.getCause().getMessage() != null && ex.getCause().getMessage().contains("No native library found")) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private SqliteStore(String configStr) {
@@ -127,7 +152,7 @@ public final class SqliteStore extends DataStore {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
 
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(this::doMaintenance, 3, 3, TimeUnit.HOURS);
+        ExecutorService.scheduleAtFixedRate(this::doMaintenance, 3, 3, TimeUnit.HOURS);
     }
 
     private String sanitizeOrder(String order) {
@@ -1076,7 +1101,7 @@ public final class SqliteStore extends DataStore {
 
                 StringBuilder sb = new StringBuilder(keys.length * 2);
 
-                for (String key : keys) {
+                for (String unused : keys) {
                     sb.append("?,");
                 }
 
@@ -1092,7 +1117,7 @@ public final class SqliteStore extends DataStore {
 
                 sb = new StringBuilder(keys.length * 10);
 
-                for (String key : keys) {
+                for (String unused : keys) {
                     sb.append("(?, ?, ?),");
                 }
 
@@ -1166,7 +1191,7 @@ public final class SqliteStore extends DataStore {
                         try {
                             statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS " + tableName + "_idx on phantombot_" + tableName + " (section, variable);");
                         } catch (SQLiteException ex) {
-                            if (ex.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT) {
+                            if (ex.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT || ex.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
                                 statement.execute("DELETE FROM phantombot_" + tableName + " WHERE rowid NOT IN (SELECT MIN(rowid) FROM phantombot_" + tableName + " GROUP BY section, variable);");
                                 statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS " + tableName + "_idx on phantombot_" + tableName + " (section, variable);");
                             } else {

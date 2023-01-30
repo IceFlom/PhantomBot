@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-(function() {
+/* global Packages */
+
+(function () {
     var keywords = [];
 
     /*
@@ -23,7 +25,7 @@
      */
     function loadKeywords() {
         var keys = $.inidb.GetKeyList('keywords', ''),
-            i;
+                i;
 
         keywords = [];
 
@@ -45,8 +47,9 @@
 
     /*
      * @event ircChannelMessage
+     * @usestransformers global twitch commandevent keywordevent noevent
      */
-    $.bind('ircChannelMessage', function(event) {
+    $.bind('ircChannelMessage', function (event) {
         function executeKeyword(json, event) {
             // Make sure the keyword isn't on cooldown.
             if ($.coolDownKeywords.get(json.keyword, sender) > 0) {
@@ -61,15 +64,18 @@
                 var CommandEvent = Packages.tv.phantombot.event.command.CommandEvent;
                 var cmdEvent = new CommandEvent(sender, "keyword_" + json.keyword, event.getMessage(), event.getTags());
                 json.response = $.replace(json.response, '(keywordcount)', '(keywordcount ' + $.escapeTags(json.keyword) + ')');
-                $.say($.tags(cmdEvent, json.response, false));
+                var tag = $.transformers.tags(cmdEvent, json.response, ['twitch', ['commandevent', 'keywordevent', 'noevent']]);
+                if (tag !== null) {
+                    $.say(tag);
+                }
             }
         }
 
         var message = event.getMessage(),
-            sender = event.getSender(),
-            messagePartsLower = message.toLowerCase().split(' '),
-            messageParts = message.split(' '),
-            json;
+                sender = event.getSender(),
+                messagePartsLower = message.toLowerCase().split(' '),
+                messageParts = message.split(' '),
+                json;
 
         // Don't say the keyword if someone tries to remove it.
         if (message.startsWith('!keyword')) {
@@ -86,7 +92,7 @@
                 }
             } else {
                 var str = '',
-                  caseAdjustedMessageParts = messageParts;
+                        caseAdjustedMessageParts = messageParts;
                 if (!json.isCaseSensitive) {
                     caseAdjustedMessageParts = messagePartsLower;
                 }
@@ -106,14 +112,14 @@
     /*
      * @event command
      */
-    $.bind('command', function(event) {
+    $.bind('command', function (event) {
         var sender = event.getSender(),
-            command = event.getCommand(),
-            argString = event.getArguments().trim(),
-            args = event.getArgs(),
-            action = args[0],
-            subAction = args[1],
-            actionArgs = args[2];
+                command = event.getCommand(),
+                argString = event.getArguments().trim(),
+                args = event.getArgs(),
+                action = args[0],
+                subAction = args[1],
+                actionArgs = args[2];
 
         /*
          * @commandpath keyword - Base command for keyword options
@@ -129,12 +135,12 @@
              */
             if (action.equalsIgnoreCase('add')) {
                 var isRegex = false,
-                    isCaseSensitive = false,
-                    keyword = null,
-                    response = null;
+                        isCaseSensitive = false,
+                        keyword = null,
+                        response = null;
 
                 for (var i = 1; i < args.length; i++) {
-                    if (keyword == null) {
+                    if (keyword === null) {
                         if (args[i].equalsIgnoreCase('--regex')) {
                             isRegex = true;
                         } else if (args[i].equalsIgnoreCase('--case-sensitive')) {
@@ -148,7 +154,7 @@
                     }
                 }
 
-                if (response == null) {
+                if (response === null) {
                     $.say($.whisperPrefix(sender) + $.lang.get('keywordhandler.add.usage'));
                     return;
                 }
@@ -215,19 +221,19 @@
     /*
      * @event initReady
      */
-    $.bind('initReady', function() {
-        $.registerChatCommand('./handlers/keywordHandler.js', 'keyword', 1);
+    $.bind('initReady', function () {
+        $.registerChatCommand('./handlers/keywordHandler.js', 'keyword', $.PERMISSION.Admin);
 
-        $.registerChatSubcommand('keyword', 'add', 1);
-        $.registerChatSubcommand('keyword', 'remove', 1);
-        $.registerChatSubcommand('keyword', 'cooldown', 1);
+        $.registerChatSubcommand('keyword', 'add', $.PERMISSION.Admin);
+        $.registerChatSubcommand('keyword', 'remove', $.PERMISSION.Admin);
+        $.registerChatSubcommand('keyword', 'cooldown', $.PERMISSION.Admin);
         loadKeywords();
     });
 
     /*
      * @event webPanelSocketUpdate
      */
-    $.bind('webPanelSocketUpdate', function(event) {
+    $.bind('webPanelSocketUpdate', function (event) {
         if (event.getScript().equalsIgnoreCase('./handlers/keywordHandler.js')) {
             loadKeywords();
         }

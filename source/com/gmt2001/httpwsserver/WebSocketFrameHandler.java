@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -142,7 +142,7 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
         String bestMatch = "";
 
         if (uri.contains("..")) {
-            return null;
+            return bestMatch;
         }
 
         for (String k : wsFrameHandlers.keySet()) {
@@ -171,6 +171,16 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
      * @return A {@link WebSocketFrame} that is ready to transmit
      */
     public static WebSocketFrame prepareTextWebSocketResponse(JSONObject json) {
+        return new TextWebSocketFrame(json.toString());
+    }
+
+    /**
+     * Creates and prepares a text-type {@link WebSocketFrame} for transmission from a {@link JSONStringer}
+     *
+     * @param json The {@link JSONStringer} to send
+     * @return A {@link WebSocketFrame} that is ready to transmit
+     */
+    public static WebSocketFrame prepareTextWebSocketResponse(JSONStringer json) {
         return new TextWebSocketFrame(json.toString());
     }
 
@@ -213,7 +223,20 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
      * @param resframe The {@link WebSocketFrame} to transmit
      */
     public static void sendWsFrame(ChannelHandlerContext ctx, WebSocketFrame reqframe, WebSocketFrame resframe) {
-        ctx.channel().writeAndFlush(resframe);
+        sendWsFrame(ctx.channel(), reqframe, resframe);
+    }
+
+    /**
+     * Transmits a {@link WebSocketFrame} back to the client
+     *
+     * @param ch The {@link Channel} of the connection
+     * @param reqframe The {@link WebSocketFrame} containing the request
+     * @param resframe The {@link WebSocketFrame} to transmit
+     */
+    public static void sendWsFrame(Channel ch, WebSocketFrame reqframe, WebSocketFrame resframe) {
+        ch.writeAndFlush(resframe).addListener((p) -> {
+            HTTPWSServer.releaseObj(resframe);
+        });
     }
 
     /**
@@ -224,9 +247,11 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
     public static void broadcastWsFrame(WebSocketFrame resframe) {
         WS_SESSIONS.forEach((c) -> {
             if (c.attr(WsAuthenticationHandler.ATTR_AUTHENTICATED).get()) {
-                c.writeAndFlush(resframe.copy());
+                sendWsFrame(c, null, resframe.copy());
             }
         });
+
+        HTTPWSServer.releaseObj(resframe);
     }
 
     /**
@@ -240,19 +265,23 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
         WS_SESSIONS.forEach((c) -> {
             if (c.attr(WsAuthenticationHandler.ATTR_AUTHENTICATED).get() && c.attr(ATTR_URI).get().equals(uri)) {
                 com.gmt2001.Console.debug.println("Broadcast to client [" + c.remoteAddress().toString() + "]");
-                c.writeAndFlush(resframe.copy());
+                sendWsFrame(c, null, resframe.copy());
             } else {
                 com.gmt2001.Console.debug.println("Did not broadcast to client [" + c.remoteAddress().toString() + "] Authenticated: " + (c.attr(WsAuthenticationHandler.ATTR_AUTHENTICATED).get() ? "t" : "f") + "   Uri: " + c.attr(ATTR_URI).get() + "   Uri match: " + (c.attr(ATTR_URI).get().equals(uri) ? "t" : "f"));
             }
         });
+
+        HTTPWSServer.releaseObj(resframe);
     }
 
     static void closeAllWsSessions() {
         WebSocketFrame resframe = WebSocketFrameHandler.prepareCloseWebSocketFrame(WebSocketCloseStatus.ENDPOINT_UNAVAILABLE);
         WS_SESSIONS.forEach((c) -> {
-            c.writeAndFlush(resframe.copy());
+            sendWsFrame(c, null, resframe.copy());
             c.close();
         });
+
+        HTTPWSServer.releaseObj(resframe);
     }
 
     public static Queue<Channel> getWsSessions(String uri) {

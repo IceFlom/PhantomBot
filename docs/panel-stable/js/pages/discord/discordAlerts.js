@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,12 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* global toastr */
+
 // Main function that gets all of our data.
 $(function () {
     // Get all module toggles.
     socket.getDBValues('alerts_get_modules', {
-        tables: ['modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules'],
-        keys: ['./discord/handlers/followHandler.js', './discord/handlers/subscribeHandler.js', './discord/handlers/hostHandler.js',
+        tables: ['modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules', 'modules'],
+        keys: ['./discord/handlers/followHandler.js', './discord/handlers/subscribeHandler.js',
             './discord/handlers/bitsHandler.js', './discord/handlers/clipHandler.js', './discord/systems/greetingsSystem.js', './discord/handlers/streamlabsHandler.js',
             './discord/handlers/raidHandler.js', './discord/handlers/tipeeeStreamHandler.js', './discord/handlers/streamElementsHandler.js',
             './discord/handlers/twitterHandler.js', './discord/handlers/streamHandler.js']
@@ -290,63 +292,6 @@ $(function () {
         });
     });
 
-    // Host settings button.
-    $('#discordHostHandlerSettings').on('click', function () {
-        socket.getDBValues('alerts_get_host_settings', {
-            tables: ['discordSettings', 'discordSettings', 'discordSettings'],
-            keys: ['hostToggle', 'hostMessage', 'hostChannel']
-        }, true, function (e) {
-            helpers.getModal('host-alert', 'Host Alert Settings', 'Save', $('<form/>', {
-                'role': 'form'
-            })
-                    // Add the div for the col boxes.
-                    .append($('<div/>', {
-                        'class': 'panel-group',
-                        'id': 'accordion'
-                    })
-                            // Add the toggle for host alerts.
-                            .append(helpers.getDropdownGroup('host-toggle', 'Enable Host Alerts', (e.hostToggle === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
-                                    'If a message should be said in the channel when someone follows.'))
-                            // Add the the text area for the host message.
-                            .append(helpers.getTextAreaGroup('host-message', 'text', 'Host Message', '', e.hostMessage,
-                                    'Message said when someone hosts the channel. Tag: (name) and (viewers)', false))
-                            // Add the the box for the reward.
-                            .append(getChannelSelector('host-channel', 'Alert Channel', '#alerts', e.hostChannel,
-                                    'Channel where all alerts should go to.', allowedChannelTypes))),
-                    function () { // Callback once the user clicks save.
-                        let hostToggle = $('#host-toggle').find(':selected').text() === 'Yes',
-                                hostMsg = $('#host-message'),
-                                hostChannel = $('#host-channel');
-
-                        // Make sure the user has someone in each box.
-                        switch (false) {
-                            case helpers.handleInputString(hostMsg):
-                                break;
-                            default:
-                                socket.updateDBValues('alerts_update_host_settings', {
-                                    tables: ['discordSettings', 'discordSettings', 'discordSettings'],
-                                    keys: ['hostToggle', 'hostMessage', 'hostChannel'],
-                                    values: [hostToggle, hostMsg.val(), hostChannel.val()]
-                                }, function () {
-                                    socket.wsEvent('discord', './discord/handlers/hostHandler.js', '', [], function () {
-                                        // Close the modal.
-                                        $('#host-alert').modal('toggle');
-                                        // Alert the user.
-                                        toastr.success('Successfully updated host alert settings!');
-                                    });
-                                });
-                        }
-
-                    }).on('shown.bs.modal', function (e) {
-                refreshChannels(function () {
-                    if (discordChannels !== null) {
-                        $('#host-channel').select2({templateResult: discordChannelTemplate});
-                    }
-                });
-            }).modal('toggle');
-        });
-    });
-
     // Bits settings.
     $('#discordBitsHandlerSettings').on('click', function () {
         socket.getDBValues('discord_alerts_get_bits_settings', {
@@ -454,9 +399,9 @@ $(function () {
         socket.getDBValues('alerts_get_stream_settings', {
             tables: ['discordSettings', 'discordSettings', 'discordSettings', 'discordSettings',
                 'discordSettings', 'discordSettings', 'discordSettings', 'discordSettings',
-                'discordSettings'],
-            keys: ['onlineToggle', 'onlineMessage', 'offlineToggle', 'offlineMessage',
-                'gameToggle', 'gameMessage', 'botGameToggle', 'onlineChannel', 'deleteMessageToggle']
+                'discordSettings', 'discordSettings', 'discordSettings', 'discordSettings'],
+            keys: ['onlineToggle', 'onlinePublish', 'onlineMessage', 'offlineToggle', 'offlinePublish', 'offlineMessage',
+                'gameToggle', 'gamePublish', 'gameMessage', 'botGameToggle', 'onlineChannel', 'deleteMessageToggle']
         }, true, function (e) {
             helpers.getModal('stream-alert', 'Stream Alert Settings', 'Save', $('<form/>', {
                 'role': 'form'
@@ -473,6 +418,8 @@ $(function () {
                                     // Add the toggle for online alerts.
                                     .append(helpers.getDropdownGroup('online-toggle', 'Enable Online Alerts', (e.onlineToggle === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
                                             'If a message should be said in the channel when you go live on Twitch.'))
+                                    .append(helpers.getDropdownGroup('online-publish', 'Publish Online Alerts', (e.onlinePublish === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
+                                            'If the message is posted to a Discord Announcement channel, attempts to publish it to subscribers.'))
                                     // Add the toggle for auto bot streaming status
                                     .append(helpers.getDropdownGroup('online-status', 'Enable Bot Status', (e.botGameToggle === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
                                             'Show your bot as streaming when you go live.'))
@@ -486,6 +433,8 @@ $(function () {
                                     // Add the toggle for offline alerts.
                                     .append(helpers.getDropdownGroup('offline-toggle', 'Enable Offline Alerts', (e.offlineToggle === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
                                             'If a message should be said in the channel when you go offline on Twitch.'))
+                                    .append(helpers.getDropdownGroup('offline-publish', 'Publish Offline Alerts', (e.offlinePublish === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
+                                            'If the message is posted to a Discord Announcement channel, attempts to publish it to subscribers.'))
                                     // Add the text area for the offline message.
                                     .append(helpers.getTextAreaGroup('offline-message', 'text', 'Offline Message', '', e.offlineMessage,
                                             'Message said when you go offline. This message is in an embed style. Tags: (name)', false))))
@@ -496,6 +445,8 @@ $(function () {
                                     // Add the toggle for offline alerts.
                                     .append(helpers.getDropdownGroup('game-toggle', 'Enable Game Change Alerts', (e.gameToggle === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
                                             'If a message should be said in the channel when you switch games on Twitch.'))
+                                    .append(helpers.getDropdownGroup('game-publish', 'Publish Game Change Alerts', (e.gamePublish === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
+                                            'If the message is posted to a Discord Announcement channel, attempts to publish it to subscribers.'))
                                     // Add the text area for the offline message.
                                     .append(helpers.getTextAreaGroup('game-message', 'text', 'Game Change Message', '', e.gameMessage,
                                             'Message said when you change games on Twitch. Tags: (name)', false))))
@@ -511,11 +462,14 @@ $(function () {
                                             'Automatically delete the online message after the stream ends and the offline message when a new stream starts.'))))),
                     function () {
                         let onlineToggle = $('#online-toggle').find(':selected').text() === 'Yes',
+                                onlinePublish = $('#online-publish').find(':selected').text() === 'Yes',
                                 statusToggle = $('#online-status').find(':selected').text() === 'Yes',
                                 onlineMessage = $('#online-message'),
                                 offlineToggle = $('#offline-toggle').find(':selected').text() === 'Yes',
+                                offlinePublish = $('#offline-publish').find(':selected').text() === 'Yes',
                                 offlineMessage = $('#offline-message'),
                                 gameToggle = $('#game-toggle').find(':selected').text() === 'Yes',
+                                gamePublish = $('#game-publish').find(':selected').text() === 'Yes',
                                 gameMessage = $('#game-message'),
                                 channel = $('#channel-alert'),
                                 deleteMessageToggle = $('#delete-message').find(':selected').text() === 'Yes';
@@ -529,11 +483,11 @@ $(function () {
                                 socket.updateDBValues('discord_stream_alerts_updater', {
                                     tables: ['discordSettings', 'discordSettings', 'discordSettings', 'discordSettings',
                                         'discordSettings', 'discordSettings', 'discordSettings', 'discordSettings',
-                                        'discordSettings', ],
-                                    keys: ['onlineToggle', 'onlineMessage', 'offlineToggle', 'offlineMessage',
-                                        'gameToggle', 'gameMessage', 'botGameToggle', 'onlineChannel', 'deleteMessageToggle'],
-                                    values: [onlineToggle, onlineMessage.val(), offlineToggle, offlineMessage.val(),
-                                        gameToggle, gameMessage.val(), statusToggle, channel.val(), deleteMessageToggle]
+                                        'discordSettings', 'discordSettings', 'discordSettings', 'discordSettings'],
+                                    keys: ['onlineToggle', 'onlinePublish', 'onlineMessage', 'offlineToggle', 'offlinePublish', 'offlineMessage',
+                                        'gameToggle', 'gamePublish', 'gameMessage', 'botGameToggle', 'onlineChannel', 'deleteMessageToggle'],
+                                    values: [onlineToggle, onlinePublish, onlineMessage.val(), offlineToggle, offlinePublish, offlineMessage.val(),
+                                        gameToggle, gamePublish, gameMessage.val(), statusToggle, channel.val(), deleteMessageToggle]
                                 }, function () {
                                     socket.wsEvent('discord', './discord/handlers/streamHandler.js', '', [], function () {
                                         // Close the modal.

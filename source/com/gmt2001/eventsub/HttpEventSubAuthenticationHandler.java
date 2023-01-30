@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,24 +17,14 @@
 package com.gmt2001.eventsub;
 
 import com.gmt2001.HMAC;
+import com.gmt2001.httpwsserver.HttpServerPageHandler;
 import com.gmt2001.httpwsserver.auth.HttpAuthenticationHandler;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
-import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpUtil;
-import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import io.netty.util.CharsetUtil;
 import java.nio.charset.Charset;
-import java.time.ZoneOffset;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
+import java.time.ZonedDateTime;
 import tv.phantombot.PhantomBot;
 
 /**
@@ -42,7 +32,7 @@ import tv.phantombot.PhantomBot;
  *
  * @author gmt2001
  */
-class HttpEventSubAuthenticationHandler implements HttpAuthenticationHandler {
+final class HttpEventSubAuthenticationHandler implements HttpAuthenticationHandler {
 
     @Override
     public boolean checkAuthorization(ChannelHandlerContext ctx, FullHttpRequest req) {
@@ -51,21 +41,10 @@ class HttpEventSubAuthenticationHandler implements HttpAuthenticationHandler {
         String body = req.content().toString(Charset.defaultCharset());
         String signature = req.headers().get("Twitch-Eventsub-Message-Signature").replaceAll("sha256=", "");
 
-        boolean authenticated = HMAC.compareHmacSha256(EventSub.getSecret(), id + timestamp + body, signature);
-
-        Calendar c = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
-        c.add(Calendar.MINUTE, -10);
-        Date ts = EventSub.parseDate(timestamp);
-        if (ts.before(c.getTime()) || EventSub.instance().isDuplicate(id, ts)) {
-            authenticated = false;
-        }
+        boolean authenticated = this.isAuthorized(ctx, req);
 
         if (!authenticated) {
-            DefaultFullHttpResponse res = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.FORBIDDEN, Unpooled.buffer());
-            ByteBuf buf = Unpooled.copiedBuffer(res.status().toString(), CharsetUtil.UTF_8);
-            res.content().writeBytes(buf);
-            buf.release();
-            HttpUtil.setContentLength(res, res.content().readableBytes());
+            FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.FORBIDDEN);
 
             if (PhantomBot.getEnableDebugging()) {
                 com.gmt2001.Console.debug.println("403");
@@ -73,8 +52,7 @@ class HttpEventSubAuthenticationHandler implements HttpAuthenticationHandler {
                 com.gmt2001.Console.debug.println("Got: >" + HMAC.calcHmacSha256(EventSub.getSecret(), id + timestamp + body) + "<");
             }
 
-            res.headers().set(CONNECTION, CLOSE);
-            ctx.writeAndFlush(res).addListener(ChannelFutureListener.CLOSE);
+            HttpServerPageHandler.sendHttpResponse(ctx, req, res);
         }
 
         return authenticated;
@@ -82,6 +60,24 @@ class HttpEventSubAuthenticationHandler implements HttpAuthenticationHandler {
 
     @Override
     public void invalidateAuthorization(ChannelHandlerContext ctx, FullHttpRequest req) {
+        throw new UnsupportedOperationException("Not supported by this authentication handler.");
+    }
+
+    @Override
+    public boolean isAuthorized(ChannelHandlerContext ctx, FullHttpRequest req) {
+        String id = req.headers().get("Twitch-Eventsub-Message-Id");
+        String timestamp = req.headers().get("Twitch-Eventsub-Message-Timestamp");
+        String body = req.content().toString(Charset.defaultCharset());
+        String signature = req.headers().get("Twitch-Eventsub-Message-Signature").replaceAll("sha256=", "");
+
+        ZonedDateTime ts = EventSub.parseDate(timestamp);
+
+        return HMAC.compareHmacSha256(EventSub.getSecret(), id + timestamp + body, signature) && ts.isAfter(ZonedDateTime.now().minusMinutes(10))
+                && !EventSub.instance().isDuplicate(id, ts);
+    }
+
+    @Override
+    public boolean isAuthorized(String user, String pass) {
         throw new UnsupportedOperationException("Not supported by this authentication handler.");
     }
 }

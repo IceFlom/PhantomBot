@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -239,10 +239,10 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./games/slotMachine.js', 'slot', 7);
-        $.registerChatSubcommand('slot', 'rewards', 1);
-        $.registerChatSubcommand('slot', 'emotes', 1);
-        $.registerChatSubcommand('slot', 'onlineonly', 1);
+        $.registerChatCommand('./games/slotMachine.js', 'slot', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('slot', 'rewards', $.PERMISSION.Admin);
+        $.registerChatSubcommand('slot', 'emotes', $.PERMISSION.Admin);
+        $.registerChatSubcommand('slot', 'onlineonly', $.PERMISSION.Admin);
     });
 
     $.loadPrizesSlot = loadPrizes;

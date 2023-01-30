@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,9 +35,32 @@ public interface HttpAuthenticationHandler {
      *
      * @param ctx The {@link ChannelHandlerContext} of the session
      * @param req The {@link FullHttpRequest} to check
-     * @return {@code true} if authenticated, {@code false} otherwise
+     * @return otherwise
      */
     boolean checkAuthorization(ChannelHandlerContext ctx, FullHttpRequest req);
+
+    /**
+     * Checks if the given {@link FullHttpRequest} is a valid authentication request, or if the underlying {@link Channel} has already been
+     * authenticated
+     *
+     * When returning {@code false}, this method MUST NOT send a response to the client
+     *
+     * @param ctx The {@link ChannelHandlerContext} of the session
+     * @param req The {@link FullHttpRequest} to check
+     * @return otherwise
+     */
+    boolean isAuthorized(ChannelHandlerContext ctx, FullHttpRequest req);
+
+    /**
+     * Checks if the given username and password is a valid
+     *
+     * When returning {@code false}, this method MUST NOT send a response to the client
+     *
+     * @param user The username
+     * @param pass The password
+     * @return otherwise
+     */
+    boolean isAuthorized(String user, String pass);
 
     /**
      * Invalidates the authentication of the specified {@link ChannelHandlerContext}, if supported by the authentication handler

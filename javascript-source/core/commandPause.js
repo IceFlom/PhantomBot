@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,8 @@
 (function() {
     var isActive = $.getSetIniDbBoolean('commandPause', 'commandsPaused', false),
         defaultTime = $.getSetIniDbNumber('commandPause', 'defaultTime', 300),
-        timerId = -1;
+        timerId,
+        _lock = new Packages.java.util.concurrent.locks.ReentrantLock();
 
     /**
      * @function pause
@@ -31,18 +32,24 @@
      * @param {Number} [seconds]
      */
     function pause(seconds) {
-        seconds = (seconds ? seconds : defaultTime);
-        if (isActive) {
-            clearTimeout(timerId);
-        } else {
-            $.setIniDbBoolean('commandPause', 'commandsPaused', true);
-            isActive = true;
+        seconds = (seconds !== undefined ? seconds : defaultTime);
+        _lock.lock();
+        try {
+            if (isActive) {
+                clearTimeout(timerId);
+            } else {
+                $.setIniDbBoolean('commandPause', 'commandsPaused', true);
+                isActive = true;
+            }
+
+            timerId = setTimeout(function() {
+                unPause();
+            }, seconds * 1e3);
+            $.say($.lang.get('commandpause.initiated', $.getTimeString(seconds)));
+        } finally {
+            _lock.unlock();
         }
-        timerId = setTimeout(function() {
-            unPause();
-        }, seconds * 1e3);
-        $.say($.lang.get('commandpause.initiated', $.getTimeString(seconds)));
-    };
+    }
 
     /**
      * @function isPaused
@@ -50,22 +57,34 @@
      * @returns {boolean}
      */
     function isPaused() {
-        return isActive;
-    };
+        _lock.lock();
+        try {
+            return isActive;
+        } finally {
+            _lock.unlock();
+        }
+    }
 
     /**
      * @function clear
      * @export $.commandPause
      */
     function unPause() {
-        if (timerId > -1) {
-            clearTimeout(timerId);
-            $.setIniDbBoolean('commandPause', 'commandsPaused', false);
-            isActive = false;
-            timerId = -1;
-            $.say($.lang.get('commandpause.ended'));
+        _lock.lock();
+        try {
+            if (timerId !== undefined) {
+                clearTimeout(timerId);
+                $.setIniDbBoolean('commandPause', 'commandsPaused', false);
+                isActive = false;
+                timerId = undefined;
+                $.say($.lang.get('commandpause.ended'));
+            } else {
+                $.say($.lang.get('commandpause.notactive'));
+            }
+        } finally {
+            _lock.unlock();
         }
-    };
+    }
 
     /**
      * @event event
@@ -76,11 +95,11 @@
 
         /**
          * @commandpath pausecommands [seconds] - Pause all command usage for the given amount of time. If [seconds] is not present, uses a default value
-         * @commandpath pausecommands clear - Unpause commands 
+         * @commandpath pausecommands clear - Unpause commands
          */
         if (command.equalsIgnoreCase('pausecommands')) {
-            if (args[0] != undefined || args[0] != null) {
-                if (args[0] == 'clear') {
+            if (args[0] !== undefined || args[0] !== null) {
+                if ($.jsString(args[0]) === 'clear') {
                     unPause();
                     return;
                 }
@@ -100,15 +119,13 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        if ($.bot.isModuleEnabled('./core/commandPause.js')) {
-            $.registerChatCommand('./core/commandPause.js', 'pausecommands', 2);
-        }
+        $.registerChatCommand('./core/commandPause.js', 'pausecommands', $.PERMISSION.Mod);
     });
 
     /** Export functions to API */
     $.commandPause = {
         pause: pause,
         isPaused: isPaused,
-        unPause: unPause,
+        unPause: unPause
     };
 })();

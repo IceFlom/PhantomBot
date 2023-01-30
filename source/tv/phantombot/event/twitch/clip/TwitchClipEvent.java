@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import org.json.JSONObject;
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchClipEvent extends TwitchEvent {
+
     private final String clipURL;
     private final String creator;
     private final String clipTitle;
@@ -28,10 +29,10 @@ public class TwitchClipEvent extends TwitchEvent {
     /**
      * Class constructor.
      *
-     * @param {String}     clipURL
-     * @param {String}     creator
-     * @param {String}     clipTitle
-     * @param {JSONObject} thumbnailObj
+     * @param clipURL
+     * @param creator
+     * @param clipTitle
+     * @param thumbnailObj
      */
     public TwitchClipEvent(String clipURL, String creator, String clipTitle, JSONObject thumbnailObj) {
         this.clipURL = clipURL;
@@ -43,7 +44,7 @@ public class TwitchClipEvent extends TwitchEvent {
     /**
      * Method that returns the clip URL.
      *
-     * @return {String} clipURL
+     * @return clipURL
      */
     public String getClipURL() {
         return this.clipURL;
@@ -52,7 +53,7 @@ public class TwitchClipEvent extends TwitchEvent {
     /**
      * Method that returns the clip creator.
      *
-     * @return {String} creator
+     * @return creator
      */
     public String getCreator() {
         return this.creator;
@@ -61,7 +62,7 @@ public class TwitchClipEvent extends TwitchEvent {
     /**
      * Method that returns the clip title.
      *
-     * @return {String} clipTitle
+     * @return clipTitle
      */
     public String getClipTitle() {
         return this.clipTitle;
@@ -70,7 +71,7 @@ public class TwitchClipEvent extends TwitchEvent {
     /**
      * Method that returns the object of thumnails.
      *
-     * @return {JSONObject} thumbnailObj
+     * @return thumbnailObj
      */
     public JSONObject getThumbnailObject() {
         return this.thumbnailObj;

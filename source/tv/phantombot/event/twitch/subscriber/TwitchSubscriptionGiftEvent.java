@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,44 +19,65 @@ package tv.phantombot.event.twitch.subscriber;
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchSubscriptionGiftEvent extends TwitchEvent {
+
     private final String username;
     private final String recipient;
     private final String months;
     private final String plan;
+    private final String giftedMonths;
 
     /**
      * Class constructor.
      *
-     * @param {String} username
-     * @param {String} recipient
-     * @param {String} plan
+     * @param username
+     * @param recipient
+     * @param plan
      */
     public TwitchSubscriptionGiftEvent(String username, String recipient, String plan) {
         this.username = username;
         this.recipient = recipient;
         this.months = null;
         this.plan = plan;
+        this.giftedMonths = null;
     }
 
     /**
      * Class constructor.
      *
-     * @param {String} username
-     * @param {String} recipient
-     * @param {String} months
-     * @param {String} plan
+     * @param username
+     * @param recipient
+     * @param months
+     * @param plan
      */
     public TwitchSubscriptionGiftEvent(String username, String recipient, String months, String plan) {
         this.username = username;
         this.recipient = recipient;
         this.months = months;
         this.plan = plan;
+        this.giftedMonths = null;
+    }
+
+    /**
+     * Class constructor.
+     *
+     * @param username
+     * @param recipient
+     * @param months
+     * @param plan
+     * @param giftedMonths
+     */
+    public TwitchSubscriptionGiftEvent(String username, String recipient, String months, String plan, String giftedMonths) {
+        this.username = username;
+        this.recipient = recipient;
+        this.months = months;
+        this.plan = plan;
+        this.giftedMonths = giftedMonths;
     }
 
     /**
      * Method that returns the gifted the subscription.
      *
-     * @return {String} username
+     * @return username
      */
     public String getUsername() {
         return this.username;
@@ -65,7 +86,7 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
     /**
      * Method that returns the recipient.
      *
-     * @return {String} recipient
+     * @return recipient
      */
     public String getRecipient() {
         return this.recipient;
@@ -74,16 +95,25 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
     /**
      * Method that returns the months, can be 0.
      *
-     * @return {String} months
+     * @return months
      */
     public String getMonths() {
         return (this.months == null) ? "1" : this.months;
     }
 
     /**
-     * Method that returns the subcription plan. (1000, 2000, 3000 and Prime)
+     * Method that returns the number of months gifted.
      *
-     * @return {String} plan
+     * @return months
+     */
+    public String getGiftedMonths() {
+        return (this.giftedMonths == null) ? "1" : this.giftedMonths;
+    }
+
+    /**
+     * Method that returns the subscription plan. (1000, 2000, 3000 and Prime)
+     *
+     * @return plan
      */
     public String getPlan() {
         return this.plan;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,51 +19,52 @@ package tv.phantombot.event.irc.channel;
 import tv.phantombot.twitch.irc.TwitchSession;
 
 public class IrcChannelUsersUpdateEvent extends IrcChannelEvent {
+
     private final String[] joins;
     private final String[] parts;
 
     /**
      * Class constructor.
      *
-     * @param {TwitchSession}  session
-     * @param {String[]} joins
-     * @param {String[]} parts
+     * @param session
+     * @param joins
+     * @param parts
      */
     public IrcChannelUsersUpdateEvent(TwitchSession session, String[] joins, String[] parts) {
         super(session);
 
-        this.joins = joins;
-        this.parts = parts;
+        this.joins = joins.clone();
+        this.parts = parts.clone();
     }
 
     /**
      * Class constructor.
      *
-     * @param {String[]} joins
-     * @param {String[]} parts
+     * @param joins
+     * @param parts
      */
     public IrcChannelUsersUpdateEvent(String[] joins, String[] parts) {
         super(null);
 
-        this.joins = joins;
-        this.parts = parts;
+        this.joins = joins.clone();
+        this.parts = parts.clone();
     }
 
     /**
      * Method that returns the current array of users who joined the channel in the last 10 minutes.
      *
-     * @return {String[]} joins
+     * @return joins
      */
     public String[] getJoins() {
-        return this.joins;
+        return this.joins.clone();
     }
 
     /**
      * Method that returns the current array of users who left the channel in the last 10 minutes.
      *
-     * @return {String[]} parts
+     * @return parts
      */
     public String[] getParts() {
-        return this.parts;
+        return this.parts.clone();
     }
 }

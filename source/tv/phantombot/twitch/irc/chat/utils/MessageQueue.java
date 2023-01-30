@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  */
 package tv.phantombot.twitch.irc.chat.utils;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Processor;
 import java.util.concurrent.Flow.Subscription;
@@ -27,12 +27,9 @@ public abstract class MessageQueue extends SubmissionPublisher<Message> implemen
 
     protected final String channelName;
     protected boolean isAllowedToSend = false;
-    protected int writes = 0;
-    protected final Date nextReminder = new Date();
+    protected Instant nextReminder = Instant.now();
     protected static final long REMINDER_INTERVAL = 300000L;
     protected Subscription subscription;
-    protected long lastWrite = System.currentTimeMillis();
-    protected long nextWrite = System.currentTimeMillis();
 
     /**
      * Class constructor.
@@ -40,6 +37,7 @@ public abstract class MessageQueue extends SubmissionPublisher<Message> implemen
      * @param channelName
      */
     protected MessageQueue(String channelName) {
+        super();
         this.channelName = channelName;
 
         // Set the default thread uncaught exception handler.
@@ -60,17 +58,8 @@ public abstract class MessageQueue extends SubmissionPublisher<Message> implemen
      *
      * @return isAllowedToSend
      */
-    public boolean getAllowSendMessages() {
+    public boolean isAllowedToSendMessages() {
         return this.isAllowedToSend;
-    }
-
-    /**
-     * Method that returns the amount of messages we've sent in 30 seconds.
-     *
-     * @return writes
-     */
-    public int getWrites() {
-        return this.writes;
     }
 
     /**
@@ -97,8 +86,8 @@ public abstract class MessageQueue extends SubmissionPublisher<Message> implemen
     public void sayNow(String message) {
         message = message.replace('\r', ' ');
         String[] spl = message.split("\n");
-        for (int i = spl.length; i > 0; i--) {
-            this.submit(new Message(spl[i - 1], spl[i - 1].startsWith(".")));
+        for (String str : spl) {
+            this.submit(new Message(str));
         }
     }
 

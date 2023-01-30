@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,28 +28,20 @@ import tv.phantombot.event.eventsub.EventSubWebhookValidatedEvent;
  *
  * @author gmt2001
  */
-public class WebhookValidated extends EventSubSubscriptionType {
-
-    protected WebhookValidated() {
-    }
+public final class WebhookValidated extends EventSubSubscriptionType {
 
     @Override
-    protected EventSubSubscription proposeSubscription() {
+    public EventSubSubscription proposeSubscription() {
         throw new UnsupportedOperationException("Not a valid subscription type.");
     }
 
     @Override
-    protected void validateParameters() throws IllegalArgumentException {
+    public void validateParameters() throws IllegalArgumentException {
         throw new UnsupportedOperationException("Not a valid subscription type.");
     }
 
     @Override
-    public boolean isAlreadySubscribed() {
-        throw new UnsupportedOperationException("Not a valid subscription type.");
-    }
-
-    @Override
-    public String findMatchingSubscriptionId() {
+    protected boolean isMatch(EventSubSubscription subscription) {
         throw new UnsupportedOperationException("Not a valid subscription type.");
     }
 
@@ -57,5 +49,4 @@ public class WebhookValidated extends EventSubSubscriptionType {
     public void onEventSubInternalVerificationEvent(EventSubInternalVerificationEvent e) {
         EventBus.instance().postAsync(new EventSubWebhookValidatedEvent(e.getSubscription()));
     }
-
 }

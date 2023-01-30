@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,21 +17,23 @@
 package tv.phantombot.httpserver;
 
 import com.gmt2001.PathValidator;
-import com.gmt2001.TwitchAuthorizationCodeFlow;
+import com.gmt2001.Reflect;
 import com.gmt2001.httpwsserver.HttpRequestHandler;
 import com.gmt2001.httpwsserver.HttpServerPageHandler;
 import com.gmt2001.httpwsserver.auth.HttpAuthenticationHandler;
 import com.gmt2001.httpwsserver.auth.HttpBasicAuthenticationHandler;
 import com.gmt2001.httpwsserver.auth.HttpNoAuthenticationHandler;
+import com.gmt2001.twitch.TwitchAuthorizationCodeFlow;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.SecureRandom;
+import tv.phantombot.CaselessProperties;
 import tv.phantombot.PhantomBot;
 
 /**
@@ -40,15 +42,15 @@ import tv.phantombot.PhantomBot;
  */
 public class HTTPOAuthHandler implements HttpRequestHandler {
 
-    private final HttpAuthenticationHandler authHandler;
-    private static final String TOKENCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
+    private HttpAuthenticationHandler authHandler;
     private static final int TOKENLEN = 40;
     private HttpAuthenticationHandler authHandlerBroadcaster;
     private String token;
 
-    public HTTPOAuthHandler(String panelUser, String panelPass) {
-        authHandler = new HttpBasicAuthenticationHandler("PhantomBot Web OAuth", panelUser, panelPass, "/panel/login/");
-        token = generateToken();
+    public HTTPOAuthHandler() {
+        authHandler = new HttpBasicAuthenticationHandler("PhantomBot Web OAuth", CaselessProperties.instance().getProperty("paneluser", "panel"),
+                CaselessProperties.instance().getProperty("panelpassword", "panel"), "/panel/login/");
+        token = PhantomBot.generateRandomString(TOKENLEN);
         authHandlerBroadcaster = new HttpBasicAuthenticationHandler("PhantomBot Web OAuth", "broadcaster", token, "/panel/login/");
     }
 
@@ -56,6 +58,11 @@ public class HTTPOAuthHandler implements HttpRequestHandler {
     public HttpRequestHandler register() {
         HttpServerPageHandler.registerHttpHandler("/oauth", this);
         return this;
+    }
+
+    public void updateAuth() {
+        this.authHandler = new HttpBasicAuthenticationHandler("PhantomBot Web OAuth", CaselessProperties.instance().getProperty("paneluser", "panel"),
+                CaselessProperties.instance().getProperty("panelpassword", "panel"), "/panel/login/");
     }
 
     @Override
@@ -66,13 +73,19 @@ public class HTTPOAuthHandler implements HttpRequestHandler {
     @Override
     public void handleRequest(ChannelHandlerContext ctx, FullHttpRequest req) {
         if (req.uri().startsWith("/oauth/broadcaster")) {
-            if (!authHandlerBroadcaster.checkAuthorization(ctx, req)) {
+            if (!this.authHandlerBroadcaster.checkAuthorization(ctx, req)) {
                 return;
             }
         } else {
-            if (!authHandler.checkAuthorization(ctx, req)) {
+            if (!PhantomBot.instance().getHTTPSetupHandler().checkTokenAuthorization(ctx, req) && !this.authHandler.checkAuthorization(ctx, req)) {
                 return;
             }
+        }
+
+        if (!req.method().equals(HttpMethod.GET) && !req.method().equals(HttpMethod.PUT) && !req.method().equals(HttpMethod.POST)) {
+            com.gmt2001.Console.debug.println("405");
+            HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.METHOD_NOT_ALLOWED));
+            return;
         }
 
         QueryStringDecoder qsd = new QueryStringDecoder(req.uri());
@@ -91,9 +104,9 @@ public class HTTPOAuthHandler implements HttpRequestHandler {
                 p = Paths.get("./web/", path);
             }
 
-            if (!PathValidator.isValidPathWebAuth(p.toString()) || !p.toAbsolutePath().startsWith(Paths.get(PhantomBot.GetExecutionPath(), "./web"))) {
+            if (!PathValidator.isValidPathWebAuth(p.toString()) || !p.toAbsolutePath().startsWith(Paths.get(Reflect.GetExecutionPath(), "./web"))) {
                 com.gmt2001.Console.debug.println("403 " + req.method().asciiName() + ": " + p.toString());
-                HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.FORBIDDEN, null, null));
+                HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.FORBIDDEN));
                 return;
             }
 
@@ -109,27 +122,14 @@ public class HTTPOAuthHandler implements HttpRequestHandler {
         } catch (IOException ex) {
             com.gmt2001.Console.debug.println("500");
             com.gmt2001.Console.debug.printStackTrace(ex);
-            HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR, null, null));
+            HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR));
         }
     }
 
     public String changeBroadcasterToken() {
-        token = generateToken();
+        token = PhantomBot.generateRandomString(TOKENLEN);
         authHandlerBroadcaster = new HttpBasicAuthenticationHandler("PhantomBot Web OAuth", "broadcaster", token, "/panel/login");
         return token;
-    }
-
-    private String generateToken() {
-        String ret = "";
-
-        SecureRandom r = new SecureRandom();
-
-        while (ret.length() < TOKENLEN) {
-            int val = r.nextInt(TOKENCHARS.length());
-            ret += TOKENCHARS.charAt(val);
-        }
-
-        return ret;
     }
 
     public boolean validateBroadcasterToken(String token) {

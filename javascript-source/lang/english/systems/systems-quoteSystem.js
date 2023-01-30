@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ $.lang.register('quotesystem.quotemessage.usage', 'Usage: !quotemessage [message
 $.lang.register('quotesystem.quotemessage.success', 'Changed the message used for quotes.');
 $.lang.register('quotesystem.quotedateformat.usage', 'Usage: !quotedateformat [format] - Lookup SimpleDateFormat in the Java 11 documentation for format info. Current format: $1');
 $.lang.register('quotesystem.quotedateformat.success', 'Changed the date format used for quotes.');
-$.lang.register('quotesystem.searchquote.usage', 'Usage: !searchquote [text] (Must provide at least 5 characters)');
+$.lang.register('quotesystem.searchquote.usage', 'Usage: !searchquote [text]');
 $.lang.register('quotesystem.searchquote.404', 'No matching quotes found.');
 $.lang.register('quotesystem.searchquote.found', 'Quote IDs with matches: $1');
 $.lang.register('quotesystem.twitchnames-disabled', 'Usernames for quotes won\'t be validated');

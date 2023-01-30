@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,13 @@ package tv.phantombot.event.twitch.titlechange;
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchTitleChangeEvent extends TwitchEvent {
+
     private final String streamTitle;
 
     /**
      * Class constructor.
      *
-     * @param {String} streamTitle
+     * @param streamTitle
      */
     public TwitchTitleChangeEvent(String streamTitle) {
         this.streamTitle = streamTitle;
@@ -33,7 +34,7 @@ public class TwitchTitleChangeEvent extends TwitchEvent {
     /**
      * Method that returns the stream name
      *
-     * @return {String} streamTitle
+     * @return streamTitle
      */
     public String getStreamTitle() {
         return this.streamTitle;

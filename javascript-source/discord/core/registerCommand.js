@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@
         // The script sometimes load before discord, so add this.
         while (!$.inidb.exists('discordPermsObj', 'obj')) {
             try {
-                java.lang.Thread.sleep(1000);
+                Packages.java.lang.Thread.sleep(1000);
             } catch (ex) {
                 $.log.error('Failed to set permission on Discord command as Discord is not connected. Please restart PhantomBot.');
                 return;

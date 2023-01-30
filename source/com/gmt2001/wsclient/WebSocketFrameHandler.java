@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 package com.gmt2001.wsclient;
 
+import com.gmt2001.httpwsserver.HTTPWSServer;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -29,6 +30,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import org.json.JSONObject;
+import org.json.JSONStringer;
 
 /**
  * Processes WebSocket frames and passes successful ones to the final handler
@@ -63,6 +65,9 @@ class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> 
      */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, WebSocketFrame frame) throws Exception {
+        if (this.client.pinger != null) {
+            this.client.pinger.handleFrame(ctx, frame);
+        }
         this.client.handler.handleFrame(ctx, frame);
     }
 
@@ -79,9 +84,15 @@ class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> 
             com.gmt2001.Console.debug.println("200 WS Client: Remote: [" + ctx.channel().remoteAddress().toString() + "]");
             ctx.channel().closeFuture().addListener((ChannelFutureListener) (ChannelFuture f) -> {
                 this.connected = false;
+                if (this.client.pinger != null) {
+                    this.client.pinger.onClose();
+                }
                 this.client.handler.onClose();
             });
             this.connected = true;
+            if (this.client.pinger != null) {
+                this.client.pinger.handshakeComplete(ctx);
+            }
             this.client.handler.handshakeComplete(ctx);
         }
     }
@@ -115,6 +126,16 @@ class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> 
      * @return A {@link WebSocketFrame} that is ready to transmit
      */
     static WebSocketFrame prepareTextWebSocketResponse(JSONObject json) {
+        return new TextWebSocketFrame(json.toString());
+    }
+
+    /**
+     * Creates and prepares a text-type {@link WebSocketFrame} for transmission from a {@link JSONStringer}
+     *
+     * @param json The {@link JSONStringer} to send
+     * @return A {@link WebSocketFrame} that is ready to transmit
+     */
+    static WebSocketFrame prepareTextWebSocketResponse(JSONStringer json) {
         return new TextWebSocketFrame(json.toString());
     }
 
@@ -168,7 +189,9 @@ class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> 
      * @param resframe The {@link WebSocketFrame} to transmit
      */
     static void sendWsFrame(Channel ch, WebSocketFrame reqframe, WebSocketFrame resframe) {
-        ch.writeAndFlush(resframe);
+        ch.writeAndFlush(resframe).addListener((p) -> {
+            HTTPWSServer.releaseObj(resframe);
+        });
     }
 
     /**

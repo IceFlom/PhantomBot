@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ package tv.phantombot.event.emotes;
 import org.json.JSONObject;
 
 public class EmotesGetEvent extends EmotesEvent {
+
     private final JSONObject twitchEmotes;
     private final JSONObject bttvEmotes;
     private final JSONObject bttvLocalEmotes;
@@ -28,11 +29,11 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Class constructor
      *
-     * @param {JSONObject} twitchEmotes
-     * @param {JSONObject} bttvEmotes
-     * @param {JSONObject} bttvLocalEmotes
-     * @param {JSONObject} ffzEmotes
-     * @param {JSONObject} ffzLocalEmotes
+     * @param twitchEmotes
+     * @param bttvEmotes
+     * @param bttvLocalEmotes
+     * @param ffzEmotes
+     * @param ffzLocalEmotes
      */
     public EmotesGetEvent(JSONObject twitchEmotes, JSONObject bttvEmotes, JSONObject bttvLocalEmotes, JSONObject ffzEmotes, JSONObject ffzLocalEmotes) {
         this.twitchEmotes = twitchEmotes;
@@ -45,7 +46,7 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Method that returns the JSONObject emotes from Twitch.
      *
-     * @param {JSONObject} twitchEmotes
+     * @param twitchEmotes
      */
     public JSONObject getTwitchEmotes() {
         return this.twitchEmotes;
@@ -54,7 +55,7 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Method that returns the JSONObject emotes from bttv.
      *
-     * @param {JSONObject} bttvEmotes
+     * @param bttvEmotes
      */
     public JSONObject getBttvEmotes() {
         return this.bttvEmotes;
@@ -63,7 +64,7 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Method that returns the JSONObject emotes from bttv local emotes.
      *
-     * @param {JSONObject} bttvLocalEmotes
+     * @param bttvLocalEmotes
      */
     public JSONObject getBttvLocalEmotes() {
         return this.bttvLocalEmotes;
@@ -72,7 +73,7 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Method that returns the JSONObject emotes from ffz.
      *
-     * @param {JSONObject} ffzEmotes
+     * @param ffzEmotes
      */
     public JSONObject getFfzEmotes() {
         return this.ffzEmotes;
@@ -81,7 +82,7 @@ public class EmotesGetEvent extends EmotesEvent {
     /**
      * Method that returns the JSONObject emotes from ffz local emotes.
      *
-     * @param {JSONObject} ffzLocalEmotes
+     * @param ffzLocalEmotes
      */
     public JSONObject getFfzLocalEmotes() {
         return this.ffzLocalEmotes;

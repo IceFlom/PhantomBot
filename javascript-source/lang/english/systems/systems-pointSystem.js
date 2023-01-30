@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ $.lang.register('pointsystem.add.error.negative', 'You can not give negative $1.
 $.lang.register('pointsystem.take.error.negative', 'You can not take negative $1.');
 $.lang.register('pointsystem.add.success', 'Sent $1 to $2. New balance is $3.');
 $.lang.register('pointsystem.add.usage', 'Usage: !points add [name] [amount]');
-$.lang.register('pointsystem.user.success', ' $1 currently has $2.');
+$.lang.register('pointsystem.user.success', '$1 currently has $2.');
 $.lang.register('pointsystem.makeitrain.error.invalid', 'Sorry, but it\'s not possible to rain $1 at the moment.');
 $.lang.register('pointsystem.makeitrain.error.needpoints', 'You can not afford to make it rain $1.');
 $.lang.register('pointsystem.makeitrain.error.negative', 'You can not make it rain negative $1.');

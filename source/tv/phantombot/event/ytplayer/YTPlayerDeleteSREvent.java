@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,13 @@
 package tv.phantombot.event.ytplayer;
 
 public class YTPlayerDeleteSREvent extends YTPlayerEvent {
+
     private final String id;
 
     /**
      * Class constructor.
      *
-     * @param {String} id
+     * @param id
      */
     public YTPlayerDeleteSREvent(String id) {
         this.id = id;
@@ -31,7 +32,7 @@ public class YTPlayerDeleteSREvent extends YTPlayerEvent {
     /**
      * Method that returns the event ID.
      *
-     * @return {String} id
+     * @return id
      */
     public String getId() {
         return this.id;

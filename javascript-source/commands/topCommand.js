@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@
 
         for (i in keys) {
             if (!$.isBot(keys[i]) && !$.isOwner(keys[i])) {
-                if (ctr++ == (iniName.equals('points') ? amountPoints : amountTime)) {
+                if (ctr++ === (iniName.equals('points') ? amountPoints : amountTime)) {
                     break;
                 }
                 list.push({
@@ -165,11 +165,11 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./commands/topCommand.js', 'top', 7);
-        $.registerChatCommand('./commands/topCommand.js', 'toptime', 7);
-        $.registerChatCommand('./commands/topCommand.js', 'topamount', 1);
-        $.registerChatCommand('./commands/topCommand.js', 'toptimeamount', 1);
-        $.registerChatCommand('./commands/topCommand.js', 'reloadtop', 1);
-        $.registerChatCommand('./commands/topCommand.js', 'reloadtopbots', 1);
+        $.registerChatCommand('./commands/topCommand.js', 'top', $.PERMISSION.Viewer);
+        $.registerChatCommand('./commands/topCommand.js', 'toptime', $.PERMISSION.Viewer);
+        $.registerChatCommand('./commands/topCommand.js', 'topamount', $.PERMISSION.Admin);
+        $.registerChatCommand('./commands/topCommand.js', 'toptimeamount', $.PERMISSION.Admin);
+        $.registerChatCommand('./commands/topCommand.js', 'reloadtop', $.PERMISSION.Admin);
+        $.registerChatCommand('./commands/topCommand.js', 'reloadtopbots', $.PERMISSION.Admin);
     });
 })();

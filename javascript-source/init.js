@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  * init.js
  * This scripts handles all events and most things for the scripts.
  */
+/* global $api, Packages, java, $script */
+
 (function () {
     var isReady = false,
             modules = [],
@@ -39,6 +41,93 @@
         this.getModuleName = function () {
             return this.scriptName.match(/((\w+)\.js)$/)[2];
         };
+    }
+
+    function handleException(where, ex) {
+        var loc = 0;
+        var errmsg = null;
+        try {
+            if (where === undefined || where === null || (typeof where) !== 'string') {
+                try {
+                    where = '' + where;
+                } catch (e) {
+                    where = 'Unknown';
+                }
+            }
+
+            loc = 1;
+            try {
+                errmsg = 'Exception [' + ex + '] Location[' + where + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + ']';
+            } catch (e) {
+                try {
+                    errmsg = 'Exception [' + ex + '] Location[' + where + ']';
+                } catch (e2) {
+                    errmsg = 'Exception [Unknown] Location[' + where + ']';
+                }
+            }
+
+            loc = 2;
+            if ($.log !== undefined && $.log.error !== undefined) {
+                try {
+                    loc = 3;
+                    $.log.error(errmsg);
+                } catch (e) {
+                    loc = 4;
+                    Packages.com.gmt2001.Console.err.printLn(errmsg);
+                }
+            } else {
+                loc = 5;
+                Packages.com.gmt2001.Console.err.printLn(errmsg);
+            }
+            if (ex.javaException !== undefined) {
+                consoleLn("Sending stack trace to error log...");
+                try {
+                    loc = 6;
+                    Packages.com.gmt2001.Console.err.printStackTrace(ex.javaException, errmsg);
+                } catch (e) {
+                    loc = 7;
+                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), errmsg);
+                }
+            } else {
+                try {
+                    loc = 8;
+                    Packages.com.gmt2001.Console.err.printStackTrace(ex, errmsg);
+                } catch (e) {
+                    loc = 9;
+                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), errmsg);
+                }
+            }
+        } catch (oops) {
+            var oopsmsg = "Location[handleException] Encountered an unrecoverable exception while trying to handle another exception";
+            var data = new Packages.java.util.HashMap();
+            try {
+                data.put("loc", loc);
+            } catch (e) {
+            }
+            try {
+                data.put("where", where);
+            } catch (e) {
+            }
+            try {
+                data.put("errmsg", errmsg);
+            } catch (e) {
+            }
+            try {
+                data.put("ex", ex);
+            } catch (e) {
+            }
+            try {
+                data.put("exstr", ex.toString());
+            } catch (e) {
+            }
+            Packages.com.gmt2001.Console.err.println(oopsmsg);
+            Packages.com.gmt2001.Console.err.println(oops);
+            try {
+                Packages.com.gmt2001.Console.err.printStackTrace(oops, data, oopsmsg, false);
+            } catch (e) {
+                Packages.com.gmt2001.Console.err.oops(oops, data, oopsmsg, false);
+            }
+        }
     }
 
     /*
@@ -75,6 +164,17 @@
         Packages.com.gmt2001.Console.out.println(java.util.Objects.toString(message));
     }
 
+    function findCaller(force) {
+        if (force !== true && !Packages.tv.phantombot.PhantomBot.getEnableDebugging()) {
+            return;
+        }
+        try {
+            throw new Error();
+        } catch (ex) {
+            return Packages.java.util.Objects.toString(ex.stack.split('\n')[2].trim());
+        }
+    }
+
     /*
      * @function consoleDebug
      *
@@ -85,7 +185,7 @@
             try {
                 throw new Error();
             } catch (ex) {
-                Packages.com.gmt2001.Console.debug.printlnRhino(java.util.Objects.toString('[' + ex.stack.split('\n')[1].trim() + '] ' + message));
+                Packages.com.gmt2001.Console.debug.printlnRhino(java.util.Objects.toString('[' + findCaller() + '] ' + message));
             }
         }
     }
@@ -137,7 +237,7 @@
                     var enabled,
                             script;
 
-                    if ($api.getScript($script, scriptName) != null) {
+                    if ($api.getScript($script, scriptName) !== null) {
                         script = $api.reloadScriptR($script, scriptName);
                     } else {
                         script = $api.loadScriptR($script, scriptName);
@@ -165,21 +265,23 @@
      * @param {Boolean} force
      */
     function loadScriptRecursive(path, silent, force) {
-        var files = $.findFiles('./scripts/' + path, ''),
-                i;
+        if (path === undefined || path === null) {
+            return;
+        }
+        var files = $api.findFiles($.javaString('./scripts/' + path), $.javaString(''));
 
-        for (i in files) {
-            files[i] = $.jsString(files[i]);
+        for (var i = 0; i < files.size(); i++) {
+            var file = $.jsString(files.get(i));
             if (path === '.') {
-                if (files[i] === 'lang' || files[i] === 'discord' || files[i] === 'init.js') {
+                if (file === 'lang' || file === 'discord' || file === 'init.js') {
                     continue;
                 }
             }
 
-            if ($.isDirectory('./scripts/' + path + '/' + files[i])) {
-                loadScriptRecursive(path + '/' + files[i], silent, (force && path !== './core' && path !== './discord/core' ? force : false));
+            if ($api.isDirectory($.javaString('./scripts/' + path + '/' + file))) {
+                loadScriptRecursive(path + '/' + file, silent, (force && path !== './core' && path !== './discord/core' ? force : false));
             } else {
-                loadScript(path + '/' + files[i], (force && path !== './core' && path !== './discord/core' ? force : false), silent);
+                loadScript(path + '/' + file, (force && path !== './core' && path !== './discord/core' ? force : false), silent);
             }
         }
     }
@@ -260,7 +362,7 @@
         var scriptName = $.replace($.replace($script.getPath(), '\\', '/'), './scripts/', ''),
                 i = getHookIndex(scriptName, hookName);
 
-        if (hookName !== 'initReady' && $api.exists(hookName) == false) {
+        if (hookName !== 'initReady' && $api.exists(hookName) === false) {
             Packages.com.gmt2001.Console.err.printlnRhino('[addHook()@init.js:254] Failed to register hook "' + hookName + '" since there is no such event.');
         } else if (i !== -1) {
             hooks[hookName].handlers[i].handler = handler;
@@ -334,7 +436,7 @@
                     } catch (ex) {
                         var errmsg;
                         try {
-                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']'
+                            errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']';
                         } catch (ex2) {
                             errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + ']';
                         }
@@ -370,53 +472,65 @@
             consoleLn('Loading modules...');
         }
 
-        // Load all core modules.
-        loadScript('./core/misc.js', false, silentScriptsLoad);
-        loadScript('./core/jsTimers.js', false, silentScriptsLoad);
-        loadScript('./core/updates.js', false, silentScriptsLoad);
-        loadScript('./core/commandTags.js', false, silentScriptsLoad);
-        loadScript('./core/chatModerator.js', false, silentScriptsLoad);
-        loadScript('./core/fileSystem.js', false, silentScriptsLoad);
-        loadScript('./core/lang.js', false, silentScriptsLoad);
-        loadScript('./core/commandPause.js', false, silentScriptsLoad);
-        loadScript('./core/logging.js', false, silentScriptsLoad);
-        loadScript('./core/commandRegister.js', false, silentScriptsLoad);
-        loadScript('./core/whisper.js', false, silentScriptsLoad);
-        loadScript('./core/commandCoolDown.js', false, silentScriptsLoad);
-        loadScript('./core/keywordCoolDown.js', false, silentScriptsLoad);
-        loadScript('./core/patternDetector.js', false, silentScriptsLoad);
-        loadScript('./core/permissions.js', false, silentScriptsLoad);
+        try {
+            // Load all core modules.
+            loadScript('./core/misc.js', false, silentScriptsLoad);
+            loadScript('./core/fileSystem.js', false, silentScriptsLoad);
+            loadScript('./core/lang.js', false, silentScriptsLoad);
+            loadScript('./core/jsTimers.js', false, silentScriptsLoad);
+            loadScript('./core/updates.js', false, silentScriptsLoad);
+            loadScript('./core/permissions.js', false, silentScriptsLoad);
+            loadScript('./core/commandRegister.js', false, silentScriptsLoad);
+            loadScript('./core/commandTags.js', false, silentScriptsLoad);
+            loadScript('./core/chatModerator.js', false, silentScriptsLoad);
+            loadScript('./core/commandPause.js', false, silentScriptsLoad);
+            loadScript('./core/logging.js', false, silentScriptsLoad);
+            loadScript('./core/whisper.js', false, silentScriptsLoad);
+            loadScript('./core/commandCoolDown.js', false, silentScriptsLoad);
+            loadScript('./core/keywordCoolDown.js', false, silentScriptsLoad);
+            loadScript('./core/patternDetector.js', false, silentScriptsLoad);
 
-        // Load all the other modules.
-        loadScriptRecursive('.', silentScriptsLoad);
+            // Load all the other modules.
+            loadScriptRecursive('.', silentScriptsLoad);
 
-        // Load Discord modules if need be.
-        if (!$.hasDiscordToken) {
-            loadScript('./discord/core/misc.js', false, silentScriptsLoad);
-            loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
-            loadScript('./discord/core/patternDetector.js', false, silentScriptsLoad);
-            loadScript('./discord/core/moderation.js', false, silentScriptsLoad);
-            loadScript('./discord/core/registerCommand.js', false, silentScriptsLoad);
-            loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
-            loadScript('./discord/core/commandCooldown.js', false, silentScriptsLoad);
+            // Load Discord modules if need be.
+            if (!$.hasDiscordToken) {
+                loadScript('./discord/core/misc.js', false, silentScriptsLoad);
+                loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
+                loadScript('./discord/core/patternDetector.js', false, silentScriptsLoad);
+                loadScript('./discord/core/moderation.js', false, silentScriptsLoad);
+                loadScript('./discord/core/registerCommand.js', false, silentScriptsLoad);
+                loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
+                loadScript('./discord/core/commandCooldown.js', false, silentScriptsLoad);
 
-            // Load the other discord modules
-            loadScriptRecursive('./discord', silentScriptsLoad);
-            // Mark that we are using Discord.
-            // This is used by the new panel.
-            $.inidb.set('panelData', 'hasDiscord', 'true');
-        } else {
-            $.inidb.set('panelData', 'hasDiscord', 'false');
+                // Load the other discord modules
+                loadScriptRecursive('./discord', silentScriptsLoad);
+                // Mark that we are using Discord.
+                // This is used by the new panel.
+                $.inidb.set('panelData', 'hasDiscord', 'true');
+            } else {
+                $.inidb.set('panelData', 'hasDiscord', 'false');
+            }
+
+            if (silentScriptsLoad) {
+                consoleLn('Modules have been loaded.');
+            }
+            $.log.event('Bot modules loaded. Initializing main functions...');
+        } catch (ex) {
+            handleException('loadScripts', ex);
         }
-
-        if (silentScriptsLoad) {
-            consoleLn('Modules have been loaded.');
-        }
-        $.log.event('Bot modules loaded. Initializing main functions...');
 
         // Register custom commands.
-        $.addComRegisterCommands();
-        $.addComRegisterAliases();
+        try {
+            $.addComRegisterCommands();
+        } catch (ex) {
+            handleException('addComRegisterCommands', ex);
+        }
+        try {
+            $.addComRegisterAliases();
+        } catch (ex) {
+            handleException('addComRegisterAliases', ex);
+        }
 
         consoleLn('');
 
@@ -437,266 +551,314 @@
      * @function events - registers all events with the core.
      */
     function events() {
-        // Load all API events.
+        try {
+            // Load all API events.
 
-        var loadedHooks = [];
-        /*
-         * @event ircModeration
-         */
-        $api.on($script, 'ircModeration', function (event) {
-            $.performModeration(event);
-        });
-        loadedHooks.push('ircModeration');
-
-        /*
-         * @event ircChannelUserMode
-         */
-        $api.on($script, 'ircChannelUserMode', function (event) {
-            callHook('ircChannelUserMode', event, false);
-
-            if (event.getUser().equalsIgnoreCase($.botName) && event.getMode().equalsIgnoreCase('O')) {
-                if (event.getAdd().toString().equals('true')) {
-                    if (isReady === false) {
-                        isReady = true;
-                        // Bot is now ready.
-                        consoleLn($.botName + ' ready!');
-                        // Call the initReady event.
-                        callHook('initReady', null, false);
-                    }
+            var loadedHooks = [];
+            /*
+             * @event ircModeration
+             */
+            $api.on($script, 'ircModeration', function (event) {
+                try {
+                    callHook('ircModeration', event, false);
+                } catch (ex) {
+                    handleException('ircModeration', ex);
+                } finally {
+                    event.complete();
                 }
-            }
-        });
-        loadedHooks.push('ircChannelUserMode');
+            });
+            loadedHooks.push('ircModeration');
 
-        /*
-         * @event command
-         */
-        $api.on($script, 'command', function (event) {
-            var sender = event.getSender(),
-                    command = event.getCommand(),
-                    args = event.getArgs(),
-                    subCommand = $.getSubCommandFromArguments(command, args),
-                    isMod = $.isModv3(sender, event.getTags());
+            /*
+             * @event ircChannelUserMode
+             */
+            $api.on($script, 'ircChannelUserMode', function (event) {
+                try {
+                    callHook('ircChannelUserMode', event, false);
 
-            if (isReady === false && command.equalsIgnoreCase($.botName) && args[0].equalsIgnoreCase('moderate')) {
-                Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
-            }
-
-            // Check if the command exists or if the module is disabled.
-            if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command))) {
-                return;
-            }
-
-            // Check if the command has an alias.
-            if ($.aliasExists(command)) {
-                var alias = $.getIniDbString('aliases', command),
-                        aliasCommand,
-                        aliasArguments,
-                        subcmd,
-                        parts;
-
-                if (alias.indexOf(';') === -1) {
-                    parts = alias.split(' ');
-                    aliasCommand = parts.shift();
-                    aliasArguments = parts.join(' ');
-
-                    $.command.run(sender, aliasCommand, aliasArguments + ' ' + args.join(' '), event.getTags());
-                } else {
-                    parts = alias.split(';');
-
-                    for (var i = 0; i < parts.length; i++) {
-                        subcmd = parts[i].split(' ');
-                        aliasCommand = subcmd.shift();
-                        aliasArguments = subcmd.join(' ');
-
-                        $.command.run(sender, aliasCommand, aliasArguments + ' ' + args.join(' '), event.getTags());
+                    if (event.getUser().equalsIgnoreCase($.botName) && event.getMode().equalsIgnoreCase('O')) {
+                        if (event.getAdd().toString().equals('true')) {
+                            if (isReady === false) {
+                                isReady = true;
+                                // Bot is now ready.
+                                consoleLn($.botName + ' ready!');
+                                // Call the initReady event.
+                                callHook('initReady', null, false);
+                            }
+                        }
                     }
+                } catch (ex) {
+                    handleException('ircChannelUserMode', ex);
                 }
-                return;
-            }
+            });
+            loadedHooks.push('ircChannelUserMode');
 
-            // Check the command permission.
-            if ($.permCom(sender, command, subCommand, event.getTags()) !== 0) {
-                $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.perm.404', (!$.subCommandExists(command, subCommand) ? $.getCommandGroupName(command) : $.getSubCommandGroupName(command, subCommand))), $.getIniDbBoolean('settings', 'permComMsgEnabled', false));
-                consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
-                return;
-            }
+            /*
+             * @event command
+             */
+            $api.on($script, 'command', function (event) {
+                try {
+                    var sender = event.getSender(),
+                            command = event.getCommand(),
+                            args = event.getArgs(),
+                            subCommand = $.getSubCommandFromArguments(command, args),
+                            isMod = $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod);
 
-            // Check the command cost.
-            if ($.priceCom(sender, command, subCommand, isMod) === 1) {
-                $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.needpoints', $.getPointsString($.getCommandPrice(command, subCommand, ''))), $.getIniDbBoolean('settings', 'priceComMsgEnabled', false));
-                consoleDebug('Command !' + command + ' was not sent due to the user not having enough points.');
-                return;
-            }
-
-            // Check the command cooldown.
-            var cooldownDuration,
-                isGlobalCooldown,
-                cooldownCommand = command;
-
-            if (args.length === 1 && $.coolDown.exists(cooldownCommand + ' ' + args[0])) {
-                cooldownCommand += ' ' + args[0];
-            }
-            if (args.length > 1 && $.coolDown.exists(cooldownCommand + ' ' + args[1])) {
-                cooldownCommand += ' ' + args[1];
-            } 
-
-            [cooldownDuration, isGlobalCooldown] = $.coolDown.get(cooldownCommand, sender, isMod);
-
-            if (cooldownDuration > 0) {
-                consoleDebug('Command ! ' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user' + sender) + '.');
-                if ($.getIniDbBoolean('settings', 'coolDownMsgEnabled')) {
-                    if (isGlobalCooldown) {
-                        $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration), true);
-                        
-                    } else {
-                        $.say($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                    if (isReady === false && command.equalsIgnoreCase($.botName) && args[0].equalsIgnoreCase('moderate')) {
+                        Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
                     }
+
+                    // Check if the command exists or if the module is disabled.
+                    if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command))) {
+                        return;
+                    }
+
+                    // Check if commands are paused but allow for the pausecommand to be run
+                    if ($.commandPause.isPaused() && !command.equalsIgnoreCase('pausecommands')) {
+                        return;
+                    }
+
+                    // Check if the command has an alias.
+                    if ($.aliasExists(command)) {
+                        var alias = $.getIniDbString('aliases', command),
+                                aliasCommand,
+                                aliasArguments,
+                                subcmd,
+                                parts;
+
+                        if (alias.indexOf(';') === -1) {
+                            parts = alias.split(' ');
+                            aliasCommand = parts.shift();
+                            aliasArguments = parts.join(' ');
+
+                            $.command.run(sender, aliasCommand, aliasArguments + ' ' + args.join(' '), event.getTags());
+                        } else {
+                            parts = alias.split(';');
+
+                            for (var i = 0; i < parts.length; i++) {
+                                subcmd = parts[i].split(' ');
+                                aliasCommand = subcmd.shift();
+                                aliasArguments = subcmd.join(' ');
+
+                                $.command.run(sender, aliasCommand, aliasArguments + ' ' + args.join(' '), event.getTags());
+                            }
+                        }
+                        return;
+                    }
+
+                    // Check the command permission.
+                    if ($.permCom(sender, command, subCommand, event.getTags()) !== 0) {
+                        $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.perm.404', (!$.subCommandExists(command, subCommand) ? $.getCommandGroupName(command) : $.getSubCommandGroupName(command, subCommand))), $.getIniDbBoolean('settings', 'permComMsgEnabled', false));
+                        //consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
+                        consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
+                        return;
+                    }
+
+                    // Check the command cost.
+                    if ($.priceCom(sender, command, subCommand, isMod) === 1) {
+                        $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.needpoints', $.getPointsString($.getCommandPrice(command, subCommand, ''))), $.getIniDbBoolean('settings', 'priceComMsgEnabled', false));
+                        consoleDebug('Command !' + command + ' was not sent due to the user not having enough points.');
+                        return;
+                    }
+
+                    // Check the command cooldown.
+                    var cooldownDuration,
+                            isGlobalCooldown,
+                            cooldownCommand = command;
+
+                    if (args.length === 1 && $.coolDown.exists(cooldownCommand + ' ' + args[0])) {
+                        cooldownCommand += ' ' + args[0];
+                    }
+                    if (args.length > 1 && $.coolDown.exists(cooldownCommand + ' ' + args[1])) {
+                        cooldownCommand += ' ' + args[1];
+                    }
+
+                    [cooldownDuration, isGlobalCooldown] = $.coolDown.get(cooldownCommand, sender, isMod);
+
+                    if (cooldownDuration > 0) {
+                        consoleDebug('Command !' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user ' + sender) + '.');
+                        if ($.getIniDbBoolean('settings', 'coolDownMsgEnabled')) {
+                            if (isGlobalCooldown) {
+                                $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration), true);
+                            } else {
+                                $.say($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                            }
+                        }
+                        return;
+                    }
+
+                    // Call the command function.
+                    callHook('command', event, false);
+
+                    // Decrease or add points after the command is sent to not slow anything down.
+                    if ($.priceCom(sender, command, subCommand, isMod) === 0) {
+                        $.inidb.decr('points', sender, $.getCommandPrice(command, subCommand, ''));
+                    }
+
+                    if ($.payCom(command) === 0) {
+                        $.inidb.incr('points', sender, $.getCommandPay(command));
+                    }
+                } catch (ex) {
+                    handleException('command', ex);
                 }
-                return;
-            }
+            });
+            loadedHooks.push('command');
 
-            // Call the command function.
-            callHook('command', event, false);
+            /*
+             * @event discordChannelCommand
+             */
+            $api.on($script, 'discordChannelCommand', function (event) {
+                try {
+                    var username = event.getUsername(),
+                            command = event.getCommand(),
+                            user = event.getDiscordUser(),
+                            channelName = event.getChannel(),
+                            channelId = event.getChannelId(),
+                            isAdmin = event.isAdmin(),
+                            senderId = event.getSenderId(),
+                            args = event.getArgs();
 
-            // Decrease or add points after the command is sent to not slow anything down.
-            if ($.priceCom(sender, command, subCommand, isMod) === 0) {
-                $.inidb.decr('points', sender, $.getCommandPrice(command, subCommand, ''));
-            }
+                    if ($.discord === undefined || $.discord === null) {
+                        return;
+                    }
 
-            if ($.payCom(command) === 0) {
-                $.inidb.incr('points', sender, $.getCommandPay(command));
-            }
-        });
-        loadedHooks.push('command');
+                    if ($.discord.commandExists(command) === false && ($.discord.aliasExists(command) === false || $.discord.aliasExists(command) === true && $.discord.commandExists($.discord.getCommandAlias(command)) === false)) {
+                        return;
+                    }
 
-        /*
-         * @event discordChannelCommand
-         */
-        $api.on($script, 'discordChannelCommand', function (event) {
-            var username = event.getUsername(),
-                    command = event.getCommand(),
-                    user = event.getDiscordUser(),
-                    channelName = event.getChannel(),
-                    channelId = event.getChannelId(),
-                    isAdmin = event.isAdmin(),
-                    senderId = event.getSenderId(),
-                    args = event.getArgs();
+                    if ($.discord.aliasExists(command) === true) {
+                        command = event.setCommand($.discord.getCommandAlias(command));
+                    }
 
-            if ($.discord.commandExists(command) === false && ($.discord.aliasExists(command) === false || $.discord.aliasExists(command) === true && $.discord.commandExists($.discord.getCommandAlias(command)) === false)) {
-                return;
-            }
+                    // Check permissions.
+                    var perm = $.discord.permCom(command, (args[0] !== undefined && $.discord.subCommandExists(command, args[0].toLowerCase()) ? args[0].toLowerCase() : ''));
+                    var hasPerms = false;
+                    var twitchName = $.discord.resolveTwitchName(senderId);
 
-            if ($.discord.aliasExists(command) === true) {
-                command = event.setCommand($.discord.getCommandAlias(command));
-            }
+                    if (!isAdmin && twitchName !== null) {
+                        isAdmin = $.isAdmin(twitchName);
+                        if (isAdmin) {
+                            consoleDebug('Set Discord isAdmin via accountLink');
+                        }
+                    }
 
-            // Check permissions.
-            var perm = $.discord.permCom(command, (args[0] !== undefined && $.discord.subCommandExists(command, args[0].toLowerCase()) ? args[0].toLowerCase() : ''));
-            var hasPerms = false;
-
-            // If more permissions are added, we'll have to use a loop here.
-            if (perm.permissions.length > 0 && perm.permissions[0].selected.equals('true') && isAdmin == true) {
-                hasPerms = true;
-            } else if (perm.roles.length > 0 && (perm.roles[0].indexOf('0') !== -1 || perm.roles[0].indexOf($.discordAPI.getGuild().getId().asString()) !== -1)) {
-                hasPerms = true;
-            } else {
-                for (var i = 0; i < perm.roles.length; i++) {
-                    if (user.getRoleIds().contains($.discordAPI.getRoleByID(perm.roles[i]).getId()) == true) {
+                    // If more permissions are added, we'll have to use a loop here.
+                    if (perm.permissions.length > 0 && perm.permissions[0].selected.equals('true') && isAdmin === true) {
                         hasPerms = true;
-                        break;
-                    }
-                }
-            }
-
-            // No permissions, return.
-            if (!hasPerms) {
-                return;
-            }
-
-            // Check the command cooldown.
-            var cooldownDuration,
-                isGlobalCooldown,
-                cooldownCommand = command;
-
-            if (args.length === 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[0])) {
-                cooldownCommand += ' ' + args[0];
-            }
-            if (args.length > 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[1])) {
-                cooldownCommand += ' ' + args[1];
-            } 
-
-            [cooldownDuration, isGlobalCooldown] = $.discord.cooldown.get(cooldownCommand, senderId);
-
-            if (isAdmin === false && cooldownDuration > 0) {
-                if ($.getIniDbBoolean('discordCooldownSettings', 'coolDownMsgEnabled')) {
-                    consoleDebug('Discord command ! ' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user' + username) + '.');
-                    if (isGlobalCooldown) {
-                        $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration));
+                    } else if (perm.roles.length > 0 && (perm.roles[0].indexOf('0') !== -1 || perm.roles[0].indexOf($.discordAPI.getGuild().getId().asString()) !== -1)) {
+                        hasPerms = true;
                     } else {
-                        $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                        for (var i = 0; i < perm.roles.length; i++) {
+                            if (user.getRoleIds().contains($.discordAPI.getRoleByID(perm.roles[i]).getId()) === true) {
+                                hasPerms = true;
+                                break;
+                            }
+                        }
                     }
+
+                    // No permissions, return.
+                    if (!hasPerms) {
+                        return;
+                    }
+
+                    // Check the command cooldown.
+                    var cooldownDuration,
+                            isGlobalCooldown,
+                            cooldownCommand = command;
+
+                    if (args.length === 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[0])) {
+                        cooldownCommand += ' ' + args[0];
+                    }
+                    if (args.length > 1 && $.discord.cooldown.exists(cooldownCommand + ' ' + args[1])) {
+                        cooldownCommand += ' ' + args[1];
+                    }
+
+                    [cooldownDuration, isGlobalCooldown] = $.discord.cooldown.get(cooldownCommand, senderId);
+
+                    if (isAdmin === false && cooldownDuration > 0) {
+                        if ($.getIniDbBoolean('discordCooldownSettings', 'coolDownMsgEnabled')) {
+                            consoleDebug('Discord command !' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user' + username) + '.');
+                            if (isGlobalCooldown) {
+                                $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration));
+                            } else {
+                                $.discord.say(channelId, $.discord.userPrefix(username) + $.lang.get('init.cooldown.msg.user', command, cooldownDuration));
+                            }
+                        }
+                        return;
+                    }
+
+                    if ($.discord.getCommandCost(command) > 0 && $.discord.getUserPoints(senderId) < $.discord.getCommandCost(command)) {
+                        return;
+                    }
+
+                    if (!$.discord.getCommandChannelAllowed(command, channelName, channelId)) {
+                        $.consoleLn('[Discord] Not processing command ' + command + ' due to !channelcom');
+                        return;
+                    }
+
+                    callHook('discordChannelCommand', event, false);
+
+                    // Do this last to not slow down the command hook.
+                    if ($.discord.getCommandCost(command) > 0) {
+                        $.discord.decrUserPoints(senderId, $.discord.getCommandCost(command));
+                    }
+                } catch (ex) {
+                    handleException('discordChannelCommand', ex);
                 }
-                return;
+            });
+            loadedHooks.push('discordChannelCommand');
+
+            /*
+             * @event discordGuildCreate
+             */
+            $api.on($script, 'discordGuildCreate', function (event) {
+                try {
+                    var roles = $.discordAPI.getGuildRoles();
+                    var perms = {
+                        roles: []
+                    };
+
+                    for (var i = 0; i < roles.size(); i++) {
+                        perms.roles.push({
+                            'name': roles.get(i).getName() + '',
+                            '_id': roles.get(i).getId().asString() + '',
+                            'selected': 'false'
+                        });
+                    }
+
+                    $.inidb.set('discordPermsObj', 'obj', JSON.stringify(perms));
+
+                    callHook('discordGuildCreate', event, false);
+                } catch (ex) {
+                    handleException('discordGuildCreate', ex);
+                }
+            });
+            loadedHooks.push('discordGuildCreate');
+
+            var hookNames = $api.getEventNames();
+            for (var i = 0; i < hookNames.size(); i++) {
+                var hookName = String(hookNames.get(i) + '');
+                if (!loadedHooks.includes(hookName)) {
+                    $api.on($script, hookName, function (event) {
+                        var hookname = String($api.formatEventName(event.getClass().getSimpleName()) + '');
+                        try {
+                            callHook(hookname, event, false);
+                        } catch (ex) {
+                            handleException(hookname, ex);
+                        }
+                    });
+                    loadedHooks.push(hookName);
+                }
             }
-
-            if ($.discord.getCommandCost(command) > 0 && $.discord.getUserPoints(senderId) < $.discord.getCommandCost(command)) {
-                return;
-            }
-
-            if (!$.discord.getCommandChannelAllowed(command, channelName, channelId)) {
-                $.consoleLn('[Discord] Not processing command ' + command + ' due to !channelcom');
-                return;
-            }
-
-            callHook('discordChannelCommand', event, false);
-
-            // Do this last to not slow down the command hook.
-            if ($.discord.getCommandCost(command) > 0) {
-                $.discord.decrUserPoints(senderId, $.discord.getCommandCost(command));
-            }
-        });
-        loadedHooks.push('discordChannelCommand');
-
-        /*
-         * @event discordGuildCreate
-         */
-        $api.on($script, 'discordGuildCreate', function (event) {
-            var roles = $.discordAPI.getGuildRoles();
-            var perms = {
-                roles: []
-            };
-
-            for (var i = 0; i < roles.size(); i++) {
-                perms.roles.push({
-                    'name': roles.get(i).getName() + '',
-                    '_id': roles.get(i).getId().asString() + '',
-                    'selected': 'false'
-                });
-            }
-
-            $.inidb.set('discordPermsObj', 'obj', JSON.stringify(perms));
-
-            callHook('discordGuildCreate', event, false);
-        });
-        loadedHooks.push('discordGuildCreate');
-
-        var hookNames = $api.getEventNames();
-        for (var i = 0; i < hookNames.size(); i++) {
-            var hookName = String(hookNames.get(i) + '');
-            if (!loadedHooks.includes(hookName)) {
-                $api.on($script, hookName, function (event) {
-                    var hookname = String($api.formatEventName(event.getClass().getSimpleName()) + '');
-                    callHook(hookname, event, false);
-                });
-                loadedHooks.push(hookName);
-            }
+        } catch (ex) {
+            handleException('events', ex);
         }
     }
 
     // Export functions to API
     $.consoleLn = consoleLn;
     $.consoleDebug = consoleDebug;
+    $.findCaller = findCaller;
     $.bind = addHook;
     $.unbind = removeHook;
     $.bot = {
@@ -712,5 +874,9 @@
     };
 
     // Load init.js
-    init();
+    try {
+        init();
+    } catch (ex) {
+        handleException('init', ex);
+    }
 })();

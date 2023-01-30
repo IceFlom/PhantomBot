@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,8 +33,19 @@ import java.util.List;
  */
 public class HttpSslRedirectHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
-    private static final List<String> ALLOWNONSSLPATHS = List.of("/addons", "/alerts", "/common", "/config/audio-hooks", "/config/gif-alerts",
-            "/favicon", "/obs/poll-chart", "/presence", "/ws/alertspolls");
+    private static final List<String> ALLOWNONSSLPATHS = List.of(
+            "/addons",
+            "/alerts",
+            "/common",
+            "/config/audio-hooks",
+            "/config/clips",
+            "/config/emotes",
+            "/config/gif-alerts",
+            "/favicon",
+            "/obs/poll-chart",
+            "/presence",
+            "/ws/alertspolls"
+            );
 
     /**
      * Default Constructor
@@ -53,7 +64,7 @@ public class HttpSslRedirectHandler extends SimpleChannelInboundHandler<FullHttp
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
         if (!req.decoderResult().isSuccess()) {
-            HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.BAD_REQUEST, null, null));
+            HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.BAD_REQUEST));
             return;
         }
 
@@ -73,7 +84,7 @@ public class HttpSslRedirectHandler extends SimpleChannelInboundHandler<FullHttp
 
             com.gmt2001.Console.debug.println("301: " + uri);
 
-            FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.MOVED_PERMANENTLY, null, null);
+            FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.MOVED_PERMANENTLY);
 
             res.headers().set(HttpHeaderNames.LOCATION, uri);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,44 +14,43 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package tv.phantombot.event.discord.role;
 
 import discord4j.core.object.entity.Role;
 import tv.phantombot.event.discord.DiscordEvent;
-
 
 /**
  *
  * @author ScaniaTV
  */
 public abstract class DiscordRoleEvent extends DiscordEvent {
+
     private final Role role;
-    
+
     /**
      * Abstract constructor
-     * 
+     *
      * @param role
      */
     protected DiscordRoleEvent(Role role) {
         super();
-        
+
         this.role = role;
     }
-    
+
     /**
      * Method that returns the ID of the role created.
-     * 
-     * @return 
+     *
+     * @return
      */
     public String getRoleID() {
         return role.getId().asString();
     }
-    
+
     /**
      * Method that returns the IRole object created.
-     * 
-     * @return 
+     *
+     * @return
      */
     public Role getDiscordRole() {
         return role;

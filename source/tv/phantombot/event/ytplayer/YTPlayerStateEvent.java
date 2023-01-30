@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,13 @@ package tv.phantombot.event.ytplayer;
 import tv.phantombot.ytplayer.YTPlayerState;
 
 public class YTPlayerStateEvent extends YTPlayerEvent {
+
     private final YTPlayerState state;
 
     /**
      * Class constructor.
      *
-     * @param {YTPlayerState} state
+     * @param state
      */
     public YTPlayerStateEvent(YTPlayerState state) {
         this.state = state;
@@ -33,7 +34,7 @@ public class YTPlayerStateEvent extends YTPlayerEvent {
     /**
      * Method that returns the player state.
      *
-     * @return {YTPlayerState} state
+     * @return state
      */
     public YTPlayerState getState() {
         return this.state;
@@ -42,7 +43,7 @@ public class YTPlayerStateEvent extends YTPlayerEvent {
     /**
      * Method that returns the player state ID.
      *
-     * @return {int} state.i
+     * @return state.i
      */
     public int getStateId() {
         return this.state.i;

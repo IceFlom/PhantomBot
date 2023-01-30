@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ class ObservingDebugFrame implements DebugFrame {
 
     @Override
     public void onEnter(Context cx, Scriptable activation,
-                        Scriptable thisObj, Object[] args) {
+            Scriptable thisObj, Object[] args) {
     }
 
     @Override
@@ -91,7 +91,7 @@ class ObservingDebugFrame implements DebugFrame {
 
     @Override
     public void onExit(Context cx, boolean byThrow,
-                       Object resultOrException) {
+            Object resultOrException) {
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@ package tv.phantombot.event.eventsub;
 import com.gmt2001.eventsub.EventSubSubscription;
 
 /**
- * The Revocation event signals that a subscription has been revoked. Possible causes are deleted channel, authorization revoked, or callback failed too many times
+ * The Revocation event signals that a subscription has been revoked. Possible causes are deleted channel, authorization revoked, or callback failed
+ * too many times
+ *
  * @author gmt2001
  */
 public class EventSubRevocationEvent extends EventSubEvent {
@@ -27,9 +29,15 @@ public class EventSubRevocationEvent extends EventSubEvent {
     private final EventSubSubscription subscription;
 
     public EventSubRevocationEvent(EventSubSubscription subscription) {
+        super();
         this.subscription = subscription;
     }
 
+    /**
+     * Returns an {@link EventSubSubscription} object that indicates the subscription that was revoked and the reason code
+     *
+     * @return
+     */
     public EventSubSubscription getSubscription() {
         return this.subscription;
     }

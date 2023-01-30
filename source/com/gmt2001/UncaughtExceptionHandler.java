@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 package com.gmt2001;
 
+import com.illusionaryone.Logger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -25,11 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
-import tv.phantombot.PhantomBot;
 
 /**
  *
@@ -49,11 +46,15 @@ public class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler
             try ( PrintWriter ptrace = new PrintWriter(trace)) {
 
                 e.printStackTrace(ptrace);
+
+                if (e.getClass().getSimpleName().equals("OutOfMemoryError")) {
+                    Reflect.dumpHeap();
+                    com.gmt2001.Console.err.println("OutOfMemoryError: Heap Dump Created");
+                }
+
                 com.gmt2001.Console.err.printStackTrace(e, true);
 
-                SimpleDateFormat datefmt = new SimpleDateFormat("dd-MM-yyyy");
-                datefmt.setTimeZone(TimeZone.getTimeZone(PhantomBot.getTimeZone()));
-                String timestamp = datefmt.format(new Date());
+                String timestamp = Logger.instance().logFileTimestamp();
 
                 Path p = PathValidator.getRealPath(Paths.get("./logs/stacktraces/" + timestamp + ".txt"));
                 Files.createDirectories(p.getParent());

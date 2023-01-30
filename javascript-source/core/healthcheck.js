@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,15 +22,9 @@
  */
 (function() {
     /**
-     * Logs timestamp for MODE #channel +O botName, including the fake message triggered by .mods
+     * Logs timestamp for PONG
      */
-    $.bind('ircChannelUserMode', function (event) {
-        if (event.getMode().equalsIgnoreCase('o')) {
-            if (event.getAdd()) {
-                if (event.getUser().equalsIgnoreCase($.botName)) {
-                    $.writeToFile($.systemTime(), './addons/healthcheck.txt', false);
-                }
-            }
-        }
+    $.bind('ircPong', function (event) {
+        $.writeToFile($.systemTime(), './addons/healthcheck.txt', false);
     });
 })();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Packages */
 
 (function() {
     var whisperMode = $.getSetIniDbBoolean('settings', 'whisperMode', false),
@@ -55,7 +57,7 @@
      * @returns {string}
      */
     function whisperPrefix(username, force) {
-        if (username.toLowerCase() == $.botName.toLowerCase()) {
+        if (username.toLowerCase() === $.botName.toLowerCase()) {
             return ''; 
         }        
         if (whisperMode || force) {
@@ -88,7 +90,7 @@
             return;
         }
 
-        if (message.startsWith('!') && $.isMod(sender) && $.userExists(sender)) {
+        if (message.startsWith('!') && $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod) && $.userExists(sender)) {
             message = message.substring(1);
             if (message.includes(' ')) {
                 split = message.indexOf(' ');
@@ -124,7 +126,7 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./core/whisper.js', 'togglewhispermode', 1);
+        $.registerChatCommand('./core/whisper.js', 'togglewhispermode', $.PERMISSION.Admin);
     });
 
     /** Export functions to API */

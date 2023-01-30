@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,16 +16,14 @@
  */
 
 // Function that querys all of the data we need.
-$(function() {
-	// Get the version
-	socket.getBotVersion('get_panel_info_version', function(e) {
-		// Set bot version
-		$('#panel-bot-version').html(e['version'].substring(20));
-		// Set the java version.
-		$('#panel-java-version').html(e['java-version']);
-		// Set the OS version.
-		$('#panel-os-version').html(e['os-version']);
-		// Set the panel version.
-		$('#panel-version-number').html(helpers.PANEL_VERSION);
-	});
+$(function () {
+    // Get the version
+    socket.getBotVersion('get_panel_info_version', function (e) {
+        // Set bot version
+        $('#panel-bot-version').html(e['version'].substring(20));
+        // Set the java version.
+        $('#panel-java-version').html(e['java-version']);
+        // Set the OS version.
+        $('#panel-os-version').html(e['os-version']);
+    });
 });

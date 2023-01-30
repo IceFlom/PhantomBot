@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -105,9 +105,9 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./commands/highlightCommand.js', 'highlight', 2);
-        $.registerChatCommand('./commands/highlightCommand.js', 'gethighlights', 2);
-        $.registerChatCommand('./commands/highlightCommand.js', 'showhighlights', 2);
-        $.registerChatCommand('./commands/highlightCommand.js', 'clearhighlights', 1);
+        $.registerChatCommand('./commands/highlightCommand.js', 'highlight', $.PERMISSION.Mod);
+        $.registerChatCommand('./commands/highlightCommand.js', 'gethighlights', $.PERMISSION.Mod);
+        $.registerChatCommand('./commands/highlightCommand.js', 'showhighlights', $.PERMISSION.Mod);
+        $.registerChatCommand('./commands/highlightCommand.js', 'clearhighlights', $.PERMISSION.Admin);
     });
 })();

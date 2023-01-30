@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import tv.phantombot.CaselessProperties;
-import tv.phantombot.PhantomBot;
 import tv.phantombot.RepoVersion;
 
 /**
@@ -34,7 +33,9 @@ public final class PathValidator {
     private static final String[] VALID_PATHS_SHARED = new String[]{
         "./addons",
         "./config/audio-hooks",
-        "./config/gif-alerts"
+        "./config/gif-alerts",
+        "./config/clips",
+        "./config/emotes"
     };
     private static final String[] VALID_PATHS_SCRIPT = new String[]{
         "./logs",
@@ -77,7 +78,7 @@ public final class PathValidator {
 
     public static String getDockerPath() {
         try {
-            Path p = Paths.get(PhantomBot.GetExecutionPath());
+            Path p = Paths.get(Reflect.GetExecutionPath());
             return p.resolveSibling(p.getFileName().toString().concat("_data")).toAbsolutePath().toRealPath().toString();
         } catch (IOException ex) {
             com.gmt2001.Console.debug.printOrLogStackTrace(ex);
@@ -158,9 +159,13 @@ public final class PathValidator {
 
     private static boolean isValidPathInternal(String pathToFile, String[] validPaths) {
         try {
-            String executionPath = PhantomBot.GetExecutionPath();
+            String executionPath = Reflect.GetExecutionPath();
             Path p = Paths.get(pathToFile).toAbsolutePath();
 
+            /**
+             * @botproperty pathvalidatedebug - If `true`, prints debug information for the path validator to the debug log. Default `false`
+             * @botpropertycatsort pathvalidatedebug 900 900 Debug
+             */
             if (CaselessProperties.instance().getPropertyAsBoolean("pathvalidatedebug", false)) {
                 com.gmt2001.Console.debug.println("orig=" + p.toString());
             }

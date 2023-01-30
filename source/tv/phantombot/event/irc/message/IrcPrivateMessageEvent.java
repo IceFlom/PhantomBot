@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,23 +28,23 @@ public class IrcPrivateMessageEvent extends IrcMessageEvent {
     /**
      * Class constructor.
      *
-     * @param {TwitchSession} session
-     * @param {String}  sender
-     * @param {String}  message
+     * @param session
+     * @param sender
+     * @param message
      */
     public IrcPrivateMessageEvent(TwitchSession session, String sender, String message) {
-        super(session, sender, message);
+        super(session, sender == null ? "tmi" : sender, message == null ? "" : message);
     }
 
     /**
      * Class constructor.
      *
-     * @param {TwitchSession} session
-     * @param {String}  sender
-     * @param {String}  message
-     * @param {Map}     tags
+     * @param session
+     * @param sender
+     * @param message
+     * @param tags
      */
     public IrcPrivateMessageEvent(TwitchSession session, String sender, String message, Map<String, String> tags) {
-        super(session, sender, message, tags);
+        super(session, sender == null ? "tmi" : sender, message == null ? "" : message, tags);
     }
 }

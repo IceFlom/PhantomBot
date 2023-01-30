@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -152,9 +152,9 @@
      * @event initReady
      */
     $.bind('initReady', function () {
-        $.registerChatCommand('./handlers/bitsHandler.js', 'bitstoggle', 1);
-        $.registerChatCommand('./handlers/bitsHandler.js', 'bitsmessage', 1);
-        $.registerChatCommand('./handlers/bitsHandler.js', 'bitsminimum', 1);
+        $.registerChatCommand('./handlers/bitsHandler.js', 'bitstoggle', $.PERMISSION.Admin);
+        $.registerChatCommand('./handlers/bitsHandler.js', 'bitsmessage', $.PERMISSION.Admin);
+        $.registerChatCommand('./handlers/bitsHandler.js', 'bitsminimum', $.PERMISSION.Admin);
         announceBits = true;
     });
 

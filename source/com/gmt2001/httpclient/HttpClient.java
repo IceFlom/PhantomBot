@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,14 +16,19 @@
  */
 package com.gmt2001.httpclient;
 
+import com.gmt2001.dns.CompositeAddressResolverGroup;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.resolver.DefaultAddressResolverGroup;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -31,6 +36,7 @@ import org.json.JSONObject;
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufFlux;
 import reactor.netty.http.client.HttpClient.RequestSender;
+import tv.phantombot.CaselessProperties;
 
 /**
  * Performs HTTP requests
@@ -40,7 +46,7 @@ import reactor.netty.http.client.HttpClient.RequestSender;
 public final class HttpClient {
 
     private static final String DEFAULT_USER_AGENT = "PhantomBot/2022";
-    private static final int TIMEOUT_TIME = 10000;
+    private static final int TIMEOUT_TIME = 10;
 
     /**
      * Hide the Constructor
@@ -57,10 +63,20 @@ public final class HttpClient {
      * @param requestBody The request body to send for POST/PUT/PATCH
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse request(HttpMethod method, HttpUrl url, HttpHeaders requestHeaders, String requestBody) {
+    public static HttpClientResponse request(HttpMethod method, URI url, HttpHeaders requestHeaders, String requestBody) {
         reactor.netty.http.client.HttpClient client = reactor.netty.http.client.HttpClient.create();
         if (url.getScheme().equals("https")) {
             client = client.secure();
+        }
+
+        /**
+         * @botproperty usedefaultdnsresolver - If `true`, only the default Java/System DNS resolver is used. Default `false`
+         * @botpropertycatsort usedefaultdnsresolver 10 700 HTTP/WS
+         */
+        if (CaselessProperties.instance().getPropertyAsBoolean("usedefaultdnsresolver", false)) {
+            client = client.resolver(DefaultAddressResolverGroup.INSTANCE);
+        } else {
+            client = client.resolver(CompositeAddressResolverGroup.INSTANCE);
         }
 
         client = client.headers(h -> {
@@ -85,16 +101,41 @@ public final class HttpClient {
             _requestBody = "";
         }
 
-        RequestSender sender = client.request(method).uri(url.build());
+        RequestSender sender = client.request(method).uri(url);
 
         try {
+            /**
+             * @botproperty httpclienttimeout - The timeout, in seconds, for an HTTP request to complete. Default `10`
+             * @botpropertycatsort httpclienttimeout 100 700 HTTP/WS
+             */
             return sender.send(ByteBufFlux.fromString(Mono.just(_requestBody)))
                     .responseSingle((res, buf) -> buf.asByteArray().map(content -> new HttpClientResponse(null, requestBody, content, url, res))
                     .defaultIfEmpty(new HttpClientResponse(null, requestBody, new byte[0], url, res)))
-                    .toFuture().get(TIMEOUT_TIME, TimeUnit.MILLISECONDS);
+                    .toFuture().get(CaselessProperties.instance().getPropertyAsInt("httpclienttimeout", TIMEOUT_TIME), TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             return new HttpClientResponse(ex, false, method, requestBody, ex.getClass().getName().getBytes(Charset.forName("UTF-8")), requestHeaders, null, null, url);
         }
+    }
+
+    /**
+     * Shortcut to perform a HEAD with the default headers
+     *
+     * @param url The URL to request
+     * @return A HttpClientResponse with the results
+     */
+    public static HttpClientResponse head(URI url) {
+        return head(url, createHeaders());
+    }
+
+    /**
+     * Shortcut to perform a HEAD with the specified headers
+     *
+     * @param url The URL to request
+     * @param requestHeaders The headers to send
+     * @return A HttpClientResponse with the results
+     */
+    public static HttpClientResponse head(URI url, HttpHeaders requestHeaders) {
+        return request(HttpMethod.HEAD, url, requestHeaders, null);
     }
 
     /**
@@ -103,7 +144,7 @@ public final class HttpClient {
      * @param url The URL to request
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse get(HttpUrl url) {
+    public static HttpClientResponse get(URI url) {
         return get(url, createHeaders());
     }
 
@@ -114,7 +155,7 @@ public final class HttpClient {
      * @param requestHeaders The headers to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse get(HttpUrl url, HttpHeaders requestHeaders) {
+    public static HttpClientResponse get(URI url, HttpHeaders requestHeaders) {
         return request(HttpMethod.GET, url, requestHeaders, null);
     }
 
@@ -125,7 +166,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, String requestBody) {
+    public static HttpClientResponse post(URI url, String requestBody) {
         return post(url, createHeaders(true, false), requestBody);
     }
 
@@ -137,7 +178,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, HttpHeaders requestHeaders, String requestBody) {
+    public static HttpClientResponse post(URI url, HttpHeaders requestHeaders, String requestBody) {
         return request(HttpMethod.POST, url, requestHeaders, requestBody);
     }
 
@@ -148,7 +189,7 @@ public final class HttpClient {
      * @param postData A map of post data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, Map<String, String> postData) {
+    public static HttpClientResponse post(URI url, Map<String, String> postData) {
         return post(url, urlencodePost(postData));
     }
 
@@ -160,7 +201,7 @@ public final class HttpClient {
      * @param postData A map of post data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, HttpHeaders requestHeaders, Map<String, String> postData) {
+    public static HttpClientResponse post(URI url, HttpHeaders requestHeaders, Map<String, String> postData) {
         return post(url, requestHeaders, urlencodePost(postData));
     }
 
@@ -171,7 +212,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, JSONObject json) {
+    public static HttpClientResponse post(URI url, JSONObject json) {
         return post(url, createHeaders(true, true), json);
     }
 
@@ -183,7 +224,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse post(HttpUrl url, HttpHeaders requestHeaders, JSONObject json) {
+    public static HttpClientResponse post(URI url, HttpHeaders requestHeaders, JSONObject json) {
         return post(url, requestHeaders, json.toString());
     }
 
@@ -194,7 +235,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, String requestBody) {
+    public static HttpClientResponse put(URI url, String requestBody) {
         return put(url, createHeaders(true, false), requestBody);
     }
 
@@ -206,7 +247,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, HttpHeaders requestHeaders, String requestBody) {
+    public static HttpClientResponse put(URI url, HttpHeaders requestHeaders, String requestBody) {
         return request(HttpMethod.PUT, url, requestHeaders, requestBody);
     }
 
@@ -217,7 +258,7 @@ public final class HttpClient {
      * @param putData A map of put data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, Map<String, String> putData) {
+    public static HttpClientResponse put(URI url, Map<String, String> putData) {
         return put(url, urlencodePost(putData));
     }
 
@@ -229,7 +270,7 @@ public final class HttpClient {
      * @param putData A map of put data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, HttpHeaders requestHeaders, Map<String, String> putData) {
+    public static HttpClientResponse put(URI url, HttpHeaders requestHeaders, Map<String, String> putData) {
         return put(url, requestHeaders, urlencodePost(putData));
     }
 
@@ -240,7 +281,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, JSONObject json) {
+    public static HttpClientResponse put(URI url, JSONObject json) {
         return put(url, createHeaders(true, true), json);
     }
 
@@ -252,7 +293,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse put(HttpUrl url, HttpHeaders requestHeaders, JSONObject json) {
+    public static HttpClientResponse put(URI url, HttpHeaders requestHeaders, JSONObject json) {
         return put(url, requestHeaders, json.toString());
     }
 
@@ -263,7 +304,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, String requestBody) {
+    public static HttpClientResponse patch(URI url, String requestBody) {
         return patch(url, createHeaders(true, false), requestBody);
     }
 
@@ -275,7 +316,7 @@ public final class HttpClient {
      * @param requestBody The request body
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, HttpHeaders requestHeaders, String requestBody) {
+    public static HttpClientResponse patch(URI url, HttpHeaders requestHeaders, String requestBody) {
         return request(HttpMethod.PATCH, url, requestHeaders, requestBody);
     }
 
@@ -286,7 +327,7 @@ public final class HttpClient {
      * @param patchData A map of patch data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, Map<String, String> patchData) {
+    public static HttpClientResponse patch(URI url, Map<String, String> patchData) {
         return patch(url, urlencodePost(patchData));
     }
 
@@ -298,7 +339,7 @@ public final class HttpClient {
      * @param patchData A map of patch data
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, HttpHeaders requestHeaders, Map<String, String> patchData) {
+    public static HttpClientResponse patch(URI url, HttpHeaders requestHeaders, Map<String, String> patchData) {
         return patch(url, requestHeaders, urlencodePost(patchData));
     }
 
@@ -309,7 +350,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, JSONObject json) {
+    public static HttpClientResponse patch(URI url, JSONObject json) {
         return patch(url, createHeaders(true, true), json);
     }
 
@@ -321,7 +362,7 @@ public final class HttpClient {
      * @param json The JSON object to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse patch(HttpUrl url, HttpHeaders requestHeaders, JSONObject json) {
+    public static HttpClientResponse patch(URI url, HttpHeaders requestHeaders, JSONObject json) {
         return patch(url, requestHeaders, json.toString());
     }
 
@@ -331,7 +372,7 @@ public final class HttpClient {
      * @param url The URL to request
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse delete(HttpUrl url) {
+    public static HttpClientResponse delete(URI url) {
         return delete(url, createHeaders());
     }
 
@@ -342,7 +383,7 @@ public final class HttpClient {
      * @param requestHeaders The headers to send
      * @return A HttpClientResponse with the results
      */
-    public static HttpClientResponse delete(HttpUrl url, HttpHeaders requestHeaders) {
+    public static HttpClientResponse delete(URI url, HttpHeaders requestHeaders) {
         return request(HttpMethod.DELETE, url, requestHeaders, null);
     }
 
@@ -424,5 +465,30 @@ public final class HttpClient {
      */
     public static boolean isMutatorWithBody(HttpMethod method) {
         return method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH;
+    }
+
+    /**
+     * Takes a Map of query params and converts it to a query string
+     *
+     * @param query The query params
+     * @return
+     */
+    public static String createQuery(Map<String, String> query) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('?');
+
+        boolean first = true;
+        for (Entry<String, String> kv : query.entrySet()) {
+            if (!first) {
+                sb.append('&');
+            }
+            first = false;
+
+            sb.append(URLEncoder.encode(kv.getKey(), StandardCharsets.UTF_8));
+            sb.append('=');
+            sb.append(URLEncoder.encode(kv.getValue(), StandardCharsets.UTF_8));
+        }
+
+        return sb.toString();
     }
 }

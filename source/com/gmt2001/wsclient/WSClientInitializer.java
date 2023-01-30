@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,6 +59,9 @@ class WSClientInitializer extends ChannelInitializer<SocketChannel> {
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
         this.client.frameHandler = new WebSocketFrameHandler(this.client);
+        if (this.client.pinger != null) {
+            this.client.pinger.setClient(this.client);
+        }
         ChannelPipeline pipeline = ch.pipeline();
 
         if (this.client.sslCtx != null) {

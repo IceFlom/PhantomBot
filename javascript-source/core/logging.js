@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Packages */
 
 /**
  * logging.js
@@ -58,12 +60,7 @@
      * @return {String}
      */
     function getLogDateString(timeStamp) {
-        var now = (timeStamp ? new Date(timeStamp) : new Date()),
-                pad = function (i) {
-                    return (i < 10 ? '0' + i : i);
-                };
-
-        return pad(now.getDate()) + '-' + pad(now.getMonth() + 1) + '-' + now.getFullYear();
+        return Packages.com.illusionaryone.Logger.instance().logFileTimestamp();
     }
 
     /*
@@ -88,10 +85,7 @@
      * @return {String}
      */
     function getLogEntryTimeDateString() {
-        var dateFormat = new java.text.SimpleDateFormat("MM-dd-yyyy @ HH:mm:ss.SSS z");
-
-        dateFormat.setTimeZone(java.util.TimeZone.getTimeZone(($.inidb.exists('settings', 'timezone') ? $.inidb.get('settings', 'timezone') : 'GMT')));
-        return dateFormat.format(new Date());
+        return Packages.com.illusionaryone.Logger.instance().logTimestamp();
     }
 
     /*
@@ -135,7 +129,7 @@
      * @param {String} sender
      */
     function logfile(filePrefix, message, sender) {
-        if (logs.file === false || message.indexOf('.mods') !== -1) {
+        if (logs.file === false) {
             return;
         }
 
@@ -221,24 +215,28 @@
                 logFileDate,
                 logDirs = ['chat', 'chatModerator', 'core', 'core-debug', 'core-error', 'error', 'event', 'patternDetector', 'pointSystem', 'private-messages'],
                 logDirIdx,
-                datefmt = new java.text.SimpleDateFormat('dd-MM-yyyy'),
+                match,
                 date,
-                rotateDays = $.getIniDbNumber('settings', 'log_rotate_days') * 24 * 60 * 6e4,
-                checkDate = $.systemTime() - rotateDays;
+                rotateDays = $.getIniDbNumber('settings', 'log_rotate_days', 0);
 
         if (rotateDays === 0) {
             return;
         }
 
+        var checkDate = Packages.java.time.LocalDate.now().minusDays(rotateDays);
+
         $.log.event('Starting Log Rotation');
         for (logDirIdx = 0; logDirIdx < logDirs.length; logDirIdx++) {
             logFiles = $.findFiles('./logs/' + logDirs[logDirIdx], 'txt');
             for (idx = 0; idx < logFiles.length; idx++) {
-                logFileDate = logFiles[idx].match(/(\d{2}-\d{2}-\d{4})/)[1];
-                date = datefmt.parse(logFileDate);
-                if (date.getTime() < checkDate) {
-                    $.log.event('Log Rotate: Deleted ./logs/' + logDirs[logDirIdx] + '/' + logFiles[idx]);
-                    $.deleteFile('./logs/' + logDirs[logDirIdx] + '/' + logFiles[idx], true);
+                match = logFiles[idx].match(/(\d{4}-\d{2}-\d{2})/);
+                if (match !== undefined && match !== null && match[1] !== undefined && match[1] !== null) {
+                    logFileDate = match[1];
+                    date = Packages.java.time.LocalDate.parse(logFileDate);
+                    if (date.isBefore(checkDate)) {
+                        $.log.event('Log Rotate: Deleted ./logs/' + logDirs[logDirIdx] + '/' + logFiles[idx]);
+                        $.deleteFile('./logs/' + logDirs[logDirIdx] + '/' + logFiles[idx], true);
+                    }
                 }
             }
         }
@@ -263,10 +261,6 @@
             return;
         }
 
-        if (message.indexOf('the moderators if this room') === -1) {
-            logfile('private-messages', '' + sender + ': ' + message);
-        }
-
         if (sender.equalsIgnoreCase('jtv')) {
             if (message.equalsIgnoreCase('clearchat')) {
                 logfile('private-messages', '' + $.lang.get('console.received.clearchat'));
@@ -284,16 +278,6 @@
                 logfile('private-messages', '' + $.lang.get('console.received.r9k.start'));
             } else if (message.indexOf('no longer in r9k') !== -1) {
                 logfile('private-messages', '' + $.lang.get('console.received.r9k.end'));
-            } else if (message.indexOf('hosting') !== -1) {
-                var target = String(message).replace(/now hosting /ig, '').replace(/\./ig, '');
-
-                if (target.equalsIgnoreCase('-')) {
-                    $.bot.channelIsHosting = null;
-                    logfile('private-messages', '' + $.lang.get('console.received.host.end'));
-                } else {
-                    $.bot.channelIsHosting = target;
-                    logfile('private-messages', '' + $.lang.get('console.received.host.start', target));
-                }
             } else {
                 logfile('private-messages', '' + sender + ': ' + message);
             }
@@ -375,7 +359,7 @@
      * @event initReady
      */
     $.bind('initReady', function () {
-        $.registerChatCommand('./core/logging.js', 'log', 1);
+        $.registerChatCommand('./core/logging.js', 'log', $.PERMISSION.Admin);
 
         logRotate();
     });

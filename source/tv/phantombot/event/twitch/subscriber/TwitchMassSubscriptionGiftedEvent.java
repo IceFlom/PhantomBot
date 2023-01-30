@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ package tv.phantombot.event.twitch.subscriber;
 import tv.phantombot.event.twitch.TwitchEvent;
 
 public class TwitchMassSubscriptionGiftedEvent extends TwitchEvent {
+
     private final String username;
     private final String amount;
     private final String plan;
@@ -26,10 +27,9 @@ public class TwitchMassSubscriptionGiftedEvent extends TwitchEvent {
     /**
      * Class constructor.
      *
-     * @param {String} username
-     * @param {String} recipient
-     * @param {String} months
-     * @param {String} plan
+     * @param username
+     * @param amount
+     * @param plan
      */
     public TwitchMassSubscriptionGiftedEvent(String username, String amount, String plan) {
         this.username = username;
@@ -40,7 +40,7 @@ public class TwitchMassSubscriptionGiftedEvent extends TwitchEvent {
     /**
      * Method that returns the gifted the subscriptions.
      *
-     * @return {String} username
+     * @return username
      */
     public String getUsername() {
         return this.username;
@@ -49,16 +49,16 @@ public class TwitchMassSubscriptionGiftedEvent extends TwitchEvent {
     /**
      * Method that returns amount of subs gifted
      *
-     * @return {String} recipient
+     * @return recipient
      */
     public String getAmount() {
         return this.amount;
     }
 
     /**
-     * Method that returns the subcription plan. (1000, 2000, 3000 and Prime)
+     * Method that returns the subscription plan. (1000, 2000, 3000 and Prime)
      *
-     * @return {String} plan
+     * @return plan
      */
     public String getPlan() {
         return this.plan;

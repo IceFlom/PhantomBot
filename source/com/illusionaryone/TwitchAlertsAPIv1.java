@@ -1,7 +1,7 @@
 /* astyle --style=java --indent=spaces=4 */
 
  /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ package com.illusionaryone;
 import com.gmt2001.HttpRequest;
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
-import com.gmt2001.httpclient.HttpUrl;
+import com.gmt2001.httpclient.URIUtil;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -74,7 +74,7 @@ public class TwitchAlertsAPIv1 {
             headers.set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED);
         }
 
-        HttpClientResponse response = HttpClient.request(method, HttpUrl.fromUri(APIURL, endpoint), headers, body);
+        HttpClientResponse response = HttpClient.request(method, URIUtil.create(APIURL + endpoint), headers, body);
 
         if (response.hasJson()) {
             jsonResult = response.json();

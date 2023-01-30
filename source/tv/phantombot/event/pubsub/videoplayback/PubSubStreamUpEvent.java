@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,9 +23,9 @@ public class PubSubStreamUpEvent extends PubSubVideoPlaybackEvent {
     /**
      * Constructor.
      *
-     * @param {int} channelId
-     * @param {float} serverTime
-     * @param {int} playDelay
+     * @param channelId
+     * @param serverTime
+     * @param playDelay
      */
     public PubSubStreamUpEvent(int channelId, float serverTime, int playDelay) {
         super(channelId, serverTime);
@@ -35,7 +35,7 @@ public class PubSubStreamUpEvent extends PubSubVideoPlaybackEvent {
     /**
      * Method that returns the play delay.
      *
-     * @return {int} playDelay
+     * @return playDelay
      */
     public int getPlayDelay() {
         return this.playDelay;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,8 +84,8 @@
             if ($.equalsIgnoreCase(action, "all") || $.equalsIgnoreCase(action, "allin") || $.equalsIgnoreCase(action, "all-in")){
                 points = $.getUserPoints(sender);
             } else if ($.equalsIgnoreCase(action, "half")){
-                points = Math.floor($.getUserPoints(sender)/2);
-            } else if (isNan(parseInt(action))) {
+                points = Math.floor($.getUserPoints(sender) / 2);
+            } else if (isNaN(parseInt(action))) {
                 $.say($.whisperPrefix(sender) + $.lang.get('gambling.usage'));
                 return;
             } else {
@@ -139,7 +139,7 @@
          * @commandpath gamblesetgainpercent [amount in percent] - Set the winning gain percent.
          */
         if (command.equalsIgnoreCase('gamblesetgainpercent')) {
-            if (action === undefined || isNaN(parseInt(action)) || action < 1 || action > 100) {
+            if (action === undefined || isNaN(parseInt(action)) || action < 1) {
                 $.say($.whisperPrefix(sender) + $.lang.get('gambling.percent.usage'));
                 return;
             }
@@ -150,11 +150,11 @@
     });
 
     $.bind('initReady', function() {
-        $.registerChatCommand('./games/gambling.js', 'gamble', 7);
-        $.registerChatCommand('./games/gambling.js', 'gamblesetmax', 1);
-        $.registerChatCommand('./games/gambling.js', 'gamblesetmin', 1);
-        $.registerChatCommand('./games/gambling.js', 'gamblesetwinningrange', 1);
-        $.registerChatCommand('./games/gambling.js', 'gamblesetgainpercent', 1);
+        $.registerChatCommand('./games/gambling.js', 'gamble', $.PERMISSION.Viewer);
+        $.registerChatCommand('./games/gambling.js', 'gamblesetmax', $.PERMISSION.Admin);
+        $.registerChatCommand('./games/gambling.js', 'gamblesetmin', $.PERMISSION.Admin);
+        $.registerChatCommand('./games/gambling.js', 'gamblesetwinningrange', $.PERMISSION.Admin);
+        $.registerChatCommand('./games/gambling.js', 'gamblesetgainpercent', $.PERMISSION.Admin);
     });
 
     $.reloadGamble = reloadGamble;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@ public class TwitchFollowEvent extends TwitchFollowerEvent {
     /**
      * Class constructor.
      *
-     * @param {String} follower
-     * @param {String} date
+     * @param follower
+     * @param date
      */
     public TwitchFollowEvent(String follower, String date) {
         super(follower, date);

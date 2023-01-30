@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ public class CustomAPI {
     /*
      * Method to the this instance.
      *
-     * @return {Object}
+     * @return
      */
     public static synchronized CustomAPI instance() {
         if (instance == null) {
@@ -51,7 +51,7 @@ public class CustomAPI {
      * Method to get a JSON Object from an API.
      *
      * @param  {String} url
-     * @return {JSONObject}
+     * @return
      */
     public JSONObject getJSON(String url) throws JSONException {
         try {
@@ -71,7 +71,7 @@ public class CustomAPI {
      * Method to get data from an API.
      *
      * @param  {String} url
-     * @return {HttpResponse}
+     * @return
      */
     public HttpResponse get(String url) {
         return HttpRequest.getData(HttpRequest.RequestType.GET, url, "", new HashMap<>());
@@ -82,7 +82,7 @@ public class CustomAPI {
      *
      * @param  {String} url
      * @param  {String} content
-     * @return {HttpResponse}
+     * @return
      */
     public HttpResponse post(String url, String content) {
         return HttpRequest.getData(HttpRequest.RequestType.POST, url, content, new HashMap<>());
@@ -93,7 +93,7 @@ public class CustomAPI {
      *
      * @param  {String} url
      * @param  {String} content
-     * @return {HttpResponse}
+     * @return
      */
     public HttpResponse put(String url, String content) {
         return HttpRequest.getData(HttpRequest.RequestType.PUT, url, content, new HashMap<>());
@@ -104,7 +104,7 @@ public class CustomAPI {
      *
      * @param  {String} url
      * @param  {String} content
-     * @return {HttpResponse}
+     * @return
      */
     public HttpResponse del(String url, String content) {
         return HttpRequest.getData(HttpRequest.RequestType.DELETE, url, content, new HashMap<>());

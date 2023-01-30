@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,9 @@
         randomsCount = 0,
         lastRandom = 0,
         randomsPG13Count = 0,
-        lastPG13Random = 0;
+        lastPG13Random = 0,
+        _PG13Lock = new Packages.java.util.concurrent.locks.ReentrantLock(),
+        _lock = new Packages.java.util.concurrent.locks.ReentrantLock();
 
     /**
      * @event webPanelSocketUpdate
@@ -44,11 +46,13 @@
         for (i = 1; $.lang.exists('randomcommand.' + i); i++) {
             randomsCount++;
         }
+
         for (i = 1; $.lang.exists('randomcommand.pg13.' + i); i++) {
             randomsPG13Count++;
         }
+
         $.consoleDebug($.lang.get('randomcommand.console.loaded', (randomsCount + randomsPG13Count)));
-    };
+    }
 
     /**
      * @event command
@@ -73,27 +77,37 @@
                 }
             }
 
-            if (pg13toggle) {
-                if ($.randRange(1, 100) > 80) {
-                    doPG13Random = true;
-                }
+            if ($.randRange(1, 100) > 80) {
+                doPG13Random = true;
             }
 
-            if (doPG13Random) {
-                do {
-                    rand = $.randRange(1, randomsPG13Count);
-                } while (rand == lastPG13Random);
+            if (doPG13Random || pg13toggle) {
+                _PG13Lock.lock();
+                try {
+                    do {
+                        rand = $.randRange(1, randomsPG13Count);
+                    } while (rand === lastPG13Random);
 
-                lastPG13Random = rand;
+                    lastPG13Random = rand;
+                } finally {
+                    _PG13Lock.unlock();
+                }
+
                 $.say($.tags(event, $.lang.get('randomcommand.pg13.' + rand), false));
                 return;
             }
 
-            do {
-                rand = $.randRange(1, randomsCount);
-            } while (rand == lastRandom);
+            _lock.lock();
+            try {
+                do {
+                    rand = $.randRange(1, randomsCount);
+                } while (rand === lastRandom);
 
-            lastRandom = rand;
+                lastRandom = rand;
+            } finally {
+                _lock.unlock();
+            }
+
             $.say($.tags(event, $.lang.get('randomcommand.' + rand), false));
         }
     });
@@ -102,11 +116,8 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        if (randomsCount == 0) {
-            loadResponses();
-        }
-
+        loadResponses();
         $.registerChatCommand('./games/random.js', 'random');
-        $.registerChatSubcommand('random', 'pg13toggle', 1);
+        $.registerChatSubcommand('random', 'pg13toggle', $.PERMISSION.Admin);
     });
 })();

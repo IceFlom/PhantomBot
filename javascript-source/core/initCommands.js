@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Packages */
 
 (function() {
     var bot = $.botName.toLowerCase();
@@ -43,12 +45,12 @@
                 $.say($.whisperPrefix(sender) + $.lang.get('init.disconnect'));
 
                 setTimeout(function() {
-                    java.lang.System.exit(0);
+                    Packages.java.lang.System.exit(0);
                 }, 1000);
             }
 
             /*
-             * @commandpath botName reconnect - Reconnects the bot to TMI, Host TMI, and PubSub.
+             * @commandpath botName reconnect - Reconnects the bot to TMI and PubSub.
              */
             if (action.equalsIgnoreCase('reconnect')) {
                 $.say($.whisperPrefix(sender) + $.lang.get('init.reconnect'));
@@ -163,8 +165,13 @@
                     return;
                 }
                 if ($.getIniDbString('modules', subAction, undefined) !== undefined){
-                    $.bot.loadScript(subAction, true, false);
-                    $.say($.whisperPrefix(sender) + $.lang.get('init.module.reload', subAction));
+                    var module = $.bot.getModule(subAction);
+                    if (module !== undefined) {
+                        $.bot.loadScript(module.scriptName, true, false);
+                        $.say($.whisperPrefix(sender) + $.lang.get('init.module.reload', subAction));
+                    } else {
+                        $.say($.whisperPrefix(sender) + $.lang.get('init.module.delete.404'));
+                    }
                     return;
                 }
 
@@ -390,7 +397,7 @@
          */
         if (command.equalsIgnoreCase('disconnect')) {
             if ($.isBot(sender)) {
-                java.lang.System.exit(0);
+                Packages.java.lang.System.exit(0);
             }
         }
 
@@ -408,23 +415,23 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./core/initCommands.js', 'chat', 1);
-        $.registerChatCommand('./core/initCommands.js', 'module', 1);
-        $.registerChatCommand('./core/initCommands.js', 'echo', 1);
-        $.registerChatCommand('./core/initCommands.js', 'reconnect', 1);
-        $.registerChatCommand('./core/initCommands.js', 'disconnect', 1);
-        $.registerChatCommand('./core/initCommands.js', bot, 2);
-        $.registerChatSubcommand(bot, 'disconnect', 1);
-        $.registerChatSubcommand(bot, 'reconnect', 1);
-        $.registerChatSubcommand(bot, 'moderate', 2);
-        $.registerChatSubcommand(bot, 'forceonline', 2);
-        $.registerChatSubcommand(bot, 'forceoffline', 2);
-        $.registerChatSubcommand(bot, 'setconnectmessage', 1);
-        $.registerChatSubcommand(bot, 'removeconnectmessage', 1);
-        $.registerChatSubcommand(bot, 'togglepricecommods', 1);
-        $.registerChatSubcommand(bot, 'togglepermcommessage', 1);
-        $.registerChatSubcommand(bot, 'togglepricecommessage', 1);
-        $.registerChatSubcommand(bot, 'togglecooldownmessage', 1);
+        $.registerChatCommand('./core/initCommands.js', 'chat', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/initCommands.js', 'module', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/initCommands.js', 'echo', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/initCommands.js', 'reconnect', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/initCommands.js', 'disconnect', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/initCommands.js', bot, $.PERMISSION.Mod);
+        $.registerChatSubcommand(bot, 'disconnect', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'reconnect', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'moderate', $.PERMISSION.Mod);
+        $.registerChatSubcommand(bot, 'forceonline', $.PERMISSION.Mod);
+        $.registerChatSubcommand(bot, 'forceoffline', $.PERMISSION.Mod);
+        $.registerChatSubcommand(bot, 'setconnectmessage', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'removeconnectmessage', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'togglepricecommods', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'togglepermcommessage', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'togglepricecommessage', $.PERMISSION.Admin);
+        $.registerChatSubcommand(bot, 'togglecooldownmessage', $.PERMISSION.Admin);
 
         // Say the connected message.
         if (!sentReady && $.inidb.exists('settings', 'connectedMsg')) {

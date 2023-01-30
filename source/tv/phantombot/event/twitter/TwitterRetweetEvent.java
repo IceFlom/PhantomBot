@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,23 +19,25 @@ package tv.phantombot.event.twitter;
 import tv.phantombot.event.Event;
 
 public class TwitterRetweetEvent extends Event {
+
     private final String[] userNameArray;
 
     /**
      * Class constructor.
      *
-     * @param {String[]} userNameArray
+     * @param userNameArray
      */
     public TwitterRetweetEvent(String[] userNameArray) {
-        this.userNameArray = userNameArray;
+        super();
+        this.userNameArray = userNameArray.clone();
     }
 
     /**
      * Method that returns the array of users.
      *
-     * @return {String[]} userNameArray
+     * @return userNameArray
      */
     public String[] getUserNameArray() {
-        return this.userNameArray;
+        return this.userNameArray.clone();
     }
 }

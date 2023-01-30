@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,33 +25,43 @@
  */
 (function() {
     var commands = {},
-        aliases = {};
+        aliases = {},
+        _aliasesLock = new Packages.java.util.concurrent.locks.ReentrantLock(),
+        _commandsLock = new Packages.java.util.concurrent.locks.ReentrantLock();
 
     /*
      * @function registerChatCommand
      *
      * @param {String} script
      * @param {String} command
-     * @param {String} groupId
+     * @param {Number} groupId
      */
     function registerChatCommand(script, command, groupId) {
+        command = $.jsString(command).toLowerCase();
         // If groupId is undefined set it to 7 (viewer).
-        groupId = (groupId === undefined ? 7 : groupId);
+        groupId = (groupId === undefined ? $.PERMISSION.Viewer : groupId);
 
         if (commandExists(command)) {
             return;
         }
 
         // This is for the panel commands.
-        if (groupId == 30) {
+        if (groupId === $.PERMISSION.Panel) {
             if ($.inidb.exists('permcom', command)) {
                 $.inidb.del('permcom', command);
             }
-            commands[command] = {
-                groupId: groupId,
-                script: script,
-                subcommands: {}
-            };
+
+            _commandsLock.lock();
+            try {
+                commands[command] = {
+                    groupId: groupId,
+                    script: script,
+                    subcommands: {}
+                };
+            } finally {
+                _commandsLock.unlock();
+            }
+
             return;
         }
 
@@ -59,18 +69,23 @@
         if ($.inidb.exists('disabledCommands', command)) {
             $.inidb.set('tempDisabledCommandScript', command, script);
             return;
-        } else {
-            $.inidb.del('tempDisabledCommandScript', command);
         }
+
+        $.inidb.del('tempDisabledCommandScript', command);
 
         // Get and set the command permission.
         groupId = $.getSetIniDbNumber('permcom', command, groupId);
 
-        commands[command] = {
-            groupId: groupId,
-            script: script,
-            subcommands: {}
-        };
+        _commandsLock.lock();
+        try {
+            commands[command] = {
+                groupId: groupId,
+                script: script,
+                subcommands: {}
+            };
+        } finally {
+            _commandsLock.unlock();
+        }
     }
 
     /*
@@ -78,11 +93,13 @@
      *
      * @param {String} command
      * @param {String} subcommand
-     * @param {String} groupId
+     * @param {Number} groupId
      */
     function registerChatSubcommand(command, subcommand, groupId) {
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
         // If groupId is undefined set it to 7 (viewer).
-        groupId = (groupId === undefined ? 7 : groupId);
+        groupId = (groupId === undefined ? $.PERMISSION.Viewer : groupId);
 
         if (!commandExists(command) || subCommandExists(command, subcommand)) {
             return;
@@ -91,8 +108,13 @@
         // Get and set the command permission.
         groupId = $.getSetIniDbNumber('permcom', (command + ' ' + subcommand), groupId);
 
-        commands[command].subcommands[subcommand] = {
-            groupId: groupId
+        _commandsLock.lock();
+        try {
+            commands[command].subcommands[subcommand] = {
+                groupId: groupId
+            };
+        } finally {
+            _commandsLock.unlock();
         }
     }
 
@@ -102,8 +124,14 @@
      * @param {String} alias
      */
     function registerChatAlias(alias) {
-        if (!aliasExists(alias)) {
-            aliases[alias] = true;
+        alias = $.jsString(alias).toLowerCase();
+        _aliasesLock.lock();
+        try {
+            if (!aliasExists(alias)) {
+                aliases[alias] = true;
+            }
+        } finally {
+            _aliasesLock.unlock();
         }
     }
 
@@ -113,9 +141,21 @@
      * @param {String} command
      */
     function unregisterChatCommand(command) {
+        command = $.jsString(command).toLowerCase();
         if (commandExists(command)) {
-            delete commands[command];
-            delete aliases[command];
+            _commandsLock.lock();
+            try {
+                delete commands[command];
+            } finally {
+                _commandsLock.unlock();
+            }
+
+            _aliasesLock.lock();
+            try {
+                delete aliases[command];
+            } finally {
+                _aliasesLock.unlock();
+            }
         }
 
         $.inidb.del('permcom', command);
@@ -131,11 +171,29 @@
      * @param {String} command
      */
     function tempUnRegisterChatCommand(command) {
-        $.inidb.set('tempDisabledCommandScript', command, commands[command].script);
+        command = $.jsString(command).toLowerCase();
+        _commandsLock.lock();
+        try {
+            $.inidb.set('tempDisabledCommandScript', command, commands[command].script);
+        } finally {
+            _commandsLock.unlock();
+        }
+
         if (commandExists(command)) {
-            delete commands[command];
+            _commandsLock.lock();
+            try {
+                delete commands[command];
+            } finally {
+                _commandsLock.unlock();
+            }
+
         } else if (aliasExists(command)) {
-            delete aliases[command];
+            _aliasesLock.lock();
+            try {
+                delete aliases[command];
+            } finally {
+                _aliasesLock.unlock();
+            }
         }
     }
 
@@ -146,8 +204,16 @@
      * @param {String} subcommand
      */
     function unregisterChatSubcommand(command, subcommand) {
-        if (subCommandExists(command, subcommand)) {
-            delete commands[command].subcommands[subcommand];
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
+
+        _commandsLock.lock();
+        try {
+            if (subCommandExists(command, subcommand)) {
+                delete commands[command].subcommands[subcommand];
+            }
+        } finally {
+            _commandsLock.unlock();
         }
 
         $.inidb.del('permcom', command + ' ' + subcommand);
@@ -161,11 +227,17 @@
      * @return {String}
      */
     function getCommandScript(command) {
-        if (commands[command] === undefined) {
-            return "Undefined";
-        }
+        command = $.jsString(command).toLowerCase();
+        _commandsLock.lock();
+        try {
+            if (commands[command] === undefined) {
+                return "Undefined";
+            }
 
-        return commands[command].script;
+            return commands[command].script;
+        } finally {
+            _commandsLock.unlock();
+        }
     }
 
     /*
@@ -175,7 +247,13 @@
      * @return {Boolean}
      */
     function commandExists(command) {
-        return (commands[command] !== undefined);
+        command = $.jsString(command).toLowerCase();
+        _commandsLock.lock();
+        try {
+            return (commands[command] !== undefined);
+        } finally {
+            _commandsLock.unlock();
+        }
     }
 
     /*
@@ -184,7 +262,13 @@
      * @param {String} command
      */
     function aliasExists(alias) {
-        return (aliases[alias] !== undefined);
+        alias = $.jsString(alias).toLowerCase();
+        _aliasesLock.lock();
+        try {
+            return (aliases[alias] !== undefined);
+        } finally {
+            _aliasesLock.unlock();
+        }
     }
 
     /*
@@ -195,9 +279,17 @@
      * @return {Boolean}
      */
     function subCommandExists(command, subcommand) {
-        if (commandExists(command)) {
-            return (commands[command].subcommands[subcommand] !== undefined);
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
+        _commandsLock.lock();
+        try {
+            if (commandExists(command)) {
+                return (commands[command].subcommands[subcommand] !== undefined);
+            }
+        } finally {
+            _commandsLock.unlock();
         }
+
         return false;
     }
 
@@ -208,18 +300,19 @@
      * @return {Number}
      */
     function getCommandGroup(command) {
-        if (commandExists(command)) {
-            var groupid = commands[command].groupId;
+        command = $.jsString(command).toLowerCase();
+        var groupid = $.PERMISSION.Viewer;
 
-            if ($.isSwappedSubscriberVIP() && groupid == 3) {
-                groupid = 5;
-            } else if ($.isSwappedSubscriberVIP() && groupid == 5) {
-                groupid = 3;
+        _commandsLock.lock();
+        try {
+            if (commandExists(command)) {
+                groupid = commands[command].groupId;
             }
-
-            return groupid;
+        } finally {
+            _commandsLock.unlock();
         }
-        return 7;
+
+        return groupid;
     }
 
     /*
@@ -229,27 +322,33 @@
      * @return {String}
      */
     function getCommandGroupName(command) {
+        command = $.jsString(command).toLowerCase();
         var group = '';
+        _commandsLock.lock();
+        try {
+            if (commandExists(command)) {
+                if (commands[command].groupId === $.PERMISSION.Caster) {
+                    group = 'Caster';
+                } else if (commands[command].groupId === $.PERMISSION.Admin) {
+                    group = 'Administrator';
+                } else if (commands[command].groupId === $.PERMISSION.Mod) {
+                    group = 'Moderator';
+                } else if (commands[command].groupId === $.PERMISSION.Sub) {
+                    group = 'Subscriber';
+                } else if (commands[command].groupId === $.PERMISSION.Donator) {
+                    group = 'Donator';
+                } else if (commands[command].groupId === $.PERMISSION.VIP) {
+                    group = 'VIP';
+                } else if (commands[command].groupId === $.PERMISSION.Regular) {
+                    group = 'Regular';
+                } else if (commands[command].groupId === $.PERMISSION.Viewer) {
+                    group = 'Viewer';
+                }
 
-        if (commandExists(command)) {
-            if (commands[command].groupId == 0) {
-                group = 'Caster';
-            } else if (commands[command].groupId == 1) {
-                group = 'Administrator';
-            } else if (commands[command].groupId == 2) {
-                group = 'Moderator';
-            } else if (commands[command].groupId == $.getSubscriberGroupID()) {
-                group = 'Subscriber';
-            } else if (commands[command].groupId == 4) {
-                group = 'Donator';
-            } else if (commands[command].groupId == $.getVIPGroupID()) {
-                group = 'VIP';
-            } else if (commands[command].groupId == 6) {
-                group = 'Regular';
-            } else if (commands[command].groupId == 7) {
-                group = 'Viewer';
+                return group;
             }
-            return group;
+        } finally {
+            _commandsLock.unlock();
         }
         return 'Viewer';
     }
@@ -262,13 +361,21 @@
      * @return {Number}
      */
     function getSubcommandGroup(command, subcommand) {
-        if (commandExists(command)) {
-            if (subCommandExists(command, subcommand)) {
-                return commands[command].subcommands[subcommand].groupId;
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
+        _commandsLock.lock();
+        try {
+            if (commandExists(command)) {
+                if (subCommandExists(command, subcommand)) {
+                    return commands[command].subcommands[subcommand].groupId;
+                }
+                return getCommandGroup(command);
             }
-            return getCommandGroup(command);
+        } finally {
+            _commandsLock.unlock();
         }
-        return 7;
+
+        return $.PERMISSION.Viewer;
     }
 
     /*
@@ -279,28 +386,36 @@
      * @return {String}
      */
     function getSubCommandGroupName(command, subcommand) {
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
         var group = '';
 
-        if (subCommandExists(command, subcommand)) {
-            if (commands[command].subcommands[subcommand].groupId == 0) {
-                group = 'Caster';
-            } else if (commands[command].subcommands[subcommand].groupId == 1) {
-                group = 'Administrator';
-            } else if (commands[command].subcommands[subcommand].groupId == 2) {
-                group = 'Moderator';
-            } else if (commands[command].subcommands[subcommand].groupId == $.getSubscriberGroupID()) {
-                group = 'Subscriber';
-            } else if (commands[command].subcommands[subcommand].groupId == 4) {
-                group = 'Donator';
-            } else if (commands[command].subcommands[subcommand].groupId == $.getVIPGroupID()) {
-                group = 'VIP';
-            } else if (commands[command].subcommands[subcommand].groupId == 6) {
-                group = 'Regular';
-            } else if (commands[command].subcommands[subcommand].groupId == 7) {
-                group = 'Viewer';
+        _commandsLock.lock();
+        try {
+            if (subCommandExists(command, subcommand)) {
+                if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Caster) {
+                    group = 'Caster';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Admin) {
+                    group = 'Administrator';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Mod) {
+                    group = 'Moderator';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Sub) {
+                    group = 'Subscriber';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Donator) {
+                    group = 'Donator';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.VIP) {
+                    group = 'VIP';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Regular) {
+                    group = 'Regular';
+                } else if (commands[command].subcommands[subcommand].groupId === $.PERMISSION.Viewer) {
+                    group = 'Viewer';
+                }
+                return group;
             }
-            return group;
+        } finally {
+            _commandsLock.unlock();
         }
+
         return 'Viewer';
     }
 
@@ -311,8 +426,14 @@
      * @param {Number} groupId
      */
     function updateCommandGroup(command, groupId) {
-        if (commandExists(command)) {
-            commands[command].groupId = groupId;
+        command = $.jsString(command).toLowerCase();
+        _commandsLock.lock();
+        try {
+            if (commandExists(command)) {
+                commands[command].groupId = groupId;
+            }
+        } finally {
+            _commandsLock.unlock();
         }
     }
 
@@ -324,8 +445,15 @@
      * @param {Number} groupId
      */
     function updateSubcommandGroup(command, subcommand, groupId) {
-        if (subCommandExists(command, subcommand)) {
-            commands[command].subcommands[subcommand].groupId = groupId;
+        command = $.jsString(command).toLowerCase();
+        subcommand = $.jsString(subcommand).toLowerCase();
+        _commandsLock.lock();
+        try {
+            if (subCommandExists(command, subcommand)) {
+                commands[command].subcommands[subcommand].groupId = groupId;
+            }
+        } finally {
+            _commandsLock.unlock();
         }
     }
 
@@ -336,6 +464,7 @@
      * @param {String[]} args
      */
     function getSubCommandFromArguments(command, args) {
+        command = $.jsString(command).toLowerCase();
         if (!commandExists(command) || args[0] === undefined) {
             return '';
         } else {

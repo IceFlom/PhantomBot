@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ import java.security.SecureRandom;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 /**
@@ -68,9 +70,9 @@ public final class SelfSignedX509CertificateGenerator {
             throws IOException, CertificateException, NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException, SignatureException {
         PrivateKey privkey = pair.getPrivate();
         sun.security.x509.X509CertInfo info = new sun.security.x509.X509CertInfo();
-        Date from = new Date();
-        Date to = new Date(from.getTime() + days * 86400000l);
-        sun.security.x509.CertificateValidity interval = new sun.security.x509.CertificateValidity(from, to);
+        Instant from = Instant.now();
+        Instant to = Instant.now().plus(days, ChronoUnit.DAYS);
+        sun.security.x509.CertificateValidity interval = new sun.security.x509.CertificateValidity(Date.from(from), Date.from(to));
         BigInteger sn = new BigInteger(64, new SecureRandom());
         sun.security.x509.X500Name owner = new sun.security.x509.X500Name(dn);
 

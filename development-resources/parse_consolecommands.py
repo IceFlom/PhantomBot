@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+# Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ for subdir, dirs, files in os.walk("./source"):
 
 lines = []
 
-lines.append("## Console Commands:" + '\n')
+lines.append("## Console Commands" + '\n')
 lines.append('\n')
 lines.append("**These console commands are available directly in the bot console when not running as a service.**" + '\n')
 lines.append('\n')

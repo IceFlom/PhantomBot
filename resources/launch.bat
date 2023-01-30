@@ -1,7 +1,7 @@
 @echo off
 
 REM  
-REM Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+REM Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
 REM  
 REM This program is free software: you can redistribute it and/or modify
 REM it under the terms of the GNU General Public License as published by
@@ -21,8 +21,9 @@ REM
 REM PhantomBot Launcher - Windows
 REM
 
-IF /I "%2" == "--df" GOTO :DELTRACK
-:CHECKONE
+set CHECKLOC=%~dp0%config\wtcheck.txt
+set LAUNCHER=%~dp0%launch.bat
+
 IF /I "%1" == "--nowt" GOTO :LAUNCH
 
 WHERE powershell >nul 2>nul
@@ -33,14 +34,16 @@ IF %ERRORLEVEL% EQU 0 GOTO :SWITCHTOWT
 
 GOTO :LAUNCH
 
-:DELTRACK
-del /q /f .\config\wtcheck.txt > NUL
-GOTO :CHECKONE
-
 :LAUNCH
+IF EXIST %CHECKLOC% GOTO :DODEL
+GOTO :SKIPDEL
+:DODEL
+del /q /f %CHECKLOC% > NUL
+:SKIPDEL
 setlocal enableextensions enabledelayedexpansion
-cd %~dp0
+pushd %~dp0
 ".\java-runtime\bin\java" --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED -Duser.language=en -Djava.security.policy=config/security -Dinteractive -Xms1m -Dfile.encoding=UTF-8 -jar "PhantomBot.jar" %*
+popd
 endlocal
 pause
 
@@ -48,8 +51,8 @@ GOTO :EOF
 
 :SWITCHTOWT
 setlocal enableextensions enabledelayedexpansion
-copy /y NUL .\config\wtcheck.txt > NUL
-wt nt --profile "Command Prompt" --startingDirectory "%~dp0\" --title PhantomBot launch.bat --nowt --df %*
+copy /y NUL %CHECKLOC% > NUL
+wt nt --profile "Command Prompt" --startingDirectory "%~dp0\" --title PhantomBot %LAUNCHER% --nowt %*
 timeout /t 5 /nobreak > NUL
-IF EXIST .\config\wtcheck.txt GOTO :LAUNCH
+IF EXIST %CHECKLOC% GOTO :LAUNCH
 endlocal

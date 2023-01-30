@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,14 @@ package com.gmt2001;
 
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
-import com.gmt2001.httpclient.HttpUrl;
+import com.gmt2001.httpclient.URIUtil;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -65,26 +65,18 @@ public final class GamesListUpdater {
             PhantomBot.instance().getDataStore().SetLong("settings", "", "gamesList-lastCheck", 0);
         }
 
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date(PhantomBot.instance().getDataStore().GetLong("settings", "", "gamesList-lastCheck")));
-        cal.add(Calendar.DATE, UPDATE_INTERVAL_DAYS);
+        LocalDateTime lastCheck = LocalDateTime.ofEpochSecond(PhantomBot.instance().getDataStore().GetLong("settings", "", "gamesList-lastCheck"), 0, ZoneOffset.UTC);
 
-        com.gmt2001.Console.debug.println("Last Update: " + cal.toString());
+        com.gmt2001.Console.debug.println("Last Update: " + lastCheck.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
-        if (!force && cal.getTime().after(new Date())) {
+        if (!force && lastCheck.plusDays(UPDATE_INTERVAL_DAYS).isAfter(LocalDateTime.now())) {
             com.gmt2001.Console.debug.println("Skipping update, interval has not expired...");
             return;
         }
 
-        PhantomBot.instance().getDataStore().SetLong("settings", "", "gamesList-lastCheck", new Date().getTime());
+        PhantomBot.instance().getDataStore().SetLong("settings", "", "gamesList-lastCheck", LocalDateTime.now().toEpochSecond(ZoneOffset.UTC));
 
-        HttpClientResponse response;
-        try {
-            response = HttpClient.get(HttpUrl.fromUri(BASE_URL, "index.json"));
-        } catch (URISyntaxException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            return;
-        }
+        HttpClientResponse response = HttpClient.get(URIUtil.create(BASE_URL + "index.json"));
 
         if (!response.isSuccess() || !response.hasJson()) {
             if (force) {
@@ -192,12 +184,7 @@ public final class GamesListUpdater {
 
     private static void UpdateFromIndex(List<String> data, int index, boolean force) {
         HttpClientResponse response;
-        try {
-            response = HttpClient.get(HttpUrl.fromUri(BASE_URL, "data/games" + index + ".json"));
-        } catch (URISyntaxException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            return;
-        }
+        response = HttpClient.get(URIUtil.create(BASE_URL + "data/games" + index + ".json"));
 
         if (!response.isSuccess()) {
             if (force) {

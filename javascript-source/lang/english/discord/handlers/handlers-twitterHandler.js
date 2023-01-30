@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
  */
 
 $.lang.register('discord.twitterhandler.tweet', '[Twitter Feed From]');
+$.lang.register('discord.twitterhandler.tweet.rt', '[RT] $1 🔗 $2');
+$.lang.register('discord.twitterhandler.tweet.tweet', '$1 🔗 $2');
 $.lang.register('discord.twitterhandler.usage', 'Usage: !twitterhandler [toggle / channel]');
 $.lang.register('discord.twitterhandler.toggle', 'Twitter annoucements have been $1.');
 $.lang.register('discord.twitterhandler.channel.usage', 'Usage: !twitterhandler channel [channel name]');

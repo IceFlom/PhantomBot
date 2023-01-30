@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,10 +135,10 @@
      * @event initReady
      */
     $.bind('initReady', function () {
-        $.registerChatCommand('./handlers/clipHandler.js', 'clipstoggle', 1);
-        $.registerChatCommand('./handlers/clipHandler.js', 'clipsmessage', 1);
-        $.registerChatCommand('./handlers/clipHandler.js', 'lastclip', 7);
-        $.registerChatCommand('./handlers/clipHandler.js', 'topclip', 7);
+        $.registerChatCommand('./handlers/clipHandler.js', 'clipstoggle', $.PERMISSION.Admin);
+        $.registerChatCommand('./handlers/clipHandler.js', 'clipsmessage', $.PERMISSION.Admin);
+        $.registerChatCommand('./handlers/clipHandler.js', 'lastclip', $.PERMISSION.Viewer);
+        $.registerChatCommand('./handlers/clipHandler.js', 'topclip', $.PERMISSION.Viewer);
     });
 
     $.reloadClips = reloadClips;

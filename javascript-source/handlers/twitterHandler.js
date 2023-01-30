@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,21 +57,28 @@
     $.getSetIniDbBoolean('twitter', 'reward_toggle', false);
     $.getSetIniDbBoolean('twitter', 'reward_announce', false);
 
-    /**
+    /*
      * @event twitter
      */
     $.bind('twitter', function (event) {
         if (!$.bot.isModuleEnabled('./handlers/twitterHandler.js')) {
             return;
         }
-        if (event.getMentionUser() != null) {
-            $.say($.lang.get('twitter.tweet.mention', event.getMentionUser(), event.getTweet()).replace('(twitterid)', $.twitter.getUsername() + ''));
+
+        var tweet = event.getTweet();
+
+        if (event.text() !== null) {
+            tweet = $.lang.get('twitter.tweet.' + (event.isRt() ? 'rt' : 'tweet'), event.text(), event.url());
+        }
+
+        if (event.getMentionUser() !== null) {
+            $.say($.lang.get('twitter.tweet.mention', event.getMentionUser(), tweet).replace('(twitterid)', $.twitter.username() + ''));
         } else {
-            $.say($.lang.get('twitter.tweet', event.getTweet()).replace('(twitterid)', $.twitter.getUsername() + ''));
+            $.say($.lang.get('twitter.tweet', tweet).replace('(twitterid)', $.twitter.username() + ''));
         }
     });
 
-    /**
+    /*
      * @event twitterRetweet
      */
     $.bind('twitterRetweet', function (event) {
@@ -80,7 +87,7 @@
         }
 
         /* The core only generates this event if reward_toggle is enabled, therefore, we do not check the toggle here. */
-        if ($.getIniDbNumber('twitter', 'reward_points') == 0) {
+        if ($.getIniDbNumber('twitter', 'reward_points') === 0) {
             return;
         }
 
@@ -114,7 +121,7 @@
         }
     });
 
-    /**
+    /*
      * @event twitchOnline
      */
     $.bind('twitchOnline', function (event) {
@@ -131,14 +138,14 @@
                 $.inidb.set('twitter', 'last_onlinepost', now + onlinePostDelay);
                 do {
                     randNum = $.randRange(1, 9999);
-                } while (randNum == randPrev);
+                } while (randNum === randPrev);
                 randPrev = randNum;
                 $.twitter.updateStatus(String(message).replace('(title)', $.twitchcache.getStreamStatus()).replace('(game)', $.twitchcache.getGameTitle()).replace('(twitchurl)', 'https://www.twitch.tv/' + $.ownerName + '?' + randNum).replace(/\(enter\)/g, '\r\n'));
             }
         }
     });
 
-    /**
+    /*
      * @event twitchGameChange
      */
     $.bind('twitchGameChange', function (event) {
@@ -148,7 +155,7 @@
             return;
         }
 
-        if ($.twitchcache.getGameTitle() == '') {
+        if ($.jsString($.twitchcache.getGameTitle()) === '') {
             return;
         }
 
@@ -162,14 +169,14 @@
 
                 do {
                     randNum = $.randRange(1, 9999);
-                } while (randNum == randPrev);
+                } while (randNum === randPrev);
                 randPrev = randNum;
                 $.twitter.updateStatus(String(message).replace('(title)', $.twitchcache.getStreamStatus()).replace('(game)', $.twitchcache.getGameTitle()).replace('(uptime)', hrs + ':' + min).replace('(twitchurl)', 'https://www.twitch.tv/' + $.ownerName + '?' + randNum).replace(/\(enter\)/g, '\r\n'));
             }
         }
     });
 
-    /**
+    /*
      * @event command
      */
     $.bind('command', function (event) {
@@ -189,7 +196,7 @@
          */
         if (command.equalsIgnoreCase('twitter')) {
             if (commandArg === undefined) {
-                $.say($.whisperPrefix(sender) + $.lang.get('twitter.id', $.ownerName, $.twitter.getUsername() + '') + ' ' + $.lang.get('twitter.usage.id'));
+                $.say($.whisperPrefix(sender) + $.lang.get('twitter.id', $.ownerName, $.twitter.username() + '') + ' ' + $.lang.get('twitter.usage.id'));
                 return;
             }
 
@@ -378,7 +385,7 @@
                  */
                 if (subCommandArg.equalsIgnoreCase('updatetimer')) {
                     setCommandVal = setCommandArg;
-                    if (setCommandVal == undefined) {
+                    if (setCommandVal === undefined) {
                         setCommandVal = $.getIniDbNumber('twitter', 'postdelay_update');
                         $.say($.whisperPrefix(sender) + $.lang.get('twitter.set.updatetimer.usage', setCommandVal));
                         return;
@@ -488,7 +495,7 @@
              * @commandpath twitter id - Display the configured Twitter ID for the caster
              */
             if (commandArg.equalsIgnoreCase('id')) {
-                $.say($.whisperPrefix(sender) + $.lang.get('twitter.id', $.ownerName, $.twitter.getUsername() + ''));
+                $.say($.whisperPrefix(sender) + $.lang.get('twitter.id', $.ownerName, $.twitter.username() + ''));
                 return;
             }
 
@@ -518,8 +525,8 @@
                 return;
             }
 
-        } /* if (command.equalsIgnoreCase('twitter')) */
-    }); /* @event command */
+        }
+    });
 
     /**
      * @function checkAutoUpdate
@@ -540,20 +547,13 @@
             var lastUpdateTime = $.getSetIniDbNumber('twitter', 'last_autoupdate', $.systemTime());
 
             if (($.systemTime() - lastUpdateTime) >= ($.getIniDbNumber('twitter', 'postdelay_update', 180) * 6e4)) { // 3 hour cooldown
-                var DownloadHTTP = Packages.com.illusionaryone.ImgDownload;
-                var success = DownloadHTTP.downloadHTTP($.twitchcache.getPreviewLink(), 'twitch-preview.jpg'),
-                        uptimeSec = $.getStreamUptimeSeconds($.channelName),
+                var uptimeSec = $.getStreamUptimeSeconds($.channelName),
                         hrs = (uptimeSec / 3600 < 10 ? '0' : '') + Math.floor(uptimeSec / 3600),
                         min = ((uptimeSec % 3600) / 60 < 10 ? '0' : '') + Math.floor((uptimeSec % 3600) / 60);
 
                 $.inidb.set('twitter', 'last_autoupdate', $.systemTime());
 
-                if (success.equals('true')) {
-                    $.twitter.updateStatus(String(message).replace('(title)', $.twitchcache.getStreamStatus()).replace('(game)', $.twitchcache.getGameTitle()).replace('(twitchurl)', 'https://www.twitch.tv/' + $.ownerName + '?' + uptimeSec).replace(/\(enter\)/g, '\r\n').replace('(uptime)', hrs + ':' + min),
-                            './addons/downloadHTTP/twitch-preview.jpg', 'TWEET_IMAGE');
-                } else {
-                    $.twitter.updateStatus(String(message).replace('(title)', $.twitchcache.getStreamStatus()).replace('(game)', $.twitchcache.getGameTitle()).replace('(twitchurl)', 'https://www.twitch.tv/' + $.ownerName + '?' + uptimeSec).replace('(uptime)', hrs + ':' + min).replace(/\(enter\)/g, '\r\n'));
-                }
+                $.twitter.updateStatus(String(message).replace('(title)', $.twitchcache.getStreamStatus()).replace('(game)', $.twitchcache.getGameTitle()).replace('(twitchurl)', 'https://www.twitch.tv/' + $.ownerName + '?' + uptimeSec).replace('(uptime)', hrs + ':' + min).replace(/\(enter\)/g, '\r\n'));
                 $.log.event('Sent Auto Update to Twitter');
             }
         }
@@ -563,18 +563,63 @@
         checkAutoUpdate();
     }, 8e4);
 
+    var authParams;
+    $.bind('webPanelSocketUpdate', function (event) {
+        if (event.getScript().equalsIgnoreCase('./handlers/twitterHandler.js')) {
+            var args = event.getArgs();
+            if (args.length > 0) {
+                switch ($.jsString(args[0])) {
+                    case 'start-auth':
+                        try {
+                            authParams = $.twitter.startAuthorize(args[1]);
+                            $.panel.sendObject(event.getId(), {'success': true, 'authUrl': authParams.authorizationUrl()});
+                        } catch (e) {
+                            $.log.error('Failed to start auth ' + e.toString());
+                            $.panel.sendObject(event.getId(), {'success': false, 'error': e.toString()});
+                        }
+                        break;
+                    case 'complete-auth':
+                        try {
+                            $.twitter.completeAuthorize(authParams, args[1]);
+                            authParams = null;
+                            var i = 0;
+                            var cb = function () {
+                                if ($.twitter.authenticated()) {
+                                    $.panel.sendObject(event.getId(), {'success': true});
+                                } else if (i >= 14) {
+                                    $.panel.sendObject(event.getId(), {'success': false, 'error': 'Timed out waiting for authentication'});
+                                } else {
+                                    i++;
+                                    var time = 1000;
+                                    if (i < 4) {
+                                        time = 250;
+                                    }
+                                    setTimeout(cb, time);
+                                }
+                            };
+                            setTimeout(cb, 250);
+                        } catch (e) {
+                            $.log.error('Failed to complete auth ' + e.toString());
+                            $.panel.sendObject(event.getId(), {'success': false, 'error': e.toString()});
+                        }
+                        break;
+                }
+            }
+        }
+    });
+
     /**
      * @event initReady
      */
     $.bind('initReady', function () {
-        $.registerChatCommand('./handlers/twitterHandler.js', 'twitter', 7);
-        $.registerChatSubcommand('twitter', 'set', 1);
-        $.registerChatSubcommand('twitter', 'post', 1);
-        $.registerChatSubcommand('twitter', 'lasttweet', 7);
-        $.registerChatSubcommand('twitter', 'lastmention', 7);
-        $.registerChatSubcommand('twitter', 'lastretweet', 7);
-        $.registerChatSubcommand('twitter', 'id', 7);
-        $.registerChatSubcommand('twitter', 'register', 7);
-        $.registerChatSubcommand('twitter', 'unregister', 7);
+        $.registerChatCommand('./handlers/twitterHandler.js', 'twitter', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'set', $.PERMISSION.Admin);
+        $.registerChatSubcommand('twitter', 'post', $.PERMISSION.Admin);
+        $.registerChatSubcommand('twitter', 'lasttweet', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'lastmention', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'lastretweet', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'id', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'register', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('twitter', 'unregister', $.PERMISSION.Viewer);
     });
 })();

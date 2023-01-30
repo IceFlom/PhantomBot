@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,8 +15,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/* global Packages */
+
 (function () {
-    var currentGame = null;
     var count = 1;
     var gamesPlayed;
 
@@ -107,7 +108,7 @@
      * @returns {boolean}
      */
     function isOnline(channelName) {
-        if ($.twitchcache !== undefined && $.twitchcache !== null && $.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchcache !== undefined && $.twitchcache !== null && $.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             return $.twitchcache.isStreamOnline();
         } else {
             return !$.twitch.GetStream(channelName).isNull('stream');
@@ -121,14 +122,14 @@
      * @returns {string}
      */
     function getStatus(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             return ($.twitchcache.getStreamStatus() + '');
         } else {
             var channelData = $.twitch.GetChannel(channelName);
 
-            if (!channelData.isNull('status') && channelData.getInt('_http') == 200) {
+            if (!channelData.isNull('status') && channelData.getInt('_http') === 200) {
                 return channelData.getString('status');
-            } else if (channelData.isNull('status') && channelData.getInt('_http') == 200) {
+            } else if (channelData.isNull('status') && channelData.getInt('_http') === 200) {
                 return $.lang.get('common.twitch.no.status');
             }
             $.log.error('Failed to get the current status: ' + channelData.optString('message', 'no message'));
@@ -143,14 +144,14 @@
      * @returns {string}
      */
     function getGame(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             return ($.twitchcache.getGameTitle() + '');
         } else {
             var channelData = $.twitch.GetChannel(channelName);
 
-            if (!channelData.isNull('game') && channelData.getInt('_http') == 200) {
+            if (!channelData.isNull('game') && channelData.getInt('_http') === 200) {
                 return channelData.getString("game");
-            } else if (channelData.isNull('game') && channelData.getInt('_http') == 200) {
+            } else if (channelData.isNull('game') && channelData.getInt('_http') === 200) {
                 return $.lang.get('common.twitch.no.game');
             }
 
@@ -170,7 +171,7 @@
     function getLogo(channelName) {
         var channel = $.twitch.GetChannel(channelName);
 
-        if (!channel.isNull('logo') && channel.getInt('_http') == 200) {
+        if (!channel.isNull('logo') && channel.getInt('_http') === 200) {
             return channel.getString('logo');
         } else {
             return 0;
@@ -184,7 +185,7 @@
      * @returns {number}
      */
     function getStreamUptimeSeconds(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             return $.twitchcache.getStreamUptimeSeconds();
         } else {
             var stream = $.twitch.GetStream(channelName),
@@ -213,7 +214,7 @@
      * @returns {string}
      */
     function getStreamUptime(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             var uptime = $.twitchcache.getStreamUptimeSeconds();
 
             if (uptime === 0) {
@@ -276,7 +277,7 @@
      * @returns {string}
      */
     function getStreamStartedAt(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             if ($.jsString($.twitchcache.isStreamOnlineString()) === 'false') {
                 return 'Stream is offline';
             }
@@ -302,12 +303,12 @@
      * @returns {Number}
      */
     function getViewers(channelName) {
-        if ($.twitchCacheReady.equals('true') && channelName.equalsIgnoreCase($.channelName)) {
+        if ($.twitchCacheReady && channelName.equalsIgnoreCase($.channelName)) {
             return $.twitchcache.getViewerCount();
         } else {
             var stream = $.twitch.GetStream(channelName);
 
-            if (!stream.isNull('stream') && stream.getInt('_http') == 200) {
+            if (!stream.isNull('stream') && stream.getInt('_http') === 200) {
                 return stream.getJSONObject('stream').getInt('viewers');
             } else {
                 return 0;
@@ -324,7 +325,7 @@
     function getFollows(channelName) {
         var channel = $.twitch.GetChannel(channelName);
 
-        if (!channel.isNull('followers') && channel.getInt('_http') == 200) {
+        if (!channel.isNull('followers') && channel.getInt('_http') === 200) {
             return channel.getInt('followers');
         } else {
             return 0;
@@ -347,11 +348,8 @@
             return $.lang.get('followhandler.follow.age.datefmt.404');
         }
 
-        var date = new Date(user.getString('created_at')),
-                dateFormat = new java.text.SimpleDateFormat($.lang.get('followhandler.follow.age.datefmt')),
-                dateFinal = dateFormat.format(date);
-
-        return dateFinal;
+        var date = Packages.java.time.ZonedDateTime.parse(user.getString('created_at'), Packages.java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        return date.format(Packages.java.time.format.DateTimeFormatter.ofPattern($.lang.get('followhandler.follow.age.datefmt')));
     }
 
     /**
@@ -371,10 +369,9 @@
             return;
         }
 
-        var date = new Date(user.getString('created_at')),
-                dateFormat = new java.text.SimpleDateFormat("MMMM dd', 'yyyy"),
-                dateFinal = dateFormat.format(date),
-                days = Math.floor((($.systemTime() - date.getTime()) / 1000) / 86400);
+        var date = Packages.java.time.ZonedDateTime.parse(user.getString('created_at'), Packages.java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        var dateFinal = date.format(Packages.java.time.format.DateTimeFormatter.ofPattern("MMMM dd', 'yyyy"));
+        var days = Packages.java.time.Duration.between(date, Packages.java.time.ZonedDateTime.now()).toDays();
 
         if (days > 0) {
             $.say($.lang.get('followhandler.follow.age.time.days', $.userPrefix(sender, true), username, channelName, dateFinal, days));
@@ -396,10 +393,9 @@
             return;
         }
 
-        var date = new Date(channelData.getString('created_at')),
-                dateFormat = new java.text.SimpleDateFormat("MMMM dd', 'yyyy"),
-                dateFinal = dateFormat.format(date),
-                days = Math.floor((Math.abs((date.getTime() - $.systemTime()) / 1000)) / 86400);
+        var date = Packages.java.time.ZonedDateTime.parse(channelData.getString('created_at'), Packages.java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        var dateFinal = date.format(Packages.java.time.format.DateTimeFormatter.ofPattern("MMMM dd', 'yyyy"));
+        var days = Packages.java.time.Duration.between(date, Packages.java.time.ZonedDateTime.now()).toDays();
 
         if (days > 0) {
             $.say($.lang.get('common.get.age.days', $.userPrefix(event.getSender(), true), (!event.getArgs()[0] ? event.getSender() : $.user.sanitize(event.getArgs()[0])), dateFinal, days));
@@ -414,13 +410,13 @@
      * @return {number} count
      */
     function getSubscriberCount() {
-        var jsonObject = $.twitch.GetChannelSubscriptions($.channelName.toLowerCase(), 100, 0, true);
+        var jsonObject = $.twitch.GetChannelSubscriptions($.channelName.toLowerCase(), 100, null);
 
         if (jsonObject.getInt('_http') !== 200) {
             return 0;
         }
 
-        return jsonObject.getInt('_total') - 1;
+        return jsonObject.getInt('_total');
     }
 
     /**
@@ -439,7 +435,7 @@
         }
 
         if (http.getBoolean('_success')) {
-            if (http.getInt('_http') == 200) {
+            if (http.getInt('_http') === 200) {
                 if (!silent) {
                     $.say($.lang.get('common.game.change', http.getString('game')));
                 }
@@ -455,7 +451,7 @@
                 $.log.error(http.getString('message'));
             }
         } else {
-            $.log.error('Failed to change the game. Make sure you have your api oauth code set. https://phantombot.github.io/PhantomBot/oauth/');
+            $.log.error('Failed to change the game. Make sure you have your api oauth code set to the caster.');
             $.log.error(http.getString('_exception') + ' ' + http.getString('_exceptionMessage'));
         }
     }
@@ -472,7 +468,7 @@
         var http = $.twitch.UpdateChannel(channelName, status, '');
 
         if (http.getBoolean('_success')) {
-            if (http.getInt('_http') == 200) {
+            if (http.getInt('_http') === 200) {
                 if (!silent) {
                     $.say($.lang.get('common.title.change', http.getString('status')));
                 }
@@ -484,7 +480,7 @@
                 $.log.error(http.getString('message'));
             }
         } else {
-            $.log.error('Failed to change the status. Make sure you have your api oauth code set. https://phantombot.github.io/PhantomBot/oauth/');
+            $.log.error('Failed to change the status. Make sure you have your api oauth code set to the caster.');
             $.log.error(http.getString('_exception') + ' ' + http.getString('_exceptionMessage'));
         }
     }

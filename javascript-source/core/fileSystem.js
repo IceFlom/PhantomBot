@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/* global Packages */
 
 /**
  * fileSystem.js
@@ -81,6 +83,25 @@
             Packages.com.gmt2001.JSFileSystem.MoveFileToDirectory($.javaString(file), $.javaString(path));
         } catch (ex) {
             $.log.error("moveFile(" + file + ", " + path + ") failed: " + ex);
+        }
+    }
+
+    /**
+     * @function moveRenameFile
+     * @export $
+     * @param {string} file
+     * @param {string} path
+     */
+    function moveRenameFile(file, path) {
+        if (invalidLocation(file) || invalidLocation(path)) {
+            $.consoleLn('Blocked moveRenameFile() source or target outside of validPaths:' + file + ' to ' + path);
+            return;
+        }
+
+        try {
+            Packages.com.gmt2001.JSFileSystem.MoveFile($.javaString(file), $.javaString(path));
+        } catch (ex) {
+            $.log.error("moveRenameFile(" + file + ", " + path + ") failed: " + ex);
         }
     }
 
@@ -248,6 +269,7 @@
     $.isDirectory = isDirectory;
     $.mkDir = mkDir;
     $.moveFile = moveFile;
+    $.moveRenameFile = moveRenameFile;
     $.readFile = readFile;
     $.saveArray = saveArray;
     $.touchFile = touchFile;

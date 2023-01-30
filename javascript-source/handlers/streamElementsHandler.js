@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -140,8 +140,8 @@
             donationUsername = donationUsername.toLowerCase();
             $.inidb.incr('donations', donationUsername, donationAmount);
             if ($.inidb.exists('donations', donationUsername) && $.inidb.get('donations', donationUsername) >= groupMin) {
-                if ($.getUserGroupId(donationUsername) > 3) {
-                    $.setUserGroupById(donationUsername, '4');
+                if ($.getUserGroupId(donationUsername) > $.PERMISSION.Donator) {
+                    $.setUserGroupById(donationUsername, $.PERMISSION.Donator);
                 }
             }
         }
@@ -240,7 +240,7 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./handlers/streamElementsHandler.js', 'streamelements', 1);
+        $.registerChatCommand('./handlers/streamElementsHandler.js', 'streamelements', $.PERMISSION.Admin);
     });
 
     $.reloadStreamElements = reloadStreamElements;

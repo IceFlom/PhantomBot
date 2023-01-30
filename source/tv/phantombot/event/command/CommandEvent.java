@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,69 +33,119 @@ public class CommandEvent extends Event {
     /**
      * Class constructor for this event without tags. Always send tags if you can.
      *
-     * @param {String} sender
-     * @param {String} command
-     * @param {String} arguments
-     * @param {Map} tags
+     * @param sender
+     * @param command
+     * @param arguments
      */
     public CommandEvent(String sender, String command, String arguments) {
+        super();
         this.sender = sender;
         this.command = command;
         this.arguments = arguments;
-        this.args = parse();
-        this.tags = new HashMap<String, String>();
+        this.args = this.parse();
+        this.tags = new HashMap<>();
     }
 
     /**
      * Class constructor for this event.
      *
-     * @param {String} sender
-     * @param {String} command
-     * @param {String} arguments
-     * @param {Map} tags
+     * @param sender
+     * @param command
+     * @param arguments
+     * @param tags
      */
     public CommandEvent(String sender, String command, String arguments, Map<String, String> tags) {
         this.sender = sender;
         this.command = command;
         this.arguments = arguments;
-        this.args = parse();
-        this.tags = (tags == null ? new HashMap<String, String>() : tags);
+        this.args = this.parse();
+        this.tags = (tags == null ? new HashMap<>() : tags);
+    }
+
+    private String[] parse() {
+        return parseArgs(this.arguments, ' ', -1, false).toArray(String[]::new);
     }
 
     /**
-     * Method that parses the command arguments.
+     * Method that parses the command arguments. Double quotes can be used to prevent an argument containing the delimiter from splitting. Double
+     * quotes that are literals can be escaped with backslash. Backslash requires escaping with another backslash.
      *
-     * @return {String[]}
+     * @param arguments The arguments as a single string
+     * @param delimiter The delimiter by which arguments are split. Can be any char except double-quote or backslash
+     * @param limit The maximum number of arguments to return. -1 indicates unlimited. Once limit is reached, the delimiter is automatically escaped
+     * @param limitNoEscape If set true and limit &gt; 0, the argument at position limit is treated as a literal string, as if all quotes,
+     * backslashes, and delimiters are already escaped
+     *
+     * @return A List&lt;String&gt; of arguments
      */
-    private String[] parse() {
-        List<String> tmpArgs = new LinkedList<String>();
+    public static List<String> parseArgs(String arguments, char delimiter, int limit, boolean limitNoEscape) {
+        if (delimiter == '"' || delimiter == '\\') {
+            throw new IllegalArgumentException("Can not use double-quote(\") or backslash(\\) as a delimiter");
+        }
+
+        List<String> tmpArgs = new LinkedList<>();
         boolean inquote = false;
-        String tmpStr = "";
+        boolean escape = false;
+        StringBuilder tmpStr = new StringBuilder();
+        if (limit > 0) {
+            limit--;
+        }
 
         for (char c : arguments.toCharArray()) {
-            if (c == '"') {
+            if (c == '\\' && !escape && (limit == -1 || tmpArgs.size() < limit || !limitNoEscape)) {
+                escape = true;
+            } else if (c == '"' && !escape && (limit == -1 || tmpArgs.size() < limit || !limitNoEscape)) {
                 inquote = !inquote;
-            } else if (!inquote && c == ' ') {
+            } else if (!inquote && c == delimiter && (limit == -1 || tmpArgs.size() < limit)) {
                 if (tmpStr.length() > 0) {
-                    tmpArgs.add(tmpStr);
-                    tmpStr = "";
+                    tmpArgs.add(tmpStr.toString());
+                    tmpStr.setLength(0);
                 }
             } else {
-                tmpStr += c;
+                tmpStr.append(c);
+                escape = false;
             }
         }
 
         if (tmpStr.length() > 0) {
-            tmpArgs.add(tmpStr);
+            tmpArgs.add(tmpStr.toString());
         }
 
-        return tmpArgs.toArray(new String[tmpArgs.size()]);
+        return tmpArgs;
+    }
+
+    /**
+     * Indicates if the given message appears to be a command, defined as exclamation point {@code !} followed by any character except for a space
+     *
+     * @param message The emssage to check
+     * @return {@code true} if the message appears to be a command
+     */
+    public static boolean isCommand(String message) {
+        return message.startsWith("!") && message.indexOf(' ') != 1;
+    }
+
+    /**
+     * Converts the given message into a CommandEvent
+     *
+     * @param sender The sender of the message
+     * @param message The message to convert
+     * @param tags Any IRCv3 tags attached to the message
+     * @return {@code null} if {@link #isCommand(java.lang.String)} returns {@code false}; otherwise a {@link CommandEvent}
+     */
+    public static CommandEvent asCommand(String sender, String message, Map<String, String> tags) {
+        if (isCommand(message)) {
+            int idx = message.indexOf(' ');
+            return new CommandEvent(sender, idx > 1 ? message.substring(1, idx) : message.substring(1),
+                    idx == -1 ? "" : message.substring(idx + 1), tags);
+        }
+
+        return null;
     }
 
     /**
      * Method that will return the sender of this command.
      *
-     * @return {String} sender
+     * @return sender
      */
     public String getSender() {
         return this.sender;
@@ -104,7 +154,7 @@ public class CommandEvent extends Event {
     /**
      * Method that will return the command name.
      *
-     * @return {String}
+     * @return
      */
     public String getCommand() {
         return this.command.toLowerCase();
@@ -113,7 +163,7 @@ public class CommandEvent extends Event {
     /**
      * Method that will return the string of arguments.
      *
-     * @return {String} arguments
+     * @return arguments
      */
     public String getArguments() {
         return this.arguments;
@@ -122,16 +172,16 @@ public class CommandEvent extends Event {
     /**
      * Method that will return the array of arguments.
      *
-     * @return {String[]} args
+     * @return args
      */
     public String[] getArgs() {
-        return this.args;
+        return this.args.clone();
     }
 
     /**
      * Method that returns the IRCv3 tags in a map.
      *
-     * @return {Map} tags
+     * @return tags
      */
     public Map<String, String> getTags() {
         return this.tags;
@@ -140,7 +190,7 @@ public class CommandEvent extends Event {
     /**
      * Method that returns this object as a string.
      *
-     * @return {String}
+     * @return
      */
     @Override
     public String toString() {

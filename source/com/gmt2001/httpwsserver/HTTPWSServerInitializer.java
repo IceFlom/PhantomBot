@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ package com.gmt2001.httpwsserver;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketFrameAggregator;
@@ -53,9 +54,11 @@ class HTTPWSServerInitializer extends ChannelInitializer<SocketChannel> {
         SslContext sslCtx = HTTPWSServer.instance().getSslContext();
         if (sslCtx != null) {
             pipeline.addLast("sslhandler", new HttpOptionalSslHandler(sslCtx));
+            pipeline.addLast(new CatchSslExceptionHandler());
         }
 
         pipeline.addLast(new HttpServerCodec());
+        pipeline.addLast(new HttpContentCompressor());
         pipeline.addLast(new HttpObjectAggregator(65536));
         pipeline.addLast(new WebSocketServerCompressionHandler());
         pipeline.addLast(new WebSocketServerProtocolHandler("/ws", null, true, 65536, false, true));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@ package tv.phantombot.event.eventsub.channel;
 import com.gmt2001.eventsub.subscriptions.channel.ChannelUpdate;
 
 /**
- * The channel.update subscription type sends notifications when a broadcaster updates the category, title, mature flag, or broadcast language for their channel.
+ * The channel.update subscription type sends notifications when a broadcaster updates the category, title, mature flag, or broadcast language for
+ * their channel
+ *
  * @author gmt2001
  */
 public class EventSubChannelUpdateEvent extends EventSubChannelEvent {
@@ -27,9 +29,15 @@ public class EventSubChannelUpdateEvent extends EventSubChannelEvent {
     private final ChannelUpdate event;
 
     public EventSubChannelUpdateEvent(ChannelUpdate event) {
+        super();
         this.event = event;
     }
 
+    /**
+     * Returns a {@link ChannelUpdate} object which indicates the latest channel parameters
+     *
+     * @return
+     */
     public ChannelUpdate getEvent() {
         return this.event;
     }

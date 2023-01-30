@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@ package com.illusionaryone;
 import com.gmt2001.HttpRequest;
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
-import com.gmt2001.httpclient.HttpUrl;
-import java.net.URISyntaxException;
+import com.gmt2001.httpclient.URIUtil;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,14 +45,14 @@ public final class GitHubAPIv3 {
         JSONObject jsonResult = new JSONObject();
 
         try {
-            HttpClientResponse response = HttpClient.get(HttpUrl.fromUri(BASE_URL, endPoint));
+            HttpClientResponse response = HttpClient.get(URIUtil.create(BASE_URL + endPoint));
             if (isArray) {
                 jsonResult.put("array", new JSONArray(response.responseBody()));
             } else {
                 jsonResult = response.json();
             }
             HttpRequest.generateJSONObject(jsonResult, true, "GET", "", endPoint, response.responseCode().code(), "", "");
-        } catch (URISyntaxException | JSONException ex) {
+        } catch (JSONException ex) {
             HttpRequest.generateJSONObject(jsonResult, false, "GET", "", endPoint, 0, ex.getClass().getSimpleName(), ex.getMessage());
             com.gmt2001.Console.err.printStackTrace(ex);
         }
@@ -78,6 +78,50 @@ public final class GitHubAPIv3 {
         return readJsonFromUrl("/releases/latest", false);
     }
 
+    private static final Pattern VERSIONREGEX = Pattern.compile("[a-zA-Z_\\W]*([0-9]+\\.[0-9]+(\\.[0-9]+)*)[a-zA-Z_\\W]*");
+
+    /**
+     * Compares version strings on the dot-notation integers only
+     *
+     * @param left Original/running version
+     * @param right Remote/latest version
+     * @return {@code false} if right and left are valid version strings, and right is newer than left; else {@code true}
+     */
+    public static boolean CompareVersions(String left, String right) {
+        if (left == null || right == null) {
+            return true;
+        }
+
+        Matcher lMatcher = VERSIONREGEX.matcher(left);
+        Matcher rMatcher = VERSIONREGEX.matcher(right);
+
+        if (!lMatcher.matches() || !rMatcher.matches()) {
+            return true;
+        }
+
+        String spl1[] = lMatcher.group(1).split("\\.");
+        String spl2[] = rMatcher.group(1).split("\\.");
+        int len = Math.max(spl1.length, spl2.length);
+        int[] lVer = new int[len];
+
+        for (int i = 0; i < len; i++) {
+            lVer[i] = (i < spl1.length ? Integer.parseInt(spl1[i]) : 0);
+        }
+
+        int[] rVer = new int[len];
+        for (int i = 0; i < len; i++) {
+            rVer[i] = (i < spl2.length ? Integer.parseInt(spl2[i]) : 0);
+        }
+
+        for (int i = 0; i < len; i++) {
+            if (lVer[i] < rVer[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /*
      * Pulls release information from GitHub and checks to see if there is a new release.
      *
@@ -88,8 +132,9 @@ public final class GitHubAPIv3 {
         if (!jsonObject.has("tag_name")) {
             return null;
         }
+
         String tagName = jsonObject.getString("tag_name");
-        if (tagName.equals("v" + RepoVersion.getPhantomBotVersion().split("-")[0])) {
+        if (CompareVersions(RepoVersion.getPhantomBotVersion(), tagName)) {
             return null;
         }
 
@@ -100,6 +145,11 @@ public final class GitHubAPIv3 {
         String os = PhantomBot.getOsSuffix();
 
         JSONArray assetsArray = jsonObject.getJSONArray("assets");
+
+        if (assetsArray.isEmpty()) {
+            return null;
+        }
+
         Pattern p = Pattern.compile(".*PhantomBot-([0-9]+\\.?)+" + os + "\\.zip", Pattern.CASE_INSENSITIVE);
         int i;
         boolean found = false;

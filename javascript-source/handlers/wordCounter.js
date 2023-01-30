@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./handlers/wordCounter.js', 'wordcounter', 1);
-        $.registerChatCommand('./handlers/wordCounter.js', 'count', 7);
+        $.registerChatCommand('./handlers/wordCounter.js', 'wordcounter', $.PERMISSION.Admin);
+        $.registerChatCommand('./handlers/wordCounter.js', 'count', $.PERMISSION.Viewer);
     });
 })();

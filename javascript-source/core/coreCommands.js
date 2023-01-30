@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  */
 
 (function () {
+    let shoutoutApi = $.getSetIniDbBoolean('settings', 'shoutoutapi', true);
     /*
      * @event command
      */
@@ -49,6 +50,17 @@
             } else {
                 $.say($.lang.get('corecommands.shoutout.online', streamerDisplay, streamerURL, streamerGame));
             }
+
+            if (shoutoutApi) {
+                $.say('/shoutout ' + streamer);
+            }
+            /*
+             * @commandpath shoutoutapitoggle - Toggles if the /shoutout API is also sent along with the normal !shoutout response
+             */
+        } else if (command.equalsIgnoreCase('shoutoutapi')) {
+            shoutoutApi = !shoutoutApi;
+            $.setIniDbBoolean('settings', 'shoutoutapi', shoutoutApi);
+            $.say($.whisperPrefix(sender) + $.lang.get('corecommands.shoutoutapi.' + (shoutoutApi ? 'enable' : 'disable')));
         } else if (command.equalsIgnoreCase('settimevar')) {
             if (action === undefined) {
                 $.say($.whisperPrefix(sender) + $.lang.get('corecommands.settimevar.usage', command));
@@ -76,10 +88,20 @@
     });
 
     /*
+     * @event webPanelSocketUpdate
+     */
+    $.bind('webPanelSocketUpdate', function (event) {
+        if (event.getScript().equalsIgnoreCase('./core/coreCommands.js')) {
+            shoutoutApi = $.getIniDbBoolean('settings', 'shoutoutapi');
+        }
+    });
+
+    /*
      * @event initReady
      */
     $.bind('initReady', function () {
-        $.registerChatCommand('./core/coreCommands.js', 'shoutout', 2);
-        $.registerChatCommand('./core/coreCommands.js', 'settimevar', 2);
+        $.registerChatCommand('./core/coreCommands.js', 'shoutout', $.PERMISSION.Mod);
+        $.registerChatCommand('./core/coreCommands.js', 'shoutoutapitoggle', $.PERMISSION.Mod);
+        $.registerChatCommand('./core/coreCommands.js', 'settimevar', $.PERMISSION.Mod);
     });
 })();

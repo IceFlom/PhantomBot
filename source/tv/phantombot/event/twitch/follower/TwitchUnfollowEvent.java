@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,16 +16,17 @@
  */
 package tv.phantombot.event.twitch.follower;
 
-import java.util.Date;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class TwitchUnfollowEvent extends TwitchFollowerEvent {
 
     /**
      * Class constructor.
      *
-     * @param {String} follower
+     * @param follower
      */
     public TwitchUnfollowEvent(String follower) {
-        super(follower, (new Date()).toString());
+        super(follower, ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME));
     }
 }

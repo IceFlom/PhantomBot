@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,10 +29,10 @@ import com.rollbar.notifier.config.ConfigBuilder;
 import com.rollbar.notifier.filter.Filter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,11 +65,11 @@ public final class RollbarProvider implements AutoCloseable {
     private static final List<String> FINGERPRINT_FILE_REGEX = Collections.unmodifiableList(Arrays.asList("(.*).js"));
     private static final List<String> SEND_VALUES = Collections.unmodifiableList(Arrays.asList("allownonascii", "baseport", "channel", "datastore", "debugon", "debuglog",
             "helixdebug", "ircdebug", "logtimezone", "msglimit30", "musicenable", "owner", "proxybypasshttps", "reactordebug", "reloadscripts", "rhinodebugger",
-            "rollbarid", "twitch_tcp_nodelay", "usehttps", "user", "useeventsub", "userollbar", "webenable", "whisperlimit60", "wsdebug"));
+            "rollbarid", "twitch_tcp_nodelay", "usehttps", "useeventsub", "userollbar", "webenable", "wsdebug"));
     private final Rollbar rollbar;
     private boolean enabled = false;
     private MessageDigest md;
-    private final ConcurrentHashMap<String, Date> reportsPassedFilters = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Instant> reportsPassedFilters = new ConcurrentHashMap<>();
     private final Timer t = new Timer();
 
     private RollbarProvider() {
@@ -94,7 +94,7 @@ public final class RollbarProvider implements AutoCloseable {
                     })
                     .person(() -> {
                         Map<String, Object> metadata = new HashMap<>();
-                        String botName = CaselessProperties.instance().getProperty("user", "").toLowerCase();
+                        String botName = TwitchValidate.instance().getChatLogin();
                         metadata.put("user", botName);
                         metadata.put("channel", CaselessProperties.instance().getProperty("channel", "").toLowerCase());
                         metadata.put("owner", CaselessProperties.instance().getProperty("owner", botName));
@@ -107,8 +107,7 @@ public final class RollbarProvider implements AutoCloseable {
                         metadata.put("phantombot.debugon", PhantomBot.getEnableDebugging() ? "true" : "false");
                         metadata.put("phantombot.debuglog", PhantomBot.getEnableDebuggingLogOnly() ? "true" : "false");
                         metadata.put("phantombot.rhinodebugger", PhantomBot.getEnableRhinoDebugger() ? "true" : "false");
-                        metadata.put("config.oauth.isuser", TwitchValidate.instance().getChatLogin().equalsIgnoreCase(CaselessProperties.instance().getProperty("user", "").toLowerCase()) ? "true" : "false");
-                        metadata.put("config.apioauth.iscaster", TwitchValidate.instance().getAPILogin().equalsIgnoreCase(CaselessProperties.instance().getProperty("channel", "").toLowerCase()) ? "true" : "false");
+                        metadata.put("config.apioauth.iscaster", TwitchValidate.instance().getAPILogin().equalsIgnoreCase(CaselessProperties.instance().getProperty("channel", "")) ? "true" : "false");
 
                         CaselessProperties.instance().keySet().stream().map(k -> (String) k).forEachOrdered(s -> {
                             if (RollbarProvider.SEND_VALUES.contains(s)) {
@@ -213,7 +212,15 @@ public final class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
+                                if (error.getMessage().equals("")) {
+                                    return true;
+                                }
+
                                 if (error.getMessage().contains("sql") && error.getMessage().contains("unrecognized token")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("sql") && error.getMessage().contains("no transaction is active")) {
                                     return true;
                                 }
 
@@ -261,6 +268,18 @@ public final class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
+                                if (error.getMessage().contains("No route to host")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Die Verbindung wurde vom Kommunikationspartner zurückgesetzt")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("PrematureCloseException")) {
+                                    return true;
+                                }
+
                                 if (error.getClass().equals(java.net.ConnectException.class) && error.getMessage().contains("Connection refused")) {
                                     return true;
                                 }
@@ -278,6 +297,30 @@ public final class RollbarProvider implements AutoCloseable {
                                 }
 
                                 if (error.getMessage().contains("Address already in use")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.lang.NoSuchFieldException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(com.twitter.clientlib.ApiException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.lang.IllegalStateException.class) && error.getMessage().equals("failed to create a child event loop")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.lang.IllegalStateException.class) && error.getMessage().startsWith("Not connected to Discord")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(com.github.scribejava.core.model.OAuth2AccessTokenErrorResponse.class)) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Keystore was tampered with, or password was incorrect")) {
                                     return true;
                                 }
                             }
@@ -361,16 +404,13 @@ public final class RollbarProvider implements AutoCloseable {
 
                                     String digest = Hex.encodeHexString(md.digest());
 
-                                    Calendar c = Calendar.getInstance();
+                                    com.gmt2001.Console.debug.println("[ROLLBAR-POST] " + digest + " " + (reportsPassedFilters.containsKey(digest) ? "t" : "f") + (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).isAfter(Instant.now()) ? "t" : "f"));
 
-                                    com.gmt2001.Console.debug.println("[ROLLBAR-POST] " + digest + " " + (reportsPassedFilters.containsKey(digest) ? "t" : "f") + (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).after(c.getTime()) ? "t" : "f"));
-
-                                    if (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).after(c.getTime())) {
+                                    if (reportsPassedFilters.containsKey(digest) && reportsPassedFilters.get(digest).isAfter(Instant.now())) {
                                         com.gmt2001.Console.debug.println("[ROLLBAR-POST] filtered");
                                         return true;
                                     } else {
-                                        c.add(Calendar.MINUTE, REPEAT_INTERVAL_MINUTES);
-                                        reportsPassedFilters.put(digest, c.getTime());
+                                        reportsPassedFilters.put(digest, Instant.now().plus(REPEAT_INTERVAL_MINUTES, ChronoUnit.MINUTES));
                                     }
                                 } catch (Exception e) {
                                     com.gmt2001.Console.debug.printOrLogStackTrace(e);
@@ -386,10 +426,10 @@ public final class RollbarProvider implements AutoCloseable {
             t.scheduleAtFixedRate(new TimerTask() {
                 @Override
                 public void run() {
-                    Date now = Calendar.getInstance().getTime();
+                    Instant now = Instant.now();
 
                     reportsPassedFilters.forEach((digest, date) -> {
-                        if (date.before(now)) {
+                        if (date.isBefore(now)) {
                             reportsPassedFilters.remove(digest);
                         }
                     });
@@ -474,7 +514,7 @@ public final class RollbarProvider implements AutoCloseable {
                     custom = new HashMap<>();
                 }
 
-                custom.put("uncaught", true);
+                custom.put("__uncaught", true);
             }
             this.rollbar.critical(error, custom, description);
         }
@@ -511,7 +551,7 @@ public final class RollbarProvider implements AutoCloseable {
                     custom = new HashMap<>();
                 }
 
-                custom.put("uncaught", true);
+                custom.put("__uncaught", true);
             }
 
             this.rollbar.error(error, custom, description);

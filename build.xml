@@ -3,7 +3,7 @@
 
     <!--
 
-    Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+    Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,9 +25,8 @@
 
     <property environment="env" />
     <!-- Please see this for version numbers: https://semver.org/ -->
-    <property name="version" value="3.6.2.6" />
-    <!-- Please see this for version numbers: https://semver.org/ -->
-    <property name="webpanel.version" value="1.6.3" />
+    <property name="version" value="custom" />
+    <property name="fallback.revision" value="unknown" />
     <property name="src" location="source" />
     <property name="reference" location="lib" />
     <property name="build" location="build" />
@@ -168,7 +167,7 @@
             <arg value="--short"/>
             <arg value="HEAD"/>
         </exec>
-        <condition property="repository.version" value="${git.revision}" else="unknown">
+        <condition property="repository.version" value="${git.revision}" else="${fallback.revision}">
             <and>
                 <isset property="git.revision"/>
                 <length string="${git.revision}" trim="yes" length="0" when="greater"/>
@@ -178,7 +177,6 @@
 
     <target depends="init,ivy-retrieve,classpaths,git.revision" name="pre.compile">
         <echo>${ant.project.name} Version ${version} (${repository.version}) (${build_type})</echo>
-        <echo>${ant.project.name} Control Panel Version ${webpanel.version}</echo>
         <replaceregexp
             file="source/tv/phantombot/RepoVersion.java"
             match="repoVersion = &quot;(.*)&quot;;"
@@ -191,10 +189,6 @@
             file="source/tv/phantombot/RepoVersion.java"
             match="phantomBotVersion = &quot;(.*)&quot;;"
             replace="phantomBotVersion = &quot;${version}&quot;;" />
-        <replaceregexp
-            file="source/tv/phantombot/RepoVersion.java"
-            match="panelVersion = &quot;(.*)&quot;;"
-            replace="panelVersion = &quot;${webpanel.version}&quot;;" />
         <replaceregexp
             file="source/tv/phantombot/RepoVersion.java"
             match="isDocker = false;"
@@ -249,10 +243,6 @@
             file="source/tv/phantombot/RepoVersion.java"
             match="phantomBotVersion = &quot;(.*)&quot;;"
             replace="phantomBotVersion = &quot;@phantombot.version@&quot;;" />
-        <replaceregexp
-            file="source/tv/phantombot/RepoVersion.java"
-            match="panelVersion = &quot;(.*)&quot;;"
-            replace="panelVersion = &quot;@webpanel.version@&quot;;" />
         <replaceregexp
             file="source/tv/phantombot/RepoVersion.java"
             match="isDocker = (.*);"
@@ -321,15 +311,13 @@
         <copy todir="${res.dir}/scripts">
             <fileset dir="./javascript-source" />
         </copy>
-        <replaceregexp
-            file="${build.dir}/web/panel/js/utils/helpers.js"
-            match="helpers\.PANEL_VERSION = &quot;(.*)&quot;;"
-            replace="helpers\.PANEL_VERSION = &quot;${webpanel.version}&quot;;" />
         <echo level="info" message="staging files into distribution folder." />
         <move todir="${version.folder}">
             <fileset dir="${build.dir}" />
         </move>
     </target>
+
+    <target depends="clean-no-post,jar" name="clean-jar"></target>
 
     <target depends="compile.src.test,post.compile" name="test"/>
 
@@ -349,7 +337,11 @@
         </zip>
     </target>
 
-    <target name="clean" depends="git.revision,post.compile">
+    <target name="clean-no-post" depends="git.revision">
+        <delete dir="${build}" />
+    </target>
+
+    <target name="clean" depends="clean-no-post,post.compile">
         <delete dir="${build}" />
     </target>
 

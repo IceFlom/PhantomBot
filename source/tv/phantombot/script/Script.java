@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
 package tv.phantombot.script;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextFactory;
@@ -43,7 +43,6 @@ public class Script {
     private long lastModified;
     private Context context;
     private boolean killed = false;
-    private int fileNotFoundCount = 0;
     private static ScriptableObject scope;
 
     @SuppressWarnings({"CallToThreadStartDuringObjectConstruction", "LeakingThisInConstructor"})
@@ -70,32 +69,12 @@ public class Script {
         }
 
         doDestroyables();
-        try {
-            load();
-            if (file.getPath().endsWith("init.js")) {
-                com.gmt2001.Console.out.println("Reloaded module: init.js");
-            } else {
-                String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
-                com.gmt2001.Console.out.println("Reloaded module: " + path);
-            }
-            fileNotFoundCount = 0;
-        } catch (IOException ex) {
-            if (ex.getMessage().contains("This could be a caching issue")) {
-                fileNotFoundCount++;
-                if (fileNotFoundCount == 1) {
-                    return;
-                }
-            } else {
-                fileNotFoundCount = 0;
-            }
-
-            if (file.getPath().endsWith("init.js")) {
-                com.gmt2001.Console.err.println("Failed to reload module: init.js: " + ex.getMessage());
-            } else {
-                String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
-                com.gmt2001.Console.err.println("Failed to reload module: " + path + ": " + ex.getMessage());
-            }
-            com.gmt2001.Console.err.printStackTrace(ex);
+        load();
+        if (file.getPath().endsWith("init.js")) {
+            com.gmt2001.Console.out.println("Reloaded module: init.js");
+        } else {
+            String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
+            com.gmt2001.Console.out.println("Reloaded module: " + path);
         }
     }
 
@@ -106,38 +85,18 @@ public class Script {
         }
 
         doDestroyables();
-        try {
-            load();
-            if (silent) {
-                if (file.getPath().endsWith("init.js")) {
-                    com.gmt2001.Console.out.println("Reloaded module: init.js");
-                } else {
-                    String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
-                    com.gmt2001.Console.out.println("Reloaded module: " + path);
-                }
-            }
-            fileNotFoundCount = 0;
-        } catch (IOException ex) {
-            if (ex.getMessage().contains("This could be a caching issue")) {
-                fileNotFoundCount++;
-                if (fileNotFoundCount == 1) {
-                    return;
-                }
-            } else {
-                fileNotFoundCount = 0;
-            }
-
+        load();
+        if (silent) {
             if (file.getPath().endsWith("init.js")) {
-                com.gmt2001.Console.err.println("Failed to reload module: init.js: " + ex.getMessage());
+                com.gmt2001.Console.out.println("Reloaded module: init.js");
             } else {
                 String path = file.getPath().replace("\056\134", "").replace("\134", "/").replace("scripts/", "");
-                com.gmt2001.Console.err.println("Failed to reload module: " + path + ": " + ex.getMessage());
+                com.gmt2001.Console.out.println("Reloaded module: " + path);
             }
-            com.gmt2001.Console.err.printStackTrace(ex);
         }
     }
 
-    public void load() throws IOException {
+    public void load() {
         if (killed) {
             return;
         }
@@ -200,15 +159,8 @@ public class Script {
 
         try {
             context.evaluateString(scope, Files.readString(file.toPath()), file.getName(), 1, null);
-        } catch (FileNotFoundException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            throw new IOException("File not found. This could be a caching issue, will retry.");
-        } catch (EvaluatorException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            throw new IOException("JavaScript Error: " + ex.getMessage());
-        } catch (IOException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            throw new IOException(ex.getMessage());
+        } catch (EvaluatorException | IOException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex, Collections.singletonMap("file", this.getPath()));
         }
     }
 

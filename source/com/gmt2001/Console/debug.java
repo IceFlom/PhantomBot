@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  */
 package com.gmt2001.Console;
 
-import com.gmt2001.Logger;
+import com.illusionaryone.Logger;
 import com.gmt2001.RollbarProvider;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,6 +28,12 @@ import tv.phantombot.PhantomBot;
 public final class debug {
 
     private debug() {
+    }
+
+    static String findCallerInfo() {
+        StackTraceElement st = findCaller();
+
+        return "[" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "]";
     }
 
     static StackTraceElement findCaller() {
@@ -42,13 +48,19 @@ public final class debug {
         return st.length >= 4 ? st[3] : st[0];
     }
 
+    public static String findCallerInfo(String myClassName) {
+        StackTraceElement st = findCaller(myClassName);
+
+        return "[" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "]";
+    }
+
     public static StackTraceElement findCaller(String myClassName) {
         StackTraceElement[] st = Thread.currentThread().getStackTrace();
         StackTraceElement foundme = null;
         for (StackTraceElement st1 : st) {
             if (st1.getClassName().startsWith(myClassName)) {
                 foundme = st1;
-            } else if (foundme != null && !st1.getClassName().startsWith("reactor.")) {
+            } else if (foundme != null && !st1.getMethodName().startsWith("getStackTrace") && !st1.getClassName().startsWith("reactor.")) {
                 return st1;
             }
         }
@@ -107,6 +119,25 @@ public final class debug {
             Logger.instance().log(Logger.LogType.Debug, "[" + logTimestamp.log() + "] " + stackInfo + o.toString());
             Logger.instance().log(Logger.LogType.Debug, "");
         }
+    }
+
+    public static String getStackTrace(Throwable e) {
+        if (e == null) {
+            return null;
+        }
+
+        try ( Writer trace = new StringWriter()) {
+            try ( PrintWriter ptrace = new PrintWriter(trace)) {
+
+                e.printStackTrace(ptrace);
+
+                return trace.toString();
+            }
+        } catch (IOException ex) {
+            err.printStackTrace(ex);
+        }
+
+        return null;
     }
 
     public static void printStackTrace(Throwable e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  */
 package com.gmt2001.httpwsserver.auth;
 
+import com.gmt2001.httpwsserver.WebSocketFrameHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.AttributeKey;
 import org.json.JSONStringer;
@@ -60,7 +60,7 @@ public class WsNoAuthenticationHandler implements WsAuthenticationHandler {
      *
      * @param ctx The {@link ChannelHandlerContext} of the session
      * @param req The {@link WebSocketFrame} of the request
-     * @return {@code true}
+     * @return
      */
     @Override
     public boolean checkAuthorization(ChannelHandlerContext ctx, WebSocketFrame req) {
@@ -70,8 +70,8 @@ public class WsNoAuthenticationHandler implements WsAuthenticationHandler {
         if (!ctx.channel().attr(ATTR_SENT_AUTH_REPLY).get()) {
             JSONStringer jsonObject = new JSONStringer();
             jsonObject.object().key("authresult").value("true").key("authtype").value("read").endObject();
-
-            ctx.channel().writeAndFlush(new TextWebSocketFrame(jsonObject.toString()));
+            WebSocketFrame res = WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject);
+            WebSocketFrameHandler.sendWsFrame(ctx, req, res);
 
             ctx.channel().attr(ATTR_SENT_AUTH_REPLY).set(Boolean.TRUE);
         }

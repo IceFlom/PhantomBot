@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,34 +19,64 @@ package tv.phantombot.event.twitter;
 import tv.phantombot.event.Event;
 
 public class TwitterEvent extends Event {
+
     private final String tweet;
     private final String mention;
+    private final String text;
+    private final String url;
+    private final boolean isRt;
 
     /**
      * Class constructor.
      *
-     * @param {String} tweet
+     * @param tweet
      */
     public TwitterEvent(String tweet) {
+        super();
         this.tweet = tweet;
         this.mention = null;
+        this.text = null;
+        this.url = null;
+        this.isRt = false;
     }
 
     /**
      * Class constructor.
      *
-     * @param {String} tweet
-     * @param {String} mention
+     * @param tweet
+     * @param mention
      */
     public TwitterEvent(String tweet, String mention) {
+        super();
         this.tweet = tweet;
         this.mention = mention;
+        this.text = null;
+        this.url = null;
+        this.isRt = false;
+    }
+
+    public TwitterEvent(String tweet, String text, String url, boolean isRt) {
+        super();
+        this.tweet = tweet;
+        this.mention = null;
+        this.text = text;
+        this.url = url;
+        this.isRt = isRt;
+    }
+
+    public TwitterEvent(String tweet, String text, String url, boolean isRt, String mention) {
+        super();
+        this.tweet = tweet;
+        this.mention = mention;
+        this.text = text;
+        this.url = url;
+        this.isRt = isRt;
     }
 
     /**
      * Method that returns the Tweet.
      *
-     * @return {String} tweet
+     * @return tweet
      */
     public String getTweet() {
         return this.tweet;
@@ -55,9 +85,21 @@ public class TwitterEvent extends Event {
     /**
      * Method that returns the mention user.
      *
-     * @return {String} mention
+     * @return mention
      */
     public String getMentionUser() {
         return this.mention;
+    }
+
+    public String text() {
+        return this.text;
+    }
+
+    public String url() {
+        return this.url;
+    }
+
+    public boolean isRt() {
+        return this.isRt;
     }
 }

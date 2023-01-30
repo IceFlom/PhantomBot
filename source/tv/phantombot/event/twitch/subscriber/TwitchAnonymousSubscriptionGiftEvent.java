@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,19 +14,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package tv.phantombot.event.twitch.subscriber;
-
-import tv.phantombot.event.twitch.TwitchEvent;
 
 /**
  *
  * @author Branden
  */
-public class TwitchAnonymousSubscriptionGiftEvent extends TwitchEvent {
-    private final String recipient;
-    private final String months;
-    private final String plan;
+public class TwitchAnonymousSubscriptionGiftEvent extends TwitchSubscriptionGiftEvent {
 
     /**
      * The class constructor.
@@ -35,9 +29,7 @@ public class TwitchAnonymousSubscriptionGiftEvent extends TwitchEvent {
      * @param plan
      */
     public TwitchAnonymousSubscriptionGiftEvent(String recipient, String plan) {
-        this.recipient = recipient;
-        this.months = null;
-        this.plan = plan;
+        super("anonymous", recipient, null, plan, null);
     }
 
     /**
@@ -48,44 +40,18 @@ public class TwitchAnonymousSubscriptionGiftEvent extends TwitchEvent {
      * @param plan
      */
     public TwitchAnonymousSubscriptionGiftEvent(String recipient, String months, String plan) {
-        this.recipient = recipient;
-        this.months = months;
-        this.plan = plan;
+        super("anonymous", recipient, months, plan, null);
     }
 
     /**
-     * Method that returns the gifted the subscription.
+     * The class constructor.
      *
-     * @return {String} username
+     * @param recipient
+     * @param months
+     * @param plan
+     * @param giftedMonths
      */
-    public String getUsername() {
-        return "anonymous";
-    }
-
-    /**
-     * Method that returns the recipient.
-     *
-     * @return {String} recipient
-     */
-    public String getRecipient() {
-        return this.recipient;
-    }
-
-    /**
-     * Method that returns the months, can be 0.
-     *
-     * @return {String} months
-     */
-    public String getMonths() {
-        return (this.months == null) ? "1" : this.months;
-    }
-
-    /**
-     * Method that returns the subcription plan. (1000, 2000, 3000 and Prime)
-     *
-     * @return {String} plan
-     */
-    public String getPlan() {
-        return this.plan;
+    public TwitchAnonymousSubscriptionGiftEvent(String recipient, String months, String plan, String giftedMonths) {
+        super("anonymous", recipient, months, plan, giftedMonths);
     }
 }

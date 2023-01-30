@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package tv.phantombot.event.discord.reaction;
 
 import discord4j.core.event.domain.message.MessageEvent;
@@ -27,9 +26,10 @@ import discord4j.core.object.reaction.ReactionEmoji;
  * @author Branden
  */
 public class DiscordMessageReactionEvent extends DiscordReactionEvent {
+
     private final MessageEvent event;
     private final ReactionType type;
-    
+
     /**
      * The type of reaction, either a "add" or "remove".
      */
@@ -37,59 +37,59 @@ public class DiscordMessageReactionEvent extends DiscordReactionEvent {
         ADD,
         REMOVE
     }
-    
+
     /**
      * Class constructor.
-     * 
-     * @param event 
-     * @param type 
+     *
+     * @param event
+     * @param type
      */
     public DiscordMessageReactionEvent(ReactionAddEvent event) {
         super(event.getUser().block(), event.getChannel().block());
-        
+
         this.event = event;
         this.type = ReactionType.ADD;
     }
-    
+
     /**
      * Class constructor.
-     * 
-     * @param event 
-     * @param type 
+     *
+     * @param event
+     * @param type
      */
     public DiscordMessageReactionEvent(ReactionRemoveEvent event) {
         super(event.getUser().block(), event.getChannel().block());
-        
+
         this.event = event;
         this.type = ReactionType.REMOVE;
     }
-    
+
     /**
      * Method that gets the reaction object.
-     * 
-     * @return 
+     *
+     * @return
      */
     public ReactionEmoji getReactionEmoji() {
         if (type == ReactionType.ADD) {
-            return ((ReactionAddEvent)event).getEmoji();
+            return ((ReactionAddEvent) event).getEmoji();
         } else {
-            return ((ReactionRemoveEvent)event).getEmoji();
+            return ((ReactionRemoveEvent) event).getEmoji();
         }
     }
-    
+
     /**
      * Method that gets the type of reaction.
-     * 
-     * @return 
+     *
+     * @return
      */
     public ReactionType getType() {
         return type;
     }
-    
+
     /**
      * Method that returns the event object.
-     * 
-     * @return 
+     *
+     * @return
      */
     public MessageEvent getEvent() {
         return event;

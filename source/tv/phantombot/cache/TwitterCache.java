@@ -1,7 +1,7 @@
 /* astyle --style=java --indent=spaces=4 --mode=java */
 
  /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,8 +22,10 @@
  */
 package tv.phantombot.cache;
 
-import com.illusionaryone.TwitterAPI;
-import io.github.redouane59.twitter.dto.tweet.TweetV2.TweetData;
+import com.gmt2001.TwitterAPI;
+import com.gmt2001.TwitterAPI.TweetToUser;
+import com.twitter.clientlib.model.Tweet;
+import com.twitter.clientlib.model.User;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +112,10 @@ public class TwitterCache implements Runnable {
      * Polls the Twitter API and updates the database cache with information. This method also sends events to chat when appropriate.
      */
     private void updateCache() throws Exception {
+        if (!TwitterAPI.instance().authenticated()) {
+            return;
+        }
+
         boolean poll_retweets;
         boolean poll_mentions;
         boolean poll_hometimeline;
@@ -195,18 +201,18 @@ public class TwitterCache implements Runnable {
         updateDBLong("lastpoll_retweets", presentTime);
 
         String lastID = PhantomBot.instance().getDataStore().GetString("twitter", "", "lastid_retweets");
-        List<TweetData> statuses = TwitterAPI.instance().getRetweetsOfMe(lastID);
+        List<TweetToUser> statuses = TwitterAPI.instance().getRetweetsOfMe(lastID);
 
         if (statuses == null || statuses.isEmpty()) {
             return;
         }
 
-        String twitterID = statuses.get(0).getId();
+        String twitterID = statuses.get(0).tweet().getId();
 
         /* Poll latest retweet. */
-        String tweet = "[RT] " + statuses.get(0).getText() + " [" + TwitterAPI.instance().getTwitterURLFromId(twitterID) + "]";
+        String tweet = "[RT] " + statuses.get(0).tweet().getText() + " " + Character.toString(0x1F517) + " " + TwitterAPI.instance().getTwitterURLFromId(twitterID);
         updateDBString("last_retweets", tweet);
-        EventBus.instance().postAsync(new TwitterEvent(tweet));
+        EventBus.instance().postAsync(new TwitterEvent(tweet, statuses.get(0).tweet().getText(), TwitterAPI.instance().getTwitterURLFromId(twitterID), true));
 
         /* Update DB with the last Tweet ID processed. */
         PhantomBot.instance().getDataStore().SetString("twitter", "", "lastid_retweets", twitterID);
@@ -227,30 +233,21 @@ public class TwitterCache implements Runnable {
         updateDBLong("lastpoll_retweets_reward", presentTime);
 
         String lastID = PhantomBot.instance().getDataStore().GetString("twitter", "", "lastid_retweets_reward");
-        List<TweetData> statuses = TwitterAPI.instance().getRetweetsOfMe(lastID);
+        List<TweetToUser> statuses = TwitterAPI.instance().getRetweetsOfMe(lastID);
 
         if (statuses == null || statuses.isEmpty()) {
             return;
         }
 
-        /* This seems redundant but, Twitter provides the Tweet content of the Retweets in the
-         * getRetweetsOfMe() call. So, walk that list of Tweets to get at the Retweet information
-         * that includes the Screen Name (@screenName) of the person that performed the Retweet.
-         */
         ArrayList<String> userNameList = new ArrayList<>();
-        statuses.stream().map(status -> TwitterAPI.instance().getRetweets(status.getId())).filter(retweetStatuses -> (retweetStatuses != null))
-                .forEachOrdered(retweetStatuses -> {
-                    retweetStatuses.forEach(retweetStatus -> {
-                        userNameList.add(retweetStatus.getUser().getName());
-                    });
-                });
+        statuses.forEach(s -> userNameList.add(s.user().getUsername()));
 
         if (!userNameList.isEmpty()) {
             EventBus.instance().postAsync(new TwitterRetweetEvent(userNameList.toArray(String[]::new)));
         }
 
         /* Update DB with the last Tweet ID processed. */
-        String twitterID = statuses.get(0).getId();
+        String twitterID = statuses.get(0).tweet().getId();
         PhantomBot.instance().getDataStore().SetString("twitter", "", "lastid_retweets_reward", twitterID);
     }
 
@@ -268,19 +265,26 @@ public class TwitterCache implements Runnable {
         updateDBLong("lastpoll_mentions", presentTime);
 
         String lastID = PhantomBot.instance().getDataStore().GetString("twitter", "", "lastid_mentions");
-        List<TweetData> statuses = TwitterAPI.instance().getMentions(lastID);
+        List<Tweet> statuses = TwitterAPI.instance().getMentions(lastID);
 
         if (statuses == null || statuses.isEmpty()) {
             return;
         }
 
         String twitterID = statuses.get(0).getId();
-        String tweet = statuses.get(0).getText() + " [" + TwitterAPI.instance().getTwitterURLFromId(twitterID) + "]";
-        String name = statuses.get(0).getUser().getName();
+        String tweet = statuses.get(0).getText() + " " + Character.toString(0x1F517) + " " + TwitterAPI.instance().getTwitterURLFromId(twitterID);
+        String authorId = statuses.get(0).getAuthorId();
+        User u = TwitterAPI.instance().getUser(authorId);
+
+        if (u == null) {
+            return;
+        }
+
+        String name = u.getName();
 
         PhantomBot.instance().getDataStore().SetString("twitter", "", "lastid_mentions", twitterID);
         updateDBString("last_mentions", tweet);
-        EventBus.instance().postAsync(new TwitterEvent(tweet, name));
+        EventBus.instance().postAsync(new TwitterEvent(tweet, statuses.get(0).getText(), TwitterAPI.instance().getTwitterURLFromId(twitterID), false, name));
     }
 
     /**
@@ -297,18 +301,18 @@ public class TwitterCache implements Runnable {
         updateDBLong("lastpoll_hometimeline", presentTime);
 
         String lastID = PhantomBot.instance().getDataStore().GetString("twitter", "", "lastid_hometimeline");
-        List<TweetData> statuses = TwitterAPI.instance().getHomeTimeline(lastID);
+        List<Tweet> statuses = TwitterAPI.instance().getHomeTimeline(lastID);
 
         if (statuses == null || statuses.isEmpty()) {
             return;
         }
 
         String twitterID = statuses.get(0).getId();
-        String tweet = statuses.get(0).getText() + " [" + TwitterAPI.instance().getTwitterURLFromId(twitterID) + "]";
+        String tweet = statuses.get(0).getText() + " " + Character.toString(0x1F517) + " " + TwitterAPI.instance().getTwitterURLFromId(twitterID);
 
         PhantomBot.instance().getDataStore().SetString("twitter", "", "lastid_hometimeline", twitterID);
         updateDBString("last_hometimeline", tweet);
-        EventBus.instance().postAsync(new TwitterEvent(tweet));
+        EventBus.instance().postAsync(new TwitterEvent(tweet, statuses.get(0).getText(), TwitterAPI.instance().getTwitterURLFromId(twitterID), false));
     }
 
     /**
@@ -325,18 +329,18 @@ public class TwitterCache implements Runnable {
         updateDBLong("lastpoll_usertimeline", presentTime);
 
         String lastID = PhantomBot.instance().getDataStore().GetString("twitter", "", "lastid_usertimeline");
-        List<TweetData> statuses = TwitterAPI.instance().getUserTimeline(lastID);
+        List<Tweet> statuses = TwitterAPI.instance().getUserTimeline(lastID);
 
         if (statuses == null || statuses.isEmpty()) {
             return;
         }
 
         String twitterID = statuses.get(0).getId();
-        String tweet = statuses.get(0).getText() + " [" + TwitterAPI.instance().getTwitterURLFromId(twitterID) + "]";
+        String tweet = statuses.get(0).getText() + " " + Character.toString(0x1F517) + " " + TwitterAPI.instance().getTwitterURLFromId(twitterID);
 
         PhantomBot.instance().getDataStore().SetString("twitter", "", "lastid_usertimeline", twitterID);
         updateDBString("last_usertimeline", tweet);
-        EventBus.instance().postAsync(new TwitterEvent(tweet));
+        EventBus.instance().postAsync(new TwitterEvent(tweet, statuses.get(0).getText(), TwitterAPI.instance().getTwitterURLFromId(twitterID), false));
     }
 
     /**

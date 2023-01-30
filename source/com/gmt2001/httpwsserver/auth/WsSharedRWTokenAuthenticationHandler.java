@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,10 @@ public class WsSharedRWTokenAuthenticationHandler implements WsAuthenticationHan
      */
     private final int maxAttempts;
     /**
+     * An optional callback when a new connection authenticates successfully
+     */
+    private final Runnable authenticatedCallback;
+    /**
      * Represents the {@code ATTR_IS_READ_ONLY} attribute
      */
     public static final AttributeKey<Boolean> ATTR_IS_READ_ONLY = AttributeKey.valueOf("isReadOnly");
@@ -65,6 +69,22 @@ public class WsSharedRWTokenAuthenticationHandler implements WsAuthenticationHan
         this.readOnlyToken = readOnlyToken;
         this.readWriteToken = readWriteToken;
         this.maxAttempts = maxAttempts;
+        this.authenticatedCallback = null;
+    }
+
+    /**
+     * Constructor
+     *
+     * @param readOnlyToken The authorization token that grants read-only access
+     * @param readWriteToken The authorization token that grants read-write access
+     * @param maxAttempts The maximum allowed auth failure responses before the connection is shut down
+     * @param authenticatedCallback A callback to run when a connection authenticates successfully
+     */
+    public WsSharedRWTokenAuthenticationHandler(String readOnlyToken, String readWriteToken, int maxAttempts, Runnable authenticatedCallback) {
+        this.readOnlyToken = readOnlyToken;
+        this.readWriteToken = readWriteToken;
+        this.maxAttempts = maxAttempts;
+        this.authenticatedCallback = authenticatedCallback;
     }
 
     /**
@@ -77,8 +97,8 @@ public class WsSharedRWTokenAuthenticationHandler implements WsAuthenticationHan
      *
      * @param ctx The {@link ChannelHandlerContext} of the session
      * @param frame The {@link WebSocketFrame} to check
-     * @return {@code true} if authenticated, {@code false} otherwise. When returning {@code false}, this method will also reply with the appropriate
-     * frames to continue the authentication sequence, or an {@code Unauthorized} frame if authentication has been fully attempted and failed
+     * @return, this method will also reply with the appropriate frames to continue the authentication sequence, or an {@code Unauthorized} frame if
+     * authentication has been fully attempted and failed
      */
     @Override
     public boolean checkAuthorization(ChannelHandlerContext ctx, WebSocketFrame frame) {
@@ -128,7 +148,7 @@ public class WsSharedRWTokenAuthenticationHandler implements WsAuthenticationHan
         jsonObject.object().key("authresult").value(hasAuth).key("authtype").value(authType).endObject();
 
         com.gmt2001.Console.debug.println("AuthResult [" + ctx.channel().remoteAddress().toString() + "] " + jsonObject.toString());
-        ctx.channel().writeAndFlush(new TextWebSocketFrame(jsonObject.toString()));
+        WebSocketFrameHandler.sendWsFrame(ctx, frame, new TextWebSocketFrame(jsonObject.toString()));
 
         if (!ctx.channel().attr(ATTR_AUTHENTICATED).get()) {
             com.gmt2001.Console.debug.println("wsauthfail");
@@ -139,6 +159,8 @@ public class WsSharedRWTokenAuthenticationHandler implements WsAuthenticationHan
                 WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareCloseWebSocketFrame(WebSocketCloseStatus.POLICY_VIOLATION));
                 ctx.close();
             }
+        } else if (this.authenticatedCallback != null) {
+            this.authenticatedCallback.run();
         }
 
         return ctx.channel().attr(ATTR_AUTHENTICATED).get();

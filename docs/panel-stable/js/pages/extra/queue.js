@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ $(run = function () {
                     'src': 'https://www.twitch.tv/embed/' + getChannelName() + '/chat' + (helpers.isDark ? '?darkpopout&' : '?') + 'parent=' + location.hostname
                 }));
             } else {
-                $('#queue-chat').html('Due to changes by Twitch, the chat panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.github.io/PhantomBot/">PhantomBot - GitHub.io</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.github.io/PhantomBot/guides/#guide=content/integrations/twitchembeds">this guide</a>.');
+                $('#queue-chat').html('Due to changes by Twitch, the chat panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
                 $('#queue-chat').addClass('box-body');
             }
         }
@@ -125,13 +125,15 @@ $(function () {
     const QUEUE_SCRIPT = './systems/queueSystem.js';
     let canUpdate = true;
 
+    $('#queue-perm').append(helpers.getDropdownGroup('queue-permission', 'User Level', helpers.getGroupNameById(7), helpers.getPermGroupNames()));
+
     /*
      * @function Clears the input boxes of the queue.
      */
     const clearQueueInput = function () {
         $('#queue-title').val('');
         $('#queue-cost, #queue-size').val('0');
-        $('#queue-permission').val('Viewers');
+        $('#queue-permission').val(helpers.getGroupNameById(7));
     };
 
     // Toggle for the module.

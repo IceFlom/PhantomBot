@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,30 +17,43 @@
 package tv.phantombot.event.webpanel.websocket;
 
 public class WebPanelSocketUpdateEvent extends WebPanelSocketEvent {
+
     private final String id;
     private final String script;
     private final String arguments;
     private final String[] args;
+    private final boolean requiresReply;
 
     /**
      * Class constructor.
      *
-     * @param {String}   id
-     * @param {String}   script
-     * @param {String}   arguments
-     * @param {String[]} args
+     * @param id
+     * @param script
+     * @param arguments
+     * @param args
      */
     public WebPanelSocketUpdateEvent(String id, String script, String arguments, String[] args) {
+        super();
         this.id = id;
         this.script = script;
         this.arguments = arguments;
-        this.args = args;
+        this.args = args.clone();
+        this.requiresReply = false;
+    }
+
+    public WebPanelSocketUpdateEvent(String id, String script, String arguments, String[] args, boolean requiresReply) {
+        super();
+        this.id = id;
+        this.script = script;
+        this.arguments = arguments;
+        this.args = args.clone();
+        this.requiresReply = requiresReply;
     }
 
     /**
      * Method that returns the socket event ID.
      *
-     * @return {String} id
+     * @return id
      */
     public String getId() {
         return this.id;
@@ -49,7 +62,7 @@ public class WebPanelSocketUpdateEvent extends WebPanelSocketEvent {
     /**
      * Method that returns the script location and name.
      *
-     * @return {String} script
+     * @return script
      */
     public String getScript() {
         return this.script;
@@ -58,7 +71,7 @@ public class WebPanelSocketUpdateEvent extends WebPanelSocketEvent {
     /**
      * Method that returns the arguments string.
      *
-     * @return {String} arguments
+     * @return arguments
      */
     public String getArguments() {
         return this.arguments;
@@ -67,10 +80,13 @@ public class WebPanelSocketUpdateEvent extends WebPanelSocketEvent {
     /**
      * Method that returns the arguments array.
      *
-     * @return {String[]} args
+     * @return args
      */
-
     public String[] getArgs() {
-        return this.args;
+        return this.args.clone();
+    }
+
+    public boolean requiresReply() {
+        return this.requiresReply;
     }
 }

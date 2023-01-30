@@ -1,5 +1,5 @@
 
-# <img alt="PhantomBot" src="https://phantombot.github.io/PhantomBot/common/images/brand.png" width="600px"/>
+# <img alt="PhantomBot" src="https://phantombot.dev/common/images/brand.png" width="600px"/>
 
 ![Java CI](https://github.com/PhantomBot/PhantomBot/workflows/Java%20CI/badge.svg)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e78b35af8f2442d7a8c5040c41164739)](https://www.codacy.com/gh/PhantomBot/PhantomBot/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PhantomBot/PhantomBot&amp;utm_campaign=Badge_Grade)
@@ -7,11 +7,11 @@
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/PhantomBot/PhantomBot?sort=semver)](https://github.com/PhantomBot/PhantomBot/releases/latest)
 [<img src="https://discordapp.com/api/guilds/107910097937682432/widget.png?style=shield">](https://discord.gg/YKvMd78)
 
-[**PhantomBot**](https://phantombot.github.io/PhantomBot) is a Twitch chat bot powered by Java. PhantomBot has many modern features out of the box such as a built-in webpanel, enhanced moderation, games, a point system, raffles, custom commands, a music player, and more. PhantomBot can also be integrated with many services such as [Discord](https://discordapp.com/), [Twitter](https://twitter.com), [TipeeeStream](https://tipeeestream.com), [StreamLabs](https://streamlabs.com) and [StreamElements](https://streamelements.com)!
+[**PhantomBot**](https://phantombot.dev) is a Twitch chat bot powered by Java. PhantomBot has many modern features out of the box such as a built-in webpanel, enhanced moderation, games, a point system, raffles, custom commands, a music player, and more. PhantomBot can also be integrated with many services such as [Discord](https://discordapp.com/), [Twitter](https://twitter.com), [TipeeeStream](https://tipeeestream.com), [StreamLabs](https://streamlabs.com) and [StreamElements](https://streamelements.com)!
 
 Additional functionality is enabled through the use of third-party modules.
 
-* [Get PhantomBot](https://phantombot.github.io/PhantomBot/ "PhantomBot Guides and OAuth")
+* [Get PhantomBot](https://phantombot.dev "PhantomBot Guides and OAuth")
 * [Security Policy](https://github.com/PhantomBot/PhantomBot/blob/master/SECURITY.md)
 
 ## How can I follow along/contribute?
@@ -33,11 +33,11 @@ x86_64 (64-bit) architectures
 
 ## Installation
 Please refer to platform-specific installation documentation.
-* [Windows](https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/windows)
+* [Windows](https://phantombot.dev/guides/#guide=content/setupbot/windows)
 * Linux:
-  * [Ubuntu 16.04](https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/ubuntu)
-  * [CentOS 7](https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/centos)
-* [macOS](https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/macos)
+  * [Ubuntu 16.04](https://phantombot.dev/guides/#guide=content/setupbot/ubuntu)
+  * [CentOS 7](https://phantombot.dev/guides/#guide=content/setupbot/centos)
+* [macOS](https://phantombot.dev/guides/#guide=content/setupbot/macos)
 
 ### Docker
 PhantomBot publishes official builds to Docker Hub and GitHub Container Registry
@@ -47,18 +47,18 @@ PhantomBot publishes official builds to Docker Hub and GitHub Container Registry
 
 ## Upgrading PhantomBot
 
-Detailed upgrade instructions are listed on our [documentation](https://phantombot.github.io/PhantomBot/guides/#guide=content/setupbot/updatebot).
+Detailed upgrade instructions are listed on our [documentation](https://phantombot.dev/guides/#guide=content/setupbot/updatebot).
 
 ## License
 
 PhantomBot is licensed under the [**GNU General Public License v3 (GPL-3)**](https://www.gnu.org/copyleft/gpl.html).
 
 ## Rollbar Exception Reporting
-:information_source: ***Notice:*** As of Phantombot Nightly Build 49687f9 (July 4, 2021) and PhantomBot v3.5.0, we now use [Rollbar](https://rollbar.com) to automatically report exceptions to the dev team.
+:information_source: ***Notice:*** We use [Rollbar](https://rollbar.com) to automatically report exceptions to the dev team.
 
 OAuth tokens, Client IDs, and API Secrets are **NOT** sent. All information is kept private.
 
-Data is only sent when an exception occurs. Some very common, safe to ignore, exceptions are not sent, such as the ones that occur when shutting down the bot while an active panel connection exists.
+Data is only sent when an exception occurs. Some very common exceptions are not sent, such as the ones that occur when a connection times out.
 
 Exceptions are sent through a server owned by @gmt2001 for additional filtering before continuing on to Rollbar. No data is saved on this server beyond normal logs used for DDOS mitigation. These logs may include IP addresses and are deleted after 5 weeks. IP addresses are **NOT** sent on to Rollbar.
 
@@ -66,13 +66,12 @@ The following values are sent from _botlogin.txt_:
 - _allownonascii_ - Indicates if other config values in _botlogin.txt_ are allowed to use non-US-ASCII characters
 - _baseport_ - Indicates the port that the built-in webserver listens on
 - _channel_ - Indicates the Broadcaster's channel, where the bot interacts with Twitch viewers
-- _datastore_ - Indicates which database backend is used
+- _datastore_ - Indicates which database backend is used, but **NOT** the IP/login details for the database
 - _debugon_ - Indicates whether debug messages are printed to the console and logged
 - _debuglog_ - Overrides the above to only log, but not print to console
 - _helixdebug_ - Enables additional debug logging of Twitch Helix API requests and responses (Not including OAuth tokens)
 - _ircdebug_ - Enables additional debug logging of incoming messages from Twitch Message Interface (TMI/IRC)
 - _logtimezone_ - Indicates the timezone used by the bot
-- _msglimit30_ - Indicates the self-imposed rate-limit on outgoing messages to TMI
 - _musicenable_ - Indicates whether the YouTube player has been enabled at the _botlogin.txt_ level
 - _owner_ - Indicates the bot owner (used for giving a non-broadcaster bot owner admin privileges)
 - _proxybypasshttps_ - Overrides the SSL checks in the bot to pretend SSL is enabled, for use with a reverse proxy
@@ -80,13 +79,10 @@ The following values are sent from _botlogin.txt_:
 - _reloadscripts_ - Indicates whether the bot is allowed to reload most JavaScript files when they are changed without a restart
 - _rhinodebugger_ - Enables verbose debug output when JavaScript exceptions occur
 - _rollbarid_ - A [GUIDv4](https://en.wikipedia.org/wiki/GUID#Version_4_(random)) which uniquely identifies the current PhantomBot installation, used for identifying when multiple exceptions are coming from the same bot
-- _twitch\_tcp\_nodelay_ - The TCP_NODELAY flag for TMI. Makes TMI less bandwidth efficient but possibly a little faster on outbound messages
 - _usehttps_ - Indicates whether SSL is enabled on the bots built-in webserver
 - _user_ - The bots Twitch username
-- _useeventsub_ - Indicates if EventSub is enabled
 - _userollbar_ - Indicates if Rollbar exception reporting is enabled
 - _webenable_ - Indicates if the bots built-in webserver is enabled
-- _whisperlimit60_ - Indicates the self-imposed rate-limit on outgoing whispers to TMI
 - _wsdebug_ - Enables debug output of WebSocket messages from the panel
 
 For all other values in _botlogin.txt_, only an indicator of whether the value exists will be sent, but not the actual value itself.
@@ -106,6 +102,7 @@ The other data sent includes:
 - A boolean indicator of whether the OAuth is logged in as the Bot (but not the actual OAuth token)
 - A boolean indicator of whether the API OAuth is logged in as the Broadcaster (but not the actual OAuth token)
 - The full stack trace of the exception
+- On some exceptions, the actual input variables if they don't contain any passwords or secret values
 
 To opt out of Rollbar exception reporting, add the following line to the _botlogin.txt_:
 ```

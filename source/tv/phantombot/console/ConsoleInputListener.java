@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ public class ConsoleInputListener extends Thread {
                 String msg = com.gmt2001.Console.in.readLine();
                 EventBus.instance().postAsync(new ConsoleInputEvent(msg));
                 Thread.sleep(10);
-            } catch (Exception e) {
+            } catch (InterruptedException e) {
                 com.gmt2001.Console.err.printStackTrace(e);
             }
         }
