@@ -74,7 +74,7 @@ jobs:
           context: .
           platforms: linux/amd64
           build-args: | 
-            TARGETPLATFORM="linux/amd64"
-            PROJECT_VERSION="3.6.2.6"
+            TARGETPLATFORM=linux/amd64
+            PROJECT_VERSION=3.6.2.6
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_IMAGE }}:latest
