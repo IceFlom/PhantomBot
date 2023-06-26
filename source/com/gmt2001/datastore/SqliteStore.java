@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -71,7 +72,7 @@ public final class SqliteStore extends DataStore {
         return instance;
     }
 
-    public static boolean isAvailable() {
+    public static boolean isAvailable(String configStr) {
         try {
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException ex) {
@@ -85,9 +86,15 @@ public final class SqliteStore extends DataStore {
             try ( Statement statement = connection.createStatement()) {
                 statement.execute("SELECT 1;");
             }
-        } catch (SQLException ex) {
+        } catch (UnsatisfiedLinkError | SQLException ex) {
             com.gmt2001.Console.debug.printStackTrace(ex);
-            if (ex.getCause() != null && ex.getCause().getMessage() != null && ex.getCause().getMessage().contains("No native library found")) {
+            if (ex.getClass() == UnsatisfiedLinkError.class
+                || (ex.getCause() != null && ex.getCause().getMessage() != null && ex.getCause().getMessage().contains("No native library found"))) {
+                if (hasDatabase(configStr)) {
+                    com.gmt2001.Console.warn.println();
+                    com.gmt2001.Console.warn.println("SQLite database exists but unable to load SQLite library");
+                    com.gmt2001.Console.warn.println();
+                }
                 return false;
             }
         }
@@ -1142,10 +1149,10 @@ public final class SqliteStore extends DataStore {
     }
 
     @Override
-    public String[][] executeSql(String sql, String[] replacements) {
+    public List<List<String>> query(String sql, String[] replacements) {
         try {
             this.rwl.readLock().lock();
-            ArrayList<ArrayList<String>> results = new ArrayList<>();
+            List<List<String>> results = new ArrayList<>();
 
             try ( Connection connection = GetConnection()) {
                 try ( PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -1154,18 +1161,19 @@ public final class SqliteStore extends DataStore {
                         statement.setString(i++, k);
                     }
 
-                    try ( ResultSet rs = statement.executeQuery()) {
-                        int numcol = rs.getMetaData().getColumnCount();
-                        i = 0;
+                    if (statement.execute()) {
+                        try ( ResultSet rs = statement.getResultSet()) {
+                            int numcol = rs.getMetaData().getColumnCount();
 
-                        while (rs.next()) {
-                            results.add(new ArrayList<>());
+                            while (rs.next()) {
+                                List<String> row = new ArrayList<>();
 
-                            for (int b = 1; b <= numcol; b++) {
-                                results.get(i).add(rs.getString(b));
+                                for (int b = 1; b <= numcol; b++) {
+                                    row.add(rs.getString(b));
+                                }
+
+                                results.add(row);
                             }
-
-                            i++;
                         }
                     }
                 }
@@ -1173,7 +1181,7 @@ public final class SqliteStore extends DataStore {
                 com.gmt2001.Console.err.printStackTrace(ex);
             }
 
-            return results.stream().map(al -> al.stream().toArray(String[]::new)).toArray(String[][]::new);
+            return results;
         } finally {
             this.rwl.readLock().unlock();
         }
@@ -1235,18 +1243,18 @@ public final class SqliteStore extends DataStore {
 
     @Override
     public void backupDB(String filename) {
+        filename = filename + ".sqlite3.db";
+
         try {
             this.rwl.writeLock().lock();
             try ( Connection connection = GetConnection()) {
-                if (!new File("./dbbackup").exists()) {
-                    new File("./dbbackup").mkdirs();
-                }
+                Files.createDirectories(PathValidator.getRealPath(Paths.get("./dbbackup/")));
 
                 try ( Statement statement = connection.createStatement()) {
                     statement.execute("backup to ./dbbackup/" + filename);
                     com.gmt2001.Console.debug.println("Backed up SQLite3 DB to ./dbbackup/" + filename);
                 }
-            } catch (SQLException ex) {
+            } catch (SQLException | IOException ex) {
                 com.gmt2001.Console.err.printStackTrace(ex);
             }
         } finally {

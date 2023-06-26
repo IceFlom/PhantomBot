@@ -16,14 +16,34 @@
  */
 package com.gmt2001.datastore;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Driver;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.stream.Stream;
+
 import org.h2.jdbcx.JdbcConnectionPool;
+
+import com.gmt2001.PathValidator;
+
+import tv.phantombot.PhantomBot;
 
 /**
  *
@@ -33,6 +53,7 @@ import org.h2.jdbcx.JdbcConnectionPool;
  */
 public final class H2Store extends DataStore {
 
+    private static final String BACKUP_SUFFIX = ".h2.sql.gz";
     private static final int MAX_CONNECTIONS = 30;
     private static JdbcConnectionPool poolMgr;
     private static H2Store instance;
@@ -52,18 +73,190 @@ public final class H2Store extends DataStore {
     private H2Store(String configStr) {
         super(configStr);
 
+        if (configStr.isBlank()) {
+            configStr = "phantombot.h2";
+        }
+
+        this.checkInUse(configStr);
+
+        try {
+            if (this.needsUpgrade(configStr)) {
+                this.startUpgrade(configStr);
+            }
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+
         try {
             Class.forName("org.h2.Driver");
         } catch (ClassNotFoundException ex) {
             ex.printStackTrace(System.err);
         }
 
-        if (configStr.isBlank()) {
-            configStr = "phantombot.h2";
-        }
-
         poolMgr = JdbcConnectionPool.create("jdbc:h2:./config/" + configStr + ";DB_CLOSE_ON_EXIT=FALSE;MAX_LENGTH_INPLACE_LOB=2048", "", "");
         poolMgr.setMaxConnections(MAX_CONNECTIONS);
+
+        try {
+            this.restoreBackup(configStr);
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+
+        try {
+            if (this.needsUpgrade(configStr)) {
+                this.finishUpgrade(configStr);
+            }
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
+    private void checkInUse(String configStr) {
+        Path dbfile = Paths.get("./config/", configStr + ".mv.db");
+
+        if (!Files.exists(dbfile)) {
+            return;
+        }
+        try {
+            JdbcConnectionPool connectionPool = JdbcConnectionPool.create("jdbc:h2:./config/" + configStr + ";DB_CLOSE_ON_EXIT=FALSE;MAX_LENGTH_INPLACE_LOB=2048", "", "");
+
+            // Attempt to acquire a connection from the pool
+            connectionPool.getConnection().close();
+            connectionPool.dispose();
+        } catch (SQLException ex) {
+            // SQLException occurred, check if the SQL state code indicates the database is in use
+            if ("90020".equals(ex.getSQLState())) {
+                com.gmt2001.Console.err.println("Database is already in use. Please close any existing connections.");
+                Runtime.getRuntime().exit(-1);
+            }
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
+    private void restoreBackup(String fileName) throws IOException {
+        try (Stream<Path> backupStream = Files.find(Paths.get("./config/"), 1, (path, attr) -> attr.isRegularFile() && path.toString().endsWith(BACKUP_SUFFIX))) {
+            Optional<Path> backup = backupStream.findFirst();
+            if (backup.isPresent()) {
+                com.gmt2001.Console.out.print("Restoring H2 database from backup at " + backup.get().toString() + "...");
+                Path dbfile = Paths.get("./config/", fileName + ".mv.db");
+                if (Files.exists(Paths.get("./config/", fileName + ".mv.db"))) {
+                    Files.delete(dbfile);
+                }
+                try (Connection con = this.GetConnection();
+                        Statement st = con.createStatement()) {
+                    st.execute("RUNSCRIPT FROM '" + backup.get().toString() + "' COMPRESSION GZIP");
+                } catch (SQLException ex) {
+                    com.gmt2001.Console.err.printStackTrace(ex);
+                }
+                Files.delete(backup.get());
+                com.gmt2001.Console.out.println("done");
+            }
+        }
+    }
+
+    private void startUpgrade(String fileName) {
+        com.gmt2001.Console.out.println("Upgrading H2 database from 1.x to 2.x");
+
+        Path dbfile = Paths.get("./config/", fileName + ".mv.db");
+        Path scriptfile = Paths.get("./config/", fileName + ".sql");
+        Path backupfile = Paths.get("./dbbackup/", fileName + ".mv.db");
+
+        try {
+            com.gmt2001.Console.out.print("Saving a backup to " + backupfile.toString() + "...");
+            Files.copy(dbfile, backupfile, StandardCopyOption.REPLACE_EXISTING);
+            com.gmt2001.Console.out.println("done");
+        } catch (IOException e) {
+            com.gmt2001.Console.err.printStackTrace(e);
+        }
+
+        com.gmt2001.Console.out.print("Loading H2 engine 1.4.200...");
+        try {
+            URL oldh2Jar = Paths.get(PhantomBot.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent().resolve("lib.extra/h2-1.4.200.jar").toUri().toURL();
+            try (URLClassLoader cl = URLClassLoader.newInstance(new URL[] { oldh2Jar }, ClassLoader.getPlatformClassLoader())) {
+                Driver drv = null;
+                try {
+                    Class<?> c = Class.forName("org.h2.Driver", true, cl);
+                    Method m = c.getDeclaredMethod("load");
+                    drv = (Driver) c.getConstructor().newInstance();
+                    m.invoke(c);
+                    com.gmt2001.Console.out.println("done");
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException ex) {
+                    com.gmt2001.Console.out.println();
+                    com.gmt2001.Console.err.printStackTrace(ex);
+                }
+
+                try {
+                    com.gmt2001.Console.out.print("Exporting the database from H2 1.4.200...");
+                    Properties prop = new Properties();
+                    prop.put("user", "");
+                    prop.put("password", "");
+                    try (Connection con = drv.connect("jdbc:h2:./config/" + fileName + ";DB_CLOSE_ON_EXIT=FALSE;MAX_LENGTH_INPLACE_LOB=2048", prop);
+                            Statement st = con.createStatement()) {
+                        st.execute("SCRIPT TO '" + scriptfile.toString() + "' COMPRESSION GZIP");
+                    } catch (SQLException ex) {
+                        com.gmt2001.Console.out.println();
+                        com.gmt2001.Console.err.printStackTrace(ex);
+                    }
+                    com.gmt2001.Console.out.println("done");
+                } catch (Exception ex) {
+                    com.gmt2001.Console.out.println();
+                    com.gmt2001.Console.err.printStackTrace(ex);
+                }
+            }
+        } catch(IOException | URISyntaxException ex) {
+            com.gmt2001.Console.out.println();
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
+    private void finishUpgrade(String fileName) {
+        Path dbfile = Paths.get("./config/", fileName + ".mv.db");
+        Path scriptfile = Paths.get("./config/", fileName + ".sql");
+
+        try {
+            com.gmt2001.Console.out.print("Importing the database to H2 2.x...");
+            Files.delete(dbfile);
+            try (Connection con = this.GetConnection();
+                    Statement st = con.createStatement()) {
+                st.execute("RUNSCRIPT FROM '" + scriptfile.toString() + "' COMPRESSION GZIP FROM_1X");
+            } catch (SQLException ex) {
+                com.gmt2001.Console.out.println();
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+            com.gmt2001.Console.out.println("done");
+        } catch (Exception ex) {
+            com.gmt2001.Console.out.println();
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+
+        try {
+            com.gmt2001.Console.out.print("Performing cleanup...");
+            Files.delete(scriptfile);
+            com.gmt2001.Console.out.println("done");
+        } catch (IOException e) {
+            com.gmt2001.Console.err.printStackTrace(e);
+        }
+
+        com.gmt2001.Console.out.println("H2 Database Upgrade Complete");
+    }
+
+    private boolean needsUpgrade(String fileName) {
+        Path dbfile = Paths.get("./config/", fileName + ".mv.db");
+
+        if (!Files.exists(dbfile)) {
+            return false;
+        }
+
+        try (Stream<String> fs = Files.lines(dbfile)) {
+            String line = fs.limit(1).findFirst().orElse("");
+            if (line.contains(",format:1,")) {
+                return true;
+            }
+        } catch (IOException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+
+        return false;
     }
 
     private String sanitizeOrder(String order) {
@@ -116,8 +309,8 @@ public final class H2Store extends DataStore {
 
         // Creates a database with 3 columns, the section and variable are used as keys.  value is a 2GB CLOB of text.
         try ( Statement statement = connection.createStatement()) {
-            statement.addBatch("CREATE TABLE IF NOT EXISTS phantombot_" + fName + " (section varchar(255), variable varchar(255) NOT NULL, value LONGTEXT);");
-            statement.addBatch("CREATE UNIQUE INDEX IF NOT EXISTS phantombot_" + fName + "_idx ON phantombot_" + fName + "(section, variable);");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS phantombot_" + fName + " (`SECTION` varchar(255), `VARIABLE` varchar(255) NOT NULL, `VALUE` LONGTEXT);");
+            statement.addBatch("CREATE UNIQUE INDEX IF NOT EXISTS phantombot_" + fName + "_idx ON phantombot_" + fName + "(`SECTION`, `VARIABLE`);");
             statement.executeBatch();
         } catch (SQLException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
@@ -130,7 +323,7 @@ public final class H2Store extends DataStore {
             fName = validateFname(fName);
 
             if (FileExists(connection, fName)) {
-                try ( PreparedStatement statement = connection.prepareStatement("DELETE FROM phantombot_" + fName + " WHERE section=? AND variable=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("DELETE FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VARIABLE`=?;")) {
                     statement.setString(1, section);
                     statement.setString(2, key);
                     statement.execute();
@@ -147,7 +340,7 @@ public final class H2Store extends DataStore {
             fName = validateFname(fName);
 
             if (FileExists(connection, fName)) {
-                try ( PreparedStatement statement = connection.prepareStatement("DELETE FROM phantombot_" + fName + " WHERE section=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("DELETE FROM phantombot_" + fName + " WHERE `SECTION`=?;")) {
                     statement.setString(1, section);
                     statement.execute();
                 }
@@ -252,7 +445,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 try ( Statement statement = connection.createStatement()) {
-                    try ( ResultSet rs = statement.executeQuery("SELECT section FROM phantombot_" + fName + " GROUP BY section;")) {
+                    try ( ResultSet rs = statement.executeQuery("SELECT `SECTION` FROM phantombot_" + fName + " GROUP BY `SECTION`;")) {
 
                         ArrayList<String> s = new ArrayList<>();
 
@@ -280,7 +473,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 if (section != null) {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE section=?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=?;")) {
                         statement.setString(1, section);
 
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -295,7 +488,7 @@ public final class H2Store extends DataStore {
                         }
                     }
                 } else {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + ";")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + ";")) {
                         try ( ResultSet rs = statement.executeQuery()) {
 
                             ArrayList<String> s = new ArrayList<>();
@@ -325,7 +518,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 if (section != null) {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable, value FROM phantombot_" + fName + " WHERE section=?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE`, `VALUE` FROM phantombot_" + fName + " WHERE `SECTION`=?;")) {
                         statement.setString(1, section);
 
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -339,7 +532,7 @@ public final class H2Store extends DataStore {
                         }
                     }
                 } else {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable, value FROM phantombot_" + fName + ";")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE`, `VALUE` FROM phantombot_" + fName + ";")) {
                         try ( ResultSet rs = statement.executeQuery()) {
 
                             ArrayList<KeyValue> s = new ArrayList<>();
@@ -383,9 +576,9 @@ public final class H2Store extends DataStore {
             if (FileExists(connection, fName)) {
                 if (section != null) {
                     if (isNumber) {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " WHERE section=? ORDER BY CAST(variable as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? ORDER BY CAST(`VARIABLE` as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     } else {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " WHERE section=? ORDER BY variable " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? ORDER BY `VARIABLE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     }
                     try ( PreparedStatement statement = connection.prepareStatement(statementStr)) {
                         statement.setString(1, section);
@@ -403,9 +596,9 @@ public final class H2Store extends DataStore {
                     }
                 } else {
                     if (isNumber) {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " ORDER BY CAST(variable as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " ORDER BY CAST(`VARIABLE` as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     } else {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " ORDER BY variable " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " ORDER BY `VARIABLE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     }
                     try ( PreparedStatement statement = connection.prepareStatement(statementStr)) {
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -451,9 +644,9 @@ public final class H2Store extends DataStore {
             if (FileExists(connection, fName)) {
                 if (section != null) {
                     if (isNumber) {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " WHERE section=? ORDER BY CAST(value as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? ORDER BY CAST(`VALUE` as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     } else {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " WHERE section=? ORDER BY value " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? ORDER BY `VALUE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     }
 
                     try ( PreparedStatement statement = connection.prepareStatement(statementStr)) {
@@ -472,9 +665,9 @@ public final class H2Store extends DataStore {
                     }
                 } else {
                     if (isNumber) {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " ORDER BY CAST(value as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " ORDER BY CAST(`VALUE` as INTEGER) " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     } else {
-                        statementStr = "SELECT variable FROM phantombot_" + fName + " ORDER BY value " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
+                        statementStr = "SELECT `VARIABLE` FROM phantombot_" + fName + " ORDER BY `VALUE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";";
                     }
                     try ( PreparedStatement statement = connection.prepareStatement(statementStr)) {
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -506,7 +699,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 if (section != null) {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE section=? AND value LIKE ?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VALUE` LIKE ?;")) {
                         statement.setString(1, section);
                         statement.setString(2, "%" + search + "%");
 
@@ -520,7 +713,7 @@ public final class H2Store extends DataStore {
                         }
                     }
                 } else {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE value LIKE ?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `VALUE` LIKE ?;")) {
                         statement.setString(1, "%" + search + "%");
 
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -550,7 +743,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 if (section != null) {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE section=? AND variable LIKE ?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VARIABLE` LIKE ?;")) {
                         statement.setString(1, section);
                         statement.setString(2, "%" + search + "%");
 
@@ -564,7 +757,7 @@ public final class H2Store extends DataStore {
                         }
                     }
                 } else {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE variable LIKE ?;")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `VARIABLE` LIKE ?;")) {
                         statement.setString(1, "%" + search + "%");
 
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -597,7 +790,7 @@ public final class H2Store extends DataStore {
 
             if (FileExists(connection, fName)) {
                 if (section != null) {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE section=? AND variable LIKE ? ORDER BY variable " + order + " LIMIT " + limit + " OFFSET " + offset + ";")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VARIABLE` LIKE ? ORDER BY `VARIABLE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";")) {
                         statement.setString(1, section);
                         statement.setString(2, "%" + search + "%");
 
@@ -612,7 +805,7 @@ public final class H2Store extends DataStore {
                         }
                     }
                 } else {
-                    try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE variable LIKE ? ORDER BY variable " + order + " LIMIT " + limit + " OFFSET " + offset + ";")) {
+                    try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `VARIABLE` LIKE ? ORDER BY `VARIABLE` " + order + " LIMIT " + limit + " OFFSET " + offset + ";")) {
                         statement.setString(1, "%" + search + "%");
 
                         try ( ResultSet rs = statement.executeQuery()) {
@@ -646,7 +839,7 @@ public final class H2Store extends DataStore {
             }
 
             if (section != null && !section.isEmpty()) {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT value FROM phantombot_" + fName + " WHERE section=? AND variable=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VALUE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VARIABLE`=?;")) {
                     statement.setString(1, section);
                     statement.setString(2, key);
 
@@ -658,7 +851,7 @@ public final class H2Store extends DataStore {
                     }
                 }
             } else {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT value FROM phantombot_" + fName + " WHERE variable=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VALUE` FROM phantombot_" + fName + " WHERE `VARIABLE`=?;")) {
                     statement.setString(1, key);
 
                     try ( ResultSet rs = statement.executeQuery()) {
@@ -688,7 +881,7 @@ public final class H2Store extends DataStore {
             }
 
             if (section != null) {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE section=? AND value=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VALUE`=?;")) {
                     statement.setString(1, section);
                     statement.setString(2, value);
 
@@ -700,7 +893,7 @@ public final class H2Store extends DataStore {
                     }
                 }
             } else {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT variable FROM phantombot_" + fName + " WHERE value=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VARIABLE` FROM phantombot_" + fName + " WHERE `VALUE`=?;")) {
                     statement.setString(1, value);
 
                     try ( ResultSet rs = statement.executeQuery()) {
@@ -731,7 +924,7 @@ public final class H2Store extends DataStore {
             }
 
             if (section != null) {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT value FROM phantombot_" + fName + " WHERE section=? AND variable=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VALUE` FROM phantombot_" + fName + " WHERE `SECTION`=? AND `VARIABLE`=?;")) {
                     statement.setString(1, section);
                     statement.setString(2, key);
 
@@ -743,7 +936,7 @@ public final class H2Store extends DataStore {
                     }
                 }
             } else {
-                try ( PreparedStatement statement = connection.prepareStatement("SELECT value FROM phantombot_" + fName + " WHERE variable=?;")) {
+                try ( PreparedStatement statement = connection.prepareStatement("SELECT `VALUE` FROM phantombot_" + fName + " WHERE `VARIABLE`=?;")) {
                     statement.setString(1, key);
 
                     try ( ResultSet rs = statement.executeQuery()) {
@@ -770,7 +963,7 @@ public final class H2Store extends DataStore {
 
             connection.setAutoCommit(false);
 
-            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " (value, section, variable) KEY(SECTION, VARIABLE) values(?, ?, ?);")) {
+            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " (`VALUE`, `SECTION`, `VARIABLE`) KEY(`SECTION`, `VARIABLE`) values(?, ?, ?);")) {
                 for (int idx = 0; idx < keys.length; idx++) {
                     statement.setString(1, values[idx]);
                     statement.setString(2, section);
@@ -796,7 +989,7 @@ public final class H2Store extends DataStore {
 
             AddFile(connection, fName);
 
-            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " KEY(SECTION, VARIABLE) values(?, ?, ?);")) {
+            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " KEY(`SECTION`, `VARIABLE`) values(?, ?, ?);")) {
                 statement.setString(1, section);
                 statement.setString(2, key);
                 statement.setString(3, value);
@@ -827,7 +1020,7 @@ public final class H2Store extends DataStore {
                 sb.append("?,");
             }
 
-            try ( PreparedStatement statement = connection.prepareStatement("UPDATE phantombot_" + fName + " SET value = CAST(value AS INTEGER) + ? WHERE section = ? AND variable IN (" + sb.deleteCharAt(sb.length() - 1).toString() + ");")) {
+            try ( PreparedStatement statement = connection.prepareStatement("UPDATE phantombot_" + fName + " SET `VALUE` = CAST(`VALUE` AS INTEGER) + ? WHERE `SECTION` = ? AND `VARIABLE` IN (" + sb.deleteCharAt(sb.length() - 1).toString() + ");")) {
                 statement.setInt(1, Integer.parseUnsignedInt(value));
                 statement.setString(2, section);
                 int i = 3;
@@ -837,7 +1030,7 @@ public final class H2Store extends DataStore {
                 statement.execute();
             }
 
-            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " USING DUAL ON section=? AND variable=? WHEN NOT MATCHED THEN INSERT VALUES (?, ?, ?);")) {
+            try ( PreparedStatement statement = connection.prepareStatement("MERGE INTO phantombot_" + fName + " USING DUAL ON `SECTION`=? AND `VARIABLE`=? WHEN NOT MATCHED THEN INSERT VALUES (?, ?, ?);")) {
                 for (String k : keys) {
                     statement.setString(1, section);
                     statement.setString(2, k);
@@ -858,8 +1051,8 @@ public final class H2Store extends DataStore {
     }
 
     @Override
-    public String[][] executeSql(String sql, String[] replacements) {
-        ArrayList<ArrayList<String>> results = new ArrayList<>();
+    public List<List<String>> query(String sql, String[] replacements) {
+        List<List<String>> results = new ArrayList<>();
 
         try ( Connection connection = GetConnection()) {
             try ( PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -868,18 +1061,19 @@ public final class H2Store extends DataStore {
                     statement.setString(i++, k);
                 }
 
-                try ( ResultSet rs = statement.executeQuery()) {
-                    int numcol = rs.getMetaData().getColumnCount();
-                    i = 0;
+                if (statement.execute()) {
+                    try ( ResultSet rs = statement.getResultSet()) {
+                        int numcol = rs.getMetaData().getColumnCount();
 
-                    while (rs.next()) {
-                        results.add(new ArrayList<>());
+                        while (rs.next()) {
+                            List<String> row = new ArrayList<>();
 
-                        for (int b = 1; b <= numcol; b++) {
-                            results.get(i).add(rs.getString(b));
+                            for (int b = 1; b <= numcol; b++) {
+                                row.add(rs.getString(b));
+                            }
+
+                            results.add(row);
                         }
-
-                        i++;
                     }
                 }
             }
@@ -887,7 +1081,7 @@ public final class H2Store extends DataStore {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
 
-        return results.stream().map(al -> al.stream().toArray(String[]::new)).toArray(String[][]::new);
+        return results;
     }
 
     @Override
@@ -897,7 +1091,7 @@ public final class H2Store extends DataStore {
             try ( Statement statement = connection.createStatement()) {
                 for (String tableName : tableNames) {
                     tableName = validateFname(tableName);
-                    statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS " + tableName + "_idx on phantombot_" + tableName + " (section, variable);");
+                    statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS " + tableName + "_idx on phantombot_" + tableName + " (`SECTION`, `VARIABLE`);");
                 }
             }
         } catch (SQLException ex) {
@@ -916,6 +1110,26 @@ public final class H2Store extends DataStore {
                 }
             }
         } catch (SQLException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+        }
+    }
+
+    @Override
+    public boolean canBackup() {
+        return true;
+    }
+
+    @Override
+    public void backupDB(String filename) {
+        filename = filename + BACKUP_SUFFIX;
+        try ( Connection connection = GetConnection()) {
+            Files.createDirectories(PathValidator.getRealPath(Paths.get("./dbbackup/")));
+
+            try ( Statement statement = connection.createStatement()) {
+                statement.execute("SCRIPT DROP TO './dbbackup/" + filename + "' COMPRESSION GZIP");
+                com.gmt2001.Console.debug.println("Backed up H2 DB to ./dbbackup/" + filename);
+            }
+        } catch (SQLException | IOException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
     }

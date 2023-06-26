@@ -18,17 +18,26 @@
  */
 package tv.phantombot.cache;
 
-import com.illusionaryone.TwitchAlertsAPIv1;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.gmt2001.ExecutorService;
+import com.illusionaryone.StreamLabsAPI;
+
+import net.engio.mbassy.listener.Handler;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.event.EventBus;
+import tv.phantombot.event.Listener;
 import tv.phantombot.event.streamlabs.donate.StreamLabsDonationEvent;
 import tv.phantombot.event.streamlabs.donate.StreamLabsDonationInitializedEvent;
+import tv.phantombot.event.webpanel.websocket.WebPanelSocketUpdateEvent;
 
-public class DonationsCache implements Runnable {
+public class DonationsCache implements Listener {
 
     private static final DonationsCache INSTANCE = new DonationsCache();
 
@@ -36,59 +45,21 @@ public class DonationsCache implements Runnable {
         return INSTANCE;
     }
 
-    private final Thread updateThread;
+    private ScheduledFuture<?> updateFuture = null;
     private boolean firstUpdate = true;
-    private Instant timeoutExpire = Instant.now();
-    private Instant lastFail = Instant.now();
-    private int numfail = 0;
-    private boolean killed = false;
 
-    @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
     private DonationsCache() {
-        this.updateThread = new Thread(this, "tv.phantombot.cache.DonationsCache");
-
-        Thread.setDefaultUncaughtExceptionHandler(com.gmt2001.UncaughtExceptionHandler.instance());
-        this.updateThread.setUncaughtExceptionHandler(com.gmt2001.UncaughtExceptionHandler.instance());
+        this.updateFuture = ExecutorService.scheduleAtFixedRate(this::run, 20, 30, TimeUnit.SECONDS);
+        ExecutorService.execute(() -> EventBus.instance().register(this));
     }
 
-    private void checkLastFail() {
-        this.numfail = (this.lastFail.isAfter(Instant.now()) ? this.numfail + 1 : 1);
-
-        this.lastFail = Instant.now().plus(1, ChronoUnit.MINUTES);
-
-        if (this.numfail > 5) {
-            this.timeoutExpire = Instant.now().plus(1, ChronoUnit.MINUTES);
-        }
-    }
-
-    public void start() {
-        this.updateThread.start();
-    }
-
-    @Override
-    @SuppressWarnings("SleepWhileInLoop")
-    public void run() {
+    private void run() {
         try {
-            Thread.sleep(20 * 1000);
-        } catch (InterruptedException ex) {
-            com.gmt2001.Console.debug.println("DonationsCache.run: Failed to execute initial sleep [InterruptedException]: " + ex.getMessage());
-        }
-
-        while (!this.killed) {
-            try {
-                if (Instant.now().isAfter(this.timeoutExpire)) {
-                    this.updateCache();
-                }
-            } catch (Exception ex) {
-                checkLastFail();
-                com.gmt2001.Console.err.printStackTrace(ex);
+            if (StreamLabsAPI.hasAccessToken()) {
+                this.updateCache();
             }
-
-            try {
-                Thread.sleep(30 * 1000);
-            } catch (InterruptedException ex) {
-                com.gmt2001.Console.debug.println("DonationsCache.run: Failed to execute sleep [InterruptedException]: " + ex.getMessage());
-            }
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
         }
     }
 
@@ -99,19 +70,18 @@ public class DonationsCache implements Runnable {
 
         com.gmt2001.Console.debug.println("DonationsCache::updateCache");
 
-        jsonResult = TwitchAlertsAPIv1.instance().GetDonations(lastId);
+        jsonResult = StreamLabsAPI.instance().GetDonations(lastId);
 
         if (jsonResult.getBoolean("_success")) {
             if (jsonResult.getInt("_http") == 200) {
                 donations = jsonResult.getJSONArray("data");
             } else if (jsonResult.optString("message", "").contains("Unauthorized")) {
-                com.gmt2001.Console.err.println("DonationsCache.updateCache: Bad API key disabling the StreamLabs module.");
-                PhantomBot.instance().getDataStore().SetString("modules", "", "./handlers/donationHandler.js", "false");
-                this.kill();
+                com.gmt2001.Console.err.println("DonationsCache.updateCache: Bad API key for StreamLabs.");
+                return;
             }
         }
 
-        if (donations != null && !this.killed) {
+        if (donations != null) {
             for (int i = 0; i < donations.length(); i++) {
                 int donationId = Integer.parseInt(donations.getJSONObject(i).get("donation_id").toString());
                 if (donationId > lastId) {
@@ -123,7 +93,7 @@ public class DonationsCache implements Runnable {
             }
         }
 
-        if (this.firstUpdate && !this.killed) {
+        if (this.firstUpdate) {
             this.firstUpdate = false;
             EventBus.instance().postAsync(new StreamLabsDonationInitializedEvent());
         }
@@ -131,7 +101,22 @@ public class DonationsCache implements Runnable {
         PhantomBot.instance().getDataStore().SetInteger("settings", "", "DonationsCache_lastId", lastId);
     }
 
+    @Handler
+    public void onWebPanelSocketUpdateEvent(WebPanelSocketUpdateEvent event) {
+        if (event.getId().equals("streamlabs_authorize") && event.getArgs().length >= 4) {
+            try {
+                PhantomBot.instance().panelhandler().sendObject(event.getId(), Collections.singletonMap("success",
+                StreamLabsAPI.authorize(event.getArgs()[0], event.getArgs()[1], event.getArgs()[2], event.getArgs()[3])));
+            } catch (URISyntaxException ex) {
+                PhantomBot.instance().panelhandler().sendObject(event.getId(), Collections.singletonMap("success", false));
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+        }
+    }
+
     public void kill() {
-        this.killed = true;
+        if (this.updateFuture != null) {
+            this.updateFuture.cancel(true);
+        }
     }
 }

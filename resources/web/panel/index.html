@@ -32,21 +32,31 @@
         <link rel="stylesheet" href="vendors/font-awesome/css/discord.min.css">
         <!-- Bootstrap 3.3.7 -->
         <link rel="stylesheet" href="vendors/bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="vendors/bootstrap-treeview/css/bootstrap-treeview.min.css">
         <!-- Datatables -->
         <link rel="stylesheet" href="vendors/datatables.net-bs/css/dataTables.bootstrap.min.css">
+        <link rel="stylesheet" href="vendors/datatables.net-bs/css/rowReorder.bootstrap.min.css">
         <!-- Toastr -->
         <link rel="stylesheet" href="vendors/toastr/toastr.min.css">
         <!-- Pace theme -->
         <link rel="stylesheet" href="vendors/PACE/pace.min.css">
         <!-- Pretty Checkbox -->
         <link rel="stylesheet" href="vendors/pretty-checkbox/pretty-checkbox.min.css">
-        <!-- Easy auto comeplete -->
-        <link rel="stylesheet" href="vendors/EasyAutocomplete-1.3.5/easy-autocomplete.min.css">
+        <!-- jQueryUI -->
+        <link rel="stylesheet" href="../common/js/jquery-ui/jquery-ui.min.css">
         <!-- Loader -->
         <link rel="stylesheet" href="css/main.min.css">
         <!-- Google Font -->
         <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
         <!-- More css is loaded via JavaScript -->
+        <style>
+            .list-group-item {
+                background-color: inherit !important;
+            }
+            .list-group-item:hover {
+                background-color: inherit !important;
+            }
+        </style>
     </head>
 
     <!-- Main body -->
@@ -110,6 +120,9 @@
                                         </li>
                                         <!-- Menu Footer-->
                                         <li class="user-footer">
+                                            <div class="pull-left">
+                                                <a href="#" class="btn btn-primary btn-flat" data-removeForConfigUser="true" id="user-pwd-btn">Change Password</a>
+                                            </div>
                                             <div class="pull-right">
                                                 <a href="#" class="btn btn-primary btn-flat" id="sign-out-btn">Sign out</a>
                                             </div>
@@ -353,7 +366,7 @@
                             </li>
 
                             <!-- Stream Overlay tab -->
-                            <li>
+                            <li class="treeview">
                                 <a href="#overlay.html" data-folder="overlay">
                                     <i class="fa fa-circle-o"></i> <span> Stream Overlay</span>
                                 </a>
@@ -369,6 +382,7 @@
                                 </a>
                                 <ul class="treeview-menu">
                                     <li><a href="#botSettings.html" data-folder="settings"><i class="fa fa-circle-o"></i> Bot</a></li>
+                                    <li data-removeForCantManage="true" id="panelUser-tab"><a href="#panelUsers.html" data-folder="settings"><i class="fa fa-circle-o"></i> Panel Users</a></li>
                                     <li><a href="#commandSettings.html" data-folder="settings"><i class="fa fa-circle-o"></i> Commands</a></li>
                                     <li><a href="#moduleList.html" data-folder="settings"><i class="fa fa-circle-o"></i> Modules</a></li>
                                     <li><a href="#localization.html" data-folder="settings"><i class="fa fa-circle-o"></i> Localization</a></li>
@@ -403,12 +417,12 @@
                     </li>
 
                     <!-- Second tab -->
-                    <li>
+                    <li data-removeForCantManage="true" id="second-side-tab-button">
                         <a href="#second-side-tab" data-toggle="tab" aria-expanded="true"><i class="fa fa-home"></i></a>
                     </li>
 
                     <!-- Third tab -->
-                    <li>
+                    <li data-removeForCantManage="true" id="third-side-tab-button">
                         <a href="#third-side-tab" data-toggle="tab" aria-expanded="true"><i class="fa fa-cogs"></i></a>
                     </li>
                 </ul>
@@ -419,7 +433,7 @@
                     <div id="main-side-tab" class="tab-pane active">
                         <h4 class="control-sidebar-heading">Tools</h4>
 
-                        <div class="form-group">
+                        <div class="form-group" data-removeForCantRestart="true" id="restart-from-group">
                             <div class="control-sidebar-subheading">
                                 <button type="button" class="btn btn-primary pull-right disabled" id="restart-bot-btn" data-candisable="true">Execute</button>
                                 <label for="restart-bot-btn">Restart</label>
@@ -429,24 +443,16 @@
                         </div>
                         <div class="form-group">
                             <div class="control-sidebar-subheading">
-                                <button type="button" class="btn btn-primary pull-right" id="set-online-btn">Execute</button>
-                                <label for="set-online-btn">Force Online</label>
+                                <button type="button" class="btn btn-primary pull-right" id="sync-online-btn">Execute</button>
+                                <label for="sync-online-btn">Sync Online Status</label>
                             </div>
 
-                            <p>Force the bot to think the stream is online.</p>
-                        </div>
-                        <div class="form-group">
-                            <div class="control-sidebar-subheading">
-                                <button type="button" class="btn btn-primary pull-right" id="set-offline-btn">Execute</button>
-                                <label for="set-offline-btn">Force Offline</label>
-                            </div>
-
-                            <p>Force the bot to think the stream is offline.</p>
+                            <p>Sync the title, game, and online state with Twitch API.</p>
                         </div>
                     </div>
 
                     <!-- Middle tab -->
-                    <div id="second-side-tab" class="tab-pane">
+                    <div data-removeForCantManage="true" id="second-side-tab" class="tab-pane">
                         <h4 class="control-sidebar-heading">Dashboard Page</h4>
 
                         <div class="form-group">
@@ -496,7 +502,7 @@
                     </div>
 
                     <!-- Last tab -->
-                    <div id="third-side-tab" class="tab-pane">
+                    <div data-removeForCantManage="true" id="third-side-tab" class="tab-pane">
                         <h4 class="control-sidebar-heading">Layout Options</h4>
 
                         <div class="form-group">
@@ -523,8 +529,11 @@
 
         <!-- jQuery 3 -->
         <script src="vendors/jquery/jquery.min.js"></script>
+        <!-- jQueryUI -->
+        <script src="../common/js/jquery-ui/jquery-ui.min.js"></script>
         <!-- Bootstrap 3.3.7 -->
         <script src="vendors/bootstrap/js/bootstrap.min.js"></script>
+        <script src="vendors/bootstrap-treeview/js/bootstrap-treeview.min.js"></script>
         <!-- Pace -->
         <script src="vendors/PACE/pace.min.js" data-pace-options='{ "eventLag": false }'></script>
         <!-- Toastr -->
@@ -538,16 +547,18 @@
         <!-- Datatables -->
         <script src="vendors/datatables.net-bs/js/jquery.dataTables.min.js"></script>
         <script src="vendors/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
-        <!-- Easy auto comeplete -->
-        <script src="vendors/EasyAutocomplete-1.3.5/jquery.easy-autocomplete.min.js"></script>
+        <script src="vendors/datatables.net-bs/js/dataTables.rowReorder.min.js"></script>
         <!-- Panel config script -->
         <script src="js/utils/panelConfig.js"></script>
+        <script src="/common/js/session.js"></script>
         <!-- Helpers -->
         <script src="js/utils/helpers.js"></script>
         <!-- Ajax page loader -->
         <script src="js/utils/ajaxLoader.js"></script>
-        <!-- Reconnecting socket. -->
+        <!-- Reconnecting socket -->
         <script src="../common/reconnecting-websocket/reconnectingWS.min.js"></script>
+        <!-- Crypto-JS -->
+        <script src="vendors/crypto-js/crypto-js-4.1.1.min.js"></script>
         <!-- Main js file -->
         <script>
             $(function () {

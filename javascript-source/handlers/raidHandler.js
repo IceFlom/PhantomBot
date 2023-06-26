@@ -22,7 +22,8 @@
             raidIncMinViewers = $.getSetIniDbNumber('raidSettings', 'raidMinViewers', 0),
             raidReward = $.getSetIniDbNumber('raidSettings', 'raidReward', 0),
             raidOutMessage = $.getSetIniDbString('raidSettings', 'raidOutMessage', 'We are going to raid (username)! Go to their channel (url) now!'),
-            raidOutSpam = $.getSetIniDbNumber('raidSettings', 'raidOutSpam', 1);
+            raidOutSpam = $.getSetIniDbNumber('raidSettings', 'raidOutSpam', 1),
+            raidOutOfflineMessage = $.getSetIniDbString('raidSettings', 'raidOutOfflineMessage', null);
 
     /*
      * @function Reloads the raid variables from the panel.
@@ -35,6 +36,7 @@
         raidReward = $.getIniDbNumber('raidSettings', 'raidReward');
         raidOutMessage = $.getIniDbString('raidSettings', 'raidOutMessage');
         raidOutSpam = $.getIniDbNumber('raidSettings', 'raidOutSpam');
+        raidOutOfflineMessage = $.getIniDbString('raidSettings', 'raidOutOfflineMessage');
     }
 
     /*
@@ -124,10 +126,14 @@
      */
     function handleOutRaid(username) {
         var message = raidOutMessage;
+        var offlinemsg = raidOutOfflineMessage;
+
+        // Use the .raid command.
+        $.say('.raid ' + username);
 
         // Replace tags.
         if (message.match(/\(username\)/)) {
-            message = $.replace(message, '(username)', $.username.resolve(username));
+            message = $.replace(message, '(username)', $.viewer.getByLogin(username).name());
         }
 
         if (message.match(/\(url\)/)) {
@@ -139,9 +145,11 @@
             $.say(message);
         }
 
-        // Use the .raid command.
-        $.say('.raid ' + username);
-        // Increase out going raids.
+        if(!$.isOnline(username)){
+            $.say(offlinemsg);
+        }
+
+        // Increment outgoing raids count for this target channel.
         saveOutRaidForUsername(username + '', $.getViewers($.channelName) + '');
     }
 
@@ -322,6 +330,21 @@
             }
 
             /*
+             * @commandpath raid setoutgoingofflinemessage [message] - Sets a warning message which is added to chat when you use !raid on a channel that is offline.
+             */
+            if (action.equalsIgnoreCase('setoutgoingofflinemessage')) {
+                if (subAction === undefined) {
+                    $.say($.whisperPrefix(sender) + $.lang.get('raidhandler.out.messageoffline.usage'));
+                    return;
+                }
+
+                raidOutOfflineMessage = args.slice(1).join(' ');
+                $.setIniDbString('raidSettings', 'raidOutOfflineMessage', raidOutOfflineMessage);
+                $.say($.whisperPrefix(sender) + $.lang.get('raidhandler.out.messageoffline.set'));
+                return;
+            }
+
+            /*
              * @commandpath raid setoutgoingmessagespam [amount] - Sets the amount of times that the outgoing raid message is sent in chat. Maximum is 10 times.
              */
             if (action.equalsIgnoreCase('setoutgoingmessagespam')) {
@@ -347,7 +370,7 @@
 
                 if ($.inidb.exists('incoming_raids', subAction.toLowerCase())) {
                     var raidObj = JSON.parse($.inidb.get('incoming_raids', subAction.toLowerCase())),
-                            displayName = $.username.resolve(subAction);
+                            displayName = $.viewer.getByLogin(subAction).name();
 
                     $.say($.whisperPrefix(sender) + $.lang.get('raidhandler.lookup.user', displayName, raidObj.totalRaids, new Date(raidObj.lastRaidTime).toLocaleString(), raidObj.lastRaidViewers));
                 } else {
@@ -378,6 +401,7 @@
         $.registerChatSubcommand('./handlers/raidHandler.js', 'raid', 'setnewincomingmessage', $.PERMISSION.Admin);
         $.registerChatSubcommand('./handlers/raidHandler.js', 'raid', 'setoutgoingmessage', $.PERMISSION.Admin);
         $.registerChatSubcommand('./handlers/raidHandler.js', 'raid', 'setoutgoingmessagespam', $.PERMISSION.Admin);
+        $.registerChatSubcommand('./handlers/raidHandler.js', 'raid', 'setoutgoingofflinemessage', $.PERMISSION.Admin);
     });
 
     /* Export to API */

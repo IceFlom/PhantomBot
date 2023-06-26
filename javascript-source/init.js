@@ -22,9 +22,10 @@
 /* global $api, Packages, java, $script */
 
 (function () {
-    var isReady = false,
+    let isReady = false,
             modules = [],
-            hooks = [];
+            hooks = [],
+            jsOnlyHooks = ['initReady'];
 
     /*
      * @class Module
@@ -43,9 +44,15 @@
         };
     }
 
+    /**
+     * Handles any type of exception and reports it to the console, the logs, and Rollbar
+     *
+     * @param {string} where The location of the error
+     * @param {java.lang.Exception_or_Error} ex The exception or error object to log
+     */
     function handleException(where, ex) {
-        var loc = 0;
-        var errmsg = null;
+        let loc = 0;
+        let errmsg = null;
         try {
             if (where === undefined || where === null || (typeof where) !== 'string') {
                 try {
@@ -98,8 +105,8 @@
                 }
             }
         } catch (oops) {
-            var oopsmsg = "Location[handleException] Encountered an unrecoverable exception while trying to handle another exception";
-            var data = new Packages.java.util.HashMap();
+            let oopsmsg = "Location[handleException] Encountered an unrecoverable exception while trying to handle another exception";
+            let data = new Packages.java.util.HashMap();
             try {
                 data.put("loc", loc);
             } catch (e) {
@@ -137,12 +144,13 @@
      * @param {String}   hookName
      * @param {Function} handler
      */
-    function Hook(scriptName, hookName, handler, scriptPath) {
+    function Hook(scriptName, hookName, handler, scriptPath, always) {
         hookName = $api.formatEventName(hookName) + '';
         this.scriptName = scriptName;
         this.hookName = hookName;
         this.handler = handler;
         this.scriptPath = scriptPath;
+        this.always = always;
     }
 
     /*
@@ -161,17 +169,14 @@
      * @param {String} message
      */
     function consoleLn(message) {
-        Packages.com.gmt2001.Console.out.println(java.util.Objects.toString(message));
+        Packages.com.gmt2001.Console.out.println(Packages.java.util.Objects.toString(message));
     }
 
-    function findCaller(force) {
-        if (force !== true && !Packages.tv.phantombot.PhantomBot.getEnableDebugging()) {
-            return;
-        }
+    function findCaller() {
         try {
             throw new Error();
         } catch (ex) {
-            return Packages.java.util.Objects.toString(ex.stack.split('\n')[2].trim());
+            return $.jsString(ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, ''));
         }
     }
 
@@ -182,11 +187,7 @@
      */
     function consoleDebug(message) {
         if (Packages.tv.phantombot.PhantomBot.getEnableDebugging()) {
-            try {
-                throw new Error();
-            } catch (ex) {
-                Packages.com.gmt2001.Console.debug.printlnRhino(java.util.Objects.toString('[' + findCaller() + '] ' + message));
-            }
+            Packages.com.gmt2001.Console.debug.printlnRhino(Packages.java.util.Objects.toString('[' + findCaller() + '] ' + message));
         }
     }
 
@@ -194,21 +195,21 @@
      * @function generateJavaTrampolines
      */
     function generateJavaTrampolines() {
-        var name,
+        let name,
                 isJavaProperty = function (name) {
-                    var blacklist = ['getClass', 'equals', 'notify', 'class', 'hashCode', 'toString', 'wait', 'notifyAll'];
+                    let blacklist = ['getClass', 'equals', 'notify', 'class', 'hashCode', 'toString', 'wait', 'notifyAll'];
 
                     return (blacklist[name] !== undefined);
                 },
                 generateTrampoline = function (obj, name) {
                     return function () {
-                        var args = [$script];
+                        let args = [$script];
 
-                        for (var i = 0; i < arguments.length; i++) {
+                        for (let i = 0; i < arguments.length; i++) {
                             args.push(arguments[i]);
                         }
 
-                        obj[name].save(obj, args);
+                        obj[name].apply(obj, args);
                     };
                 };
 
@@ -234,7 +235,7 @@
         if (!isModuleLoaded(scriptName) || force) {
             if (scriptName.endsWith('.js')) {
                 try {
-                    var enabled,
+                    let enabled,
                             script;
 
                     if ($api.getScript($script, scriptName) !== null) {
@@ -243,7 +244,12 @@
                         script = $api.loadScriptR($script, scriptName);
                     }
 
-                    enabled = $.getSetIniDbBoolean('modules', scriptName, true);
+                    if ($.inidb.exists('modules', scriptName) === true) {
+                        enabled = $.inidb.GetBoolean('modules', '', scriptName);
+                    } else {
+                        $.inidb.set('modules', scriptName, true.toString());
+                        enabled = true;
+                    }
 
                     modules[scriptName] = new Module(scriptName, script, enabled);
 
@@ -251,7 +257,7 @@
                         consoleLn('Loaded module: ' + scriptName.replace(/\.\//g, '') + ' (' + (enabled ? 'Enabled' : 'Disabled') + ')');
                     }
                 } catch (ex) {
-                    consoleLn('Failed loading "' + scriptName + '": ' + ex);
+                    handleException('loadScript(' + scriptName + ')', ex);
                 }
             }
         }
@@ -264,22 +270,55 @@
      * @param {Boolean} silent
      * @param {Boolean} force
      */
-    function loadScriptRecursive(path, silent, force) {
+    function loadScriptRecursive(path, silent, force, sorted) {
         if (path === undefined || path === null) {
             return;
         }
-        var files = $api.findFiles($.javaString('./scripts/' + path), $.javaString(''));
 
-        for (var i = 0; i < files.size(); i++) {
-            var file = $.jsString(files.get(i));
+        let jfiles = $api.findFiles(new Packages.java.lang.String('./scripts/' + path), new Packages.java.lang.String(''));
+        let files = [];
+
+        for (let i = 0; i < jfiles.size(); i++) {
+            files.push(String('' + jfiles.get(i)));
+        }
+
+        if (sorted) {
+            files.sort((a, b) => {
+                let intvala = parseInt(a);
+                let intvalb = parseInt(b);
+                let dira = $api.isDirectory(new Packages.java.lang.String('./scripts/' + path + '/' + a));
+                let dirb = $api.isDirectory(new Packages.java.lang.String('./scripts/' + path + '/' + b));
+
+                if (!isNaN(intvala) && isNaN(intvalb)) {
+                    return -1;
+                } else if (isNaN(intvala) && !isNaN(intvalb)) {
+                    return 1;
+                } else if (!isNaN(intvala) && !isNaN(intvalb) && intvala !== intvalb) {
+                    return intvala - intvalb;
+                } else if (!dira && dirb) {
+                    return -1;
+                } else if (dira && !dirb) {
+                    return 1;
+                } else if (a < b) {
+                    return -1;
+                } else if (a > b) {
+                    return 1;
+                }
+
+                return 0;
+            });
+        }
+
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i];
             if (path === '.') {
                 if (file === 'lang' || file === 'discord' || file === 'init.js') {
                     continue;
                 }
             }
 
-            if ($api.isDirectory($.javaString('./scripts/' + path + '/' + file))) {
-                loadScriptRecursive(path + '/' + file, silent, (force && path !== './core' && path !== './discord/core' ? force : false));
+            if ($api.isDirectory(new Packages.java.lang.String('./scripts/' + path + '/' + file))) {
+                loadScriptRecursive(path + '/' + file, silent, (force && path !== './core' && path !== './discord/core' ? force : false), sorted);
             } else {
                 loadScript(path + '/' + file, (force && path !== './core' && path !== './discord/core' ? force : false), silent);
             }
@@ -338,7 +377,7 @@
      */
     function getHookIndex(scriptName, hookName) {
         hookName = $api.formatEventName(hookName) + '';
-        var hook = hooks[hookName],
+        let hook = hooks[hookName],
                 i;
 
         if (hook !== undefined) {
@@ -357,12 +396,16 @@
      * @param {String}   hookName
      * @param {Function} handler
      */
-    function addHook(hookName, handler) {
+    function addHook(hookName, handler, always) {
         hookName = $api.formatEventName(hookName) + '';
-        var scriptName = $.replace($.replace($script.getPath(), '\\', '/'), './scripts/', ''),
+        let scriptName = $.replace($.replace($script.getPath(), '\\', '/'), './scripts/', ''),
                 i = getHookIndex(scriptName, hookName);
 
-        if (hookName !== 'initReady' && $api.exists(hookName) === false) {
+        if (always === undefined || always === null) {
+            always = false;
+        }
+
+        if (!jsOnlyHooks.includes(hookName) && $api.exists(hookName) === false) {
             Packages.com.gmt2001.Console.err.printlnRhino('[addHook()@init.js:254] Failed to register hook "' + hookName + '" since there is no such event.');
         } else if (i !== -1) {
             hooks[hookName].handlers[i].handler = handler;
@@ -370,7 +413,7 @@
             if (hooks[hookName] === undefined) {
                 hooks[hookName] = new HookHandler(hookName);
             }
-            hooks[hookName].handlers.push(new Hook(scriptName, hookName, handler, $script.getRealFileName()));
+            hooks[hookName].handlers.push(new Hook(scriptName, hookName, handler, $script.getRealFileName(), always));
         }
     }
 
@@ -381,13 +424,25 @@
      */
     function removeHook(hookName) {
         hookName = $api.formatEventName(hookName) + '';
-        var scriptName = $.replace($.replace($script.getPath(), '\\', '/'), './scripts/', ''),
+        let scriptName = $.replace($.replace($script.getPath(), '\\', '/'), './scripts/', ''),
                 i = getHookIndex(scriptName, hookName);
 
         if (hooks[hookName] !== undefined) {
             hooks[hookName].handlers.splice(i, 1);
         }
     }
+
+    let pendingCallHook = [];
+    function releaseHooks() {
+        setTimeout(function() {
+            for (let x in pendingCallHook) {
+                Packages.com.gmt2001.Console.debug.println('Executing delayed callHook for ' + pendingCallHook[x][0]);
+                callHook(pendingCallHook[x][0], pendingCallHook[x][1], pendingCallHook[x][2]);
+            }
+            pendingCallHook = [];
+        }, 100);
+    }
+
 
     /*
      * @function callHook
@@ -397,8 +452,14 @@
      * @param {Boolean} force
      */
     function callHook(hookName, event, force) {
+        if (!isReady) {
+            Packages.com.gmt2001.Console.debug.println('Delaying callHook for ' + hookName);
+            pendingCallHook.push([hookName, event, force]);
+            return;
+        }
+
         hookName = $api.formatEventName(hookName) + '';
-        var hook = hooks[hookName],
+        let hook = hooks[hookName],
                 i;
 
         if (hook === undefined) {
@@ -411,7 +472,7 @@
             try {
                 hook.handlers[i].handler(event);
             } catch (ex) {
-                var errmsg;
+                let errmsg;
                 try {
                     errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']';
                 } catch (ex2) {
@@ -430,11 +491,11 @@
             }
         } else {
             for (i in hook.handlers) {
-                if (isModuleEnabled(hook.handlers[i].scriptName) || force) {
+                if (isModuleEnabled(hook.handlers[i].scriptName) || hook.handlers[i].always || force) {
                     try {
                         hook.handlers[i].handler(event);
                     } catch (ex) {
-                        var errmsg;
+                        let errmsg;
                         try {
                             errmsg = 'Error with Event Handler [' + hookName + '] Script [' + hook.handlers[i].scriptPath + '] Stacktrace [' + ex.stack.trim().replace(/\r/g, '').split('\n').join(' > ').replace(/anonymous\(\)@|callHook\(\)@/g, '') + '] Exception [' + ex + ']';
                         } catch (ex2) {
@@ -461,7 +522,7 @@
      */
     function init() {
         // Do not print a line to the console for each module (script) that is loaded.
-        var silentScriptsLoad = Packages.tv.phantombot.PhantomBot.getSilentScriptsLoad().toString().equals('true');
+        let silentScriptsLoad = Packages.tv.phantombot.PhantomBot.getSilentScriptsLoad().toString().equals('true');
 
         // Generate JavaScript trampolines for Java functions.
         generateJavaTrampolines();
@@ -473,40 +534,22 @@
         }
 
         try {
-            // Load all core modules.
-            loadScript('./core/misc.js', false, silentScriptsLoad);
-            loadScript('./core/fileSystem.js', false, silentScriptsLoad);
-            loadScript('./core/lang.js', false, silentScriptsLoad);
-            loadScript('./core/jsTimers.js', false, silentScriptsLoad);
-            loadScript('./core/updates.js', false, silentScriptsLoad);
-            loadScript('./core/permissions.js', false, silentScriptsLoad);
-            loadScript('./core/commandRegister.js', false, silentScriptsLoad);
-            loadScript('./core/commandTags.js', false, silentScriptsLoad);
-            loadScript('./core/chatModerator.js', false, silentScriptsLoad);
-            loadScript('./core/commandPause.js', false, silentScriptsLoad);
-            loadScript('./core/logging.js', false, silentScriptsLoad);
-            loadScript('./core/whisper.js', false, silentScriptsLoad);
-            loadScript('./core/commandCoolDown.js', false, silentScriptsLoad);
-            loadScript('./core/keywordCoolDown.js', false, silentScriptsLoad);
-            loadScript('./core/patternDetector.js', false, silentScriptsLoad);
+            // Load Twitch core
+            loadScriptRecursive('./core/bootstrap', silentScriptsLoad, false, true);
+            loadScriptRecursive('./core', silentScriptsLoad, false, true);
 
-            // Load all the other modules.
-            loadScriptRecursive('.', silentScriptsLoad);
+            // Load other Twitch modules
+            loadScriptRecursive('.', silentScriptsLoad, false, false);
 
-            // Load Discord modules if need be.
-            if (!$.hasDiscordToken) {
-                loadScript('./discord/core/misc.js', false, silentScriptsLoad);
-                loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
-                loadScript('./discord/core/patternDetector.js', false, silentScriptsLoad);
-                loadScript('./discord/core/moderation.js', false, silentScriptsLoad);
-                loadScript('./discord/core/registerCommand.js', false, silentScriptsLoad);
-                loadScript('./discord/core/accountLink.js', false, silentScriptsLoad);
-                loadScript('./discord/core/commandCooldown.js', false, silentScriptsLoad);
+            if ($.hasDiscordToken) {
+                // Load Discord core
+                loadScriptRecursive('./discord/core/bootstrap', silentScriptsLoad, false, true);
+                loadScriptRecursive('./discord/core', silentScriptsLoad, false, true);
 
-                // Load the other discord modules
-                loadScriptRecursive('./discord', silentScriptsLoad);
-                // Mark that we are using Discord.
-                // This is used by the new panel.
+                // Load other Discord modules
+                loadScriptRecursive('./discord', silentScriptsLoad, false, false);
+
+                // Mark that we are using Discord for the panel
                 $.inidb.set('panelData', 'hasDiscord', 'true');
             } else {
                 $.inidb.set('panelData', 'hasDiscord', 'false');
@@ -554,7 +597,7 @@
         try {
             // Load all API events.
 
-            var loadedHooks = [];
+            let loadedHooks = [];
             /*
              * @event ircModeration
              */
@@ -570,35 +613,29 @@
             loadedHooks.push('ircModeration');
 
             /*
-             * @event ircChannelUserMode
+             * @event ircChannelJoin
              */
-            $api.on($script, 'ircChannelUserMode', function (event) {
+            $api.on($script, 'ircChannelJoin', function (event) {
                 try {
-                    callHook('ircChannelUserMode', event, false);
-
-                    if (event.getUser().equalsIgnoreCase($.botName) && event.getMode().equalsIgnoreCase('O')) {
-                        if (event.getAdd().toString().equals('true')) {
-                            if (isReady === false) {
-                                isReady = true;
-                                // Bot is now ready.
-                                consoleLn($.botName + ' ready!');
-                                // Call the initReady event.
-                                callHook('initReady', null, false);
-                            }
-                        }
+                    if (event.getUser().equalsIgnoreCase($.botName) && isReady === false) {
+                        isReady = true;
+                        consoleLn($.botName + ' ready!');
+                        callHook('initReady', null, false);
+                        releaseHooks();
                     }
+                    callHook('ircChannelJoin', event, false);
                 } catch (ex) {
-                    handleException('ircChannelUserMode', ex);
+                    handleException('ircChannelJoin', ex);
                 }
             });
-            loadedHooks.push('ircChannelUserMode');
+            loadedHooks.push('ircChannelJoin');
 
             /*
              * @event command
              */
             $api.on($script, 'command', function (event) {
                 try {
-                    var sender = event.getSender(),
+                    let sender = event.getSender(),
                             command = event.getCommand(),
                             args = event.getArgs(),
                             subCommand = $.getSubCommandFromArguments(command, args),
@@ -608,8 +645,8 @@
                         Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
                     }
 
-                    // Check if the command exists or if the module is disabled.
-                    if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command))) {
+                    // Check if the command exists or if the module is disabled or if the command is restricted.
+                    if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command)) || !$.commandRestrictionMet(command, subCommand)) {
                         return;
                     }
 
@@ -620,7 +657,7 @@
 
                     // Check if the command has an alias.
                     if ($.aliasExists(command)) {
-                        var alias = $.getIniDbString('aliases', command),
+                        let alias = $.getIniDbString('aliases', command),
                                 aliasCommand,
                                 aliasArguments,
                                 subcmd,
@@ -635,7 +672,7 @@
                         } else {
                             parts = alias.split(';');
 
-                            for (var i = 0; i < parts.length; i++) {
+                            for (let i = 0; i < parts.length; i++) {
                                 subcmd = parts[i].split(' ');
                                 aliasCommand = subcmd.shift();
                                 aliasArguments = subcmd.join(' ');
@@ -662,7 +699,7 @@
                     }
 
                     // Check the command cooldown.
-                    var cooldownDuration,
+                    let cooldownDuration,
                             isGlobalCooldown,
                             cooldownCommand = command;
 
@@ -676,7 +713,7 @@
                     [cooldownDuration, isGlobalCooldown] = $.coolDown.get(cooldownCommand, sender, isMod);
 
                     if (cooldownDuration > 0) {
-                        consoleDebug('Command !' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user ' + sender) + '.');
+                        consoleDebug('Command !' + command + ' was not sent due to it being on cooldown ' + (isGlobalCooldown ? 'globally' : 'for user ' + sender) + ' for ' + cooldownDuration + ' more seconds.');
                         if ($.getIniDbBoolean('settings', 'coolDownMsgEnabled')) {
                             if (isGlobalCooldown) {
                                 $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('init.cooldown.msg.global', command, cooldownDuration), true);
@@ -709,7 +746,7 @@
              */
             $api.on($script, 'discordChannelCommand', function (event) {
                 try {
-                    var username = event.getUsername(),
+                    let username = event.getUsername(),
                             command = event.getCommand(),
                             user = event.getDiscordUser(),
                             channelName = event.getChannel(),
@@ -731,9 +768,9 @@
                     }
 
                     // Check permissions.
-                    var perm = $.discord.permCom(command, (args[0] !== undefined && $.discord.subCommandExists(command, args[0].toLowerCase()) ? args[0].toLowerCase() : ''));
-                    var hasPerms = false;
-                    var twitchName = $.discord.resolveTwitchName(senderId);
+                    let perm = $.discord.permCom(command, (args[0] !== undefined && $.discord.subCommandExists(command, args[0].toLowerCase()) ? args[0].toLowerCase() : ''));
+                    let hasPerms = false;
+                    let twitchName = $.discord.resolveTwitchName(senderId);
 
                     if (!isAdmin && twitchName !== null) {
                         isAdmin = $.isAdmin(twitchName);
@@ -748,7 +785,7 @@
                     } else if (perm.roles.length > 0 && (perm.roles[0].indexOf('0') !== -1 || perm.roles[0].indexOf($.discordAPI.getGuild().getId().asString()) !== -1)) {
                         hasPerms = true;
                     } else {
-                        for (var i = 0; i < perm.roles.length; i++) {
+                        for (let i = 0; i < perm.roles.length; i++) {
                             if (user.getRoleIds().contains($.discordAPI.getRoleByID(perm.roles[i]).getId()) === true) {
                                 hasPerms = true;
                                 break;
@@ -762,7 +799,7 @@
                     }
 
                     // Check the command cooldown.
-                    var cooldownDuration,
+                    let cooldownDuration,
                             isGlobalCooldown,
                             cooldownCommand = command;
 
@@ -813,12 +850,12 @@
              */
             $api.on($script, 'discordGuildCreate', function (event) {
                 try {
-                    var roles = $.discordAPI.getGuildRoles();
-                    var perms = {
+                    let roles = $.discordAPI.getGuildRoles();
+                    let perms = {
                         roles: []
                     };
 
-                    for (var i = 0; i < roles.size(); i++) {
+                    for (let i = 0; i < roles.size(); i++) {
                         perms.roles.push({
                             'name': roles.get(i).getName() + '',
                             '_id': roles.get(i).getId().asString() + '',
@@ -835,12 +872,12 @@
             });
             loadedHooks.push('discordGuildCreate');
 
-            var hookNames = $api.getEventNames();
-            for (var i = 0; i < hookNames.size(); i++) {
-                var hookName = String(hookNames.get(i) + '');
+            let hookNames = $api.getEventNames();
+            for (let i = 0; i < hookNames.size(); i++) {
+                let hookName = String(hookNames.get(i) + '');
                 if (!loadedHooks.includes(hookName)) {
                     $api.on($script, hookName, function (event) {
-                        var hookname = String($api.formatEventName(event.getClass().getSimpleName()) + '');
+                        let hookname = String($api.formatEventName(event.getClass().getSimpleName()) + '');
                         try {
                             callHook(hookname, event, false);
                         } catch (ex) {
@@ -859,6 +896,7 @@
     $.consoleLn = consoleLn;
     $.consoleDebug = consoleDebug;
     $.findCaller = findCaller;
+    $.handleException = handleException;
     $.bind = addHook;
     $.unbind = removeHook;
     $.bot = {

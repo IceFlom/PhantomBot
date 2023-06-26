@@ -1,25 +1,25 @@
-#  
+#
 # Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
-#  
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#  
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 # To bring up or update the container
-# docker compose --pull always up -d
+# docker compose up --pull always -d
 #
 # To bring up the container, and also bring up ouroboros for auto-updates
-# docker compose --pull always --profile ouroboros up -d
+# docker compose up --pull always --profile ouroboros -d
 
 services:
   # Service name, used internally by Docker Compose. Can be changed but does not matter
@@ -38,7 +38,8 @@ services:
       - target: 25000
         #
         # The port the bot webserver will be published to on the host
-        # This is the number that should be changed when hosting multiple bot instances on the same server
+        # This is the number that should be changed, if not using Traefik, when hosting multiple bot instances on the same server
+        # If using Traefik, this should not be changed
         published: 25000
         #
         # TCP protocol for HTTP. Do not change
@@ -46,7 +47,7 @@ services:
     # The restart policy. "always" or "unless-stopped" are the recommended values and are required to use the panel restart button
     # "unless-stopped": The container auto-restarts. If you stop the container using a Docker command, it will stay stopped until you start it using a Docker command
     # "always": The container always auto-restarts. If you stop the container using a Docker command, it will auto-restart if the Docker service or server restarts
-    restart: always
+    restart: unless-stopped
     volumes:
      # Defines the volume mount for data persistence inside the container, do not change
      # See the bottom of this file for the part you can change
@@ -55,12 +56,12 @@ services:
       # ------ Set any botlogin.txt variable here, with the PHANTOMBOT_ prefix
       # ------ Note that after first run, botlogin.txt takes priority
       # ------ None of the variables are required
-      # Enables the restart button in the panel
-      PHANTOMBOT_RESTARTCMD: "/opt/PhantomBot/restartbot-docker.sh"
+      # If you uncomment this variable, your ENV variables will always override botlogin.txt
+      # PHANTOMBOT_ENVOVERRIDE: true
   # Service name, used internally by Docker Compose. Can be changed but does not matter
   # The ouroboros service provides auto-update functionality
   # To enable this service, the profile must be activated when using the "docker compose up" command
-  # docker compose --pull always --profile ouroboros up -d
+  # docker compose up --pull always --profile ouroboros -d
   #
   # NOTE: This container only needs to be created ONCE and it will then apply to all containers, unless the configuration is changed to do otherwise
   ouroboros:
@@ -70,7 +71,7 @@ services:
     hostname: ouroboros
     # Image to pull, automatically selects the latest version when creating the container
     image: ghcr.io/gmt2001/ouroboros
-    # Assigns this container to a profile, requireing the "--profile ouroboros" addition to the "docker compose up" command to activate
+    # Assigns this container to a profile, requiring the "--profile ouroboros" addition to the "docker compose up" command to activate
     profiles: ["ouroboros"]
     # Defines the configuration for ouroboros, see https://github.com/gmt2001/ouroboros/wiki/Usage
     environment:
@@ -91,6 +92,11 @@ services:
         # Verbosity of logging output
       - LOG_LEVEL=info
         # Change to `true` if you want ouroboros to only notify you of new updates, but not install them
+        # --- NOTE: A Docker update necessarily involves an automatic deletion and re-creation of the container
+        # --- This will reset variables on the bot. Some systems, such as raffleSystem, will save their state, but others may not
+        # --- You should consider this information when making a decision on this setting
+        # If this is `true`, you will need to re-run `docker compose up --pull always --profile ouroboros -d`
+        #      each time you want to install an update to PhantomBot
       - MONITOR_ONLY=false
         # Defines where to send notifications to. See https://github.com/caronc/apprise#supported-notifications
         # To send notifications to multiple locations, separate each URI with a space as in the example below
@@ -100,6 +106,7 @@ services:
         # If `true`, ouroboros is allowed to update itself
       - SELF_UPDATE=true
         # Sets the timezone used for logging and the scheduler
+        # For a list of valid timezones, see the `TZ identifier` column at https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
       - TZ=America/New_York
     # The restart policy. "always" or "unless-stopped" are the recommended values and are required to use the panel restart button
     # "unless-stopped": The container auto-restarts. If you stop the container using a Docker command, it will stay stopped until you start it using a Docker command
@@ -121,10 +128,13 @@ volumes:
   # with a guarantee that they will work properly
   #
   # If you still want mount to a host directory, this is where you do it
-  # Remove the # symbols from all 4 lines below, then change the path on the last line
+  # Remove the # symbols from all 5 lines below, then change the path on the last line
   # NOTE: It is important that you do not add or remove any spaces
+  # NOTE: For Windows on WSL2, paths should be specified using forward slashes `/`
+  # NOTE: For Windows on WSL2, the drive letter should be specified as `//c/` instead of `c:/`
   PhantomBot_data:
   #  driver: local
   #  driver_opts:
+  #    type: none
   #    o: bind
   #    device: /home/someuser/phantombot

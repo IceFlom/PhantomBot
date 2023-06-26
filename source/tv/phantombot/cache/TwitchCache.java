@@ -26,6 +26,12 @@ import com.gmt2001.ExecutorService;
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
 import com.gmt2001.httpclient.URIUtil;
+import com.gmt2001.twitch.cache.ViewerCache;
+
+import net.engio.mbassy.listener.Handler;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,6 +45,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.json.JSONArray;
@@ -47,6 +54,9 @@ import org.json.JSONObject;
 import tv.phantombot.CaselessProperties;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.event.EventBus;
+import tv.phantombot.event.Listener;
+import tv.phantombot.event.jvm.PropertiesReloadedEvent;
+import tv.phantombot.event.twitch.TwitchBroadcasterTypeEvent;
 import tv.phantombot.event.twitch.clip.TwitchClipEvent;
 import tv.phantombot.event.twitch.gamechange.TwitchGameChangeEvent;
 import tv.phantombot.event.twitch.offline.TwitchOfflineEvent;
@@ -60,24 +70,32 @@ import tv.phantombot.twitch.api.Helix;
  * This class keeps track of certain Twitch information such as if the channel is online or not and sends events to the JS side to indicate when the
  * channel has gone off or online.
  */
-public final class TwitchCache {
+public final class TwitchCache implements Listener {
 
     private static final TwitchCache INSTANCE = new TwitchCache();
 
     /* Cached data */
     private boolean isOnline = false;
+    private boolean eventSubMode = false;
     private String streamCreatedAt = "";
     private String gameTitle = "Some Game";
     private String streamTitle = "Some Title";
     private String previewLink = "https://www.twitch.tv/p/assets/uploads/glitch_solo_750x422.png";
     private String logoLink = "https://www.twitch.tv/p/assets/uploads/glitch_solo_750x422.png";
     private ZonedDateTime streamUptime = null;
+    private long lastStreamUptimeSeconds = 0L;
     private int viewerCount = 0;
+    private int subscriberCount = 0;
+    private int subscriberPoints = 0;
     private Instant offlineDelay = null;
     private Instant offlineTimeout = Instant.MIN;
     private ZonedDateTime latestClip = null;
     private ZonedDateTime latestLogo = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneId.systemDefault());
     private Instant nextLogoCheck = Instant.EPOCH;
+    private boolean isAffiliate = false;
+    private boolean isPartner = false;
+    private ScheduledFuture<?> streamUpdate;
+    private ScheduledFuture<?> clipUpdate;
 
     public static TwitchCache instance() {
         return INSTANCE;
@@ -93,6 +111,19 @@ public final class TwitchCache {
         ExecutorService.schedule(this::startup, 1, TimeUnit.SECONDS);
     }
 
+    /**
+     * Performs startup if properties are reloaded and previous startup has failed
+     *
+     * @param event
+     */
+    @Handler
+    public void onPropertiesReloadedEvent(PropertiesReloadedEvent event) {
+        if (this.streamUpdate == null || this.clipUpdate == null) {
+            this.kill();
+            ExecutorService.schedule(this::startup, 1, TimeUnit.SECONDS);
+        }
+    }
+
     private void startup() {
         if (PhantomBot.instance() != null && PhantomBot.instance().getDataStore() != null) {
             String gameTitlen = getDBString("game");
@@ -104,7 +135,8 @@ public final class TwitchCache {
             if (streamTitlen != null) {
                 this.streamTitle = streamTitlen;
             }
-            ExecutorService.scheduleAtFixedRate(() -> {
+            this.syncStreamStatus(true);
+            this.streamUpdate = ExecutorService.scheduleAtFixedRate(() -> {
                 Thread.currentThread().setName("TwitchCache::updateCache");
                 com.gmt2001.Console.debug.println("TwitchCache::updateCache");
                 try {
@@ -113,7 +145,7 @@ public final class TwitchCache {
                     com.gmt2001.Console.err.printStackTrace(ex);
                 }
             }, 0, 30, TimeUnit.SECONDS);
-            ExecutorService.scheduleAtFixedRate(() -> {
+            this.clipUpdate = ExecutorService.scheduleAtFixedRate(() -> {
                 Thread.currentThread().setName("TwitchCache::updateClips");
                 com.gmt2001.Console.debug.println("TwitchCache::updateClips");
                 try {
@@ -151,7 +183,7 @@ public final class TwitchCache {
 
         start = start.withSecond(0);
 
-        Helix.instance().getClipsAsync(null, UsernameCache.instance().getIDCaster(), null, 100, null, null, start, start.plusDays(1))
+        Helix.instance().getClipsAsync(null, ViewerCache.instance().broadcaster().id(), null, 100, null, null, start, start.plusDays(1))
                 .doOnSuccess(jso -> {
                     if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
                         ZonedDateTime newLatestClip = this.latestClip;
@@ -209,101 +241,160 @@ public final class TwitchCache {
      * @botpropertycatsort offlinetimeout 210 20 Twitch
      */
     private void updateCache() {
-        Helix.instance().getStreamsAsync(1, null, null, List.of(UsernameCache.instance().getIDCaster()), null, null, null)
-                .doOnSuccess(jso -> {
-                    if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
-                        boolean isOnlinen = jso.getJSONArray("data").length() > 0;
-                        boolean sentTwitchOnlineEvent = false;
+        Helix.instance().getStreamsAsync(1, null, null, List.of(ViewerCache.instance().broadcaster().id()), null, null, null)
+            .doOnSuccess(jso -> {
+                if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
+                    boolean isOnlinen = jso.getJSONArray("data").length() > 0;
+                    boolean sentTwitchOnlineEvent = false;
 
-                        if (!this.isOnline && isOnlinen) {
-                            if (Instant.now().isAfter(this.offlineTimeout)) {
-                                this.offlineDelay = null;
-                                sentTwitchOnlineEvent = true;
-                            }
-                        } else if (this.isOnline && !isOnlinen) {
-                            if (this.offlineDelay == null) {
-                                this.offlineDelay = Instant.now().plusSeconds(CaselessProperties.instance().getPropertyAsInt("offlinedelay", 30));
-                            } else if (Instant.now().isAfter(this.offlineDelay)) {
-                                this.offlineDelay = null;
-                                this.goOffline(true);
-                            }
+                    if (!eventSubMode && !this.isOnline && isOnlinen) {
+                        if (Instant.now().isAfter(this.offlineTimeout)) {
+                            this.offlineDelay = null;
+                            sentTwitchOnlineEvent = true;
                         }
+                    } else if (!eventSubMode && this.isOnline && !isOnlinen) {
+                        if (this.offlineDelay == null) {
+                            this.offlineDelay = Instant.now().plusSeconds(CaselessProperties.instance().getPropertyAsInt("offlinedelay", 30));
+                        } else if (Instant.now().isAfter(this.offlineDelay)) {
+                            this.offlineDelay = null;
+                            this.goOffline(true);
+                        }
+                    }
 
-                        if (this.isOnline && isOnlinen) {
-                            JSONObject data = jso.getJSONArray("data").getJSONObject(0);
-                            /* Calculate the stream uptime in seconds. */
-                            this.streamUptime = ZonedDateTime.parse(data.getString("started_at"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                            this.streamCreatedAt = data.getString("started_at");
+                    if (this.isOnline && isOnlinen) {
+                        JSONObject data = jso.getJSONArray("data").getJSONObject(0);
+                        /* Calculate the stream uptime in seconds. */
+                        this.streamUptime = ZonedDateTime.parse(data.getString("started_at"), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                        this.streamCreatedAt = data.getString("started_at");
 
-                            /* Determine the preview link. */
-                            this.previewLink = data.getString("thumbnail_url").replace("{width}", "1920").replace("{height}", "1080");
+                        /* Determine the preview link. */
+                        this.previewLink = data.getString("thumbnail_url").replace("{width}", "1920").replace("{height}", "1080");
 
-                            /* Get the viewer count. */
-                            this.viewerCount = data.getInt("viewer_count");
+                        /* Get the viewer count. */
+                        this.viewerCount = data.getInt("viewer_count");
 
-                            String gameTitlen = data.getString("game_name");
+                        String gameTitlen = data.getString("game_name");
 
+                        if (!eventSubMode) {
                             this.setGameTitle(gameTitlen, !sentTwitchOnlineEvent);
-
-                            String streamTitlen = data.getString("title");
-
-                            this.setStreamStatus(streamTitlen, !sentTwitchOnlineEvent);
-
-                            if (sentTwitchOnlineEvent) {
-                                this.goOnline(true);
-                            }
-                        } else if (!this.isOnline && !isOnlinen) {
-                            this.streamUptime = null;
-                            this.previewLink = "https://www.twitch.tv/p/assets/uploads/glitch_solo_750x422.png";
-                            this.streamCreatedAt = "";
-                            this.viewerCount = 0;
                         }
+
+                        String streamTitlen = data.getString("title");
+
+                        if (!eventSubMode) {
+                            this.setStreamStatus(streamTitlen, !sentTwitchOnlineEvent);
+                        }
+
+                        if (!eventSubMode && sentTwitchOnlineEvent) {
+                            this.goOnline(true);
+                        }
+                    } else if (!eventSubMode && !this.isOnline && !isOnlinen) {
+                        this.streamUptime = null;
+                        this.previewLink = "https://www.twitch.tv/p/assets/uploads/glitch_solo_750x422.png";
+                        this.streamCreatedAt = "";
+                        this.viewerCount = 0;
                     }
+                }
 
-                    if (!PhantomBot.twitchCacheReady) {
-                        com.gmt2001.Console.debug.println("TwitchCache::setTwitchCacheReady(true)");
-                        PhantomBot.instance().setTwitchCacheReady(true);
-                    }
-                }).doOnError(ex -> com.gmt2001.Console.err.printStackTrace(ex)).subscribe();
+                if (!PhantomBot.twitchCacheReady) {
+                    com.gmt2001.Console.debug.println("TwitchCache::setTwitchCacheReady(true)");
+                    PhantomBot.instance().setTwitchCacheReady(true);
+                }
+            }).doOnError(ex -> com.gmt2001.Console.err.printStackTrace(ex)).subscribe();
 
-        Helix.instance().getUsersAsync(List.of(UsernameCache.instance().getIDCaster()), null)
-                .doOnSuccess(jso -> {
-                    if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
-                        if (jso.getJSONArray("data").length() > 0) {
-                            JSONObject data = jso.getJSONArray("data").getJSONObject(0);
+        Helix.instance().getUsersAsync(List.of(ViewerCache.instance().broadcaster().id()), null)
+            .doOnSuccess(jso -> {
+                if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
+                    if (jso.getJSONArray("data").length() > 0) {
+                        JSONObject data = jso.getJSONArray("data").getJSONObject(0);
 
-                            String oldLogoLink = this.logoLink;
-                            this.logoLink = data.getString("profile_image_url");
+                        String oldLogoLink = this.logoLink;
+                        this.logoLink = data.getString("profile_image_url");
+                        this.setAffiliatePartner(data.getString("broadcaster_type").equals("affiliate"), data.getString("broadcaster_type").equals("partner"));
 
-                            if (Instant.now().isAfter(this.nextLogoCheck)) {
-                                this.nextLogoCheck = Instant.now().plus(1, ChronoUnit.HOURS);
-                                HttpClientResponse headResponse = HttpClient.head(URIUtil.create(data.getString("profile_image_url")));
+                        if (Instant.now().isAfter(this.nextLogoCheck)) {
+                            this.nextLogoCheck = Instant.now().plus(1, ChronoUnit.HOURS);
+                            HttpClientResponse headResponse = HttpClient.head(URIUtil.create(data.getString("profile_image_url")));
 
-                                if (headResponse.isSuccess()) {
-                                    ZonedDateTime lastModified = ZonedDateTime.parse(headResponse.responseHeaders().get("last-modified"), DateTimeFormatter.RFC_1123_DATE_TIME);
+                            if (headResponse.isSuccess()) {
+                                ZonedDateTime lastModified = ZonedDateTime.parse(headResponse.responseHeaders().get("last-modified"), DateTimeFormatter.RFC_1123_DATE_TIME);
 
-                                    if (lastModified.isAfter(this.latestLogo) || !oldLogoLink.equals(data.getString("profile_image_url"))) {
-                                        HttpClientResponse logoResponse = HttpClient.get(URIUtil.create(data.getString("profile_image_url")));
+                                if (lastModified.isAfter(this.latestLogo) || !oldLogoLink.equals(data.getString("profile_image_url"))) {
+                                    HttpClientResponse logoResponse = HttpClient.get(URIUtil.create(data.getString("profile_image_url")));
 
-                                        if (logoResponse.isSuccess()) {
-                                            Path logoPath = Paths.get("./web/panel/img/logo.jpeg");
+                                    if (logoResponse.isSuccess()) {
+                                        Path logoPath = Paths.get("./web/panel/img/logo.jpeg");
 
-                                            try {
-                                                Files.createDirectories(logoPath.getParent());
+                                        try {
+                                            Files.createDirectories(logoPath.getParent());
 
-                                                Files.write(logoPath, logoResponse.rawResponseBody(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+                                            Files.write(logoPath, logoResponse.rawResponseBody(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 
-                                                this.latestLogo = lastModified;
-                                            } catch (IOException ex) {
-                                                com.gmt2001.Console.err.printStackTrace(ex);
-                                            }
+                                            this.latestLogo = lastModified;
+                                        } catch (IOException ex) {
+                                            com.gmt2001.Console.err.printStackTrace(ex);
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }).doOnError(ex -> com.gmt2001.Console.err.printStackTrace(ex)).subscribe();
+
+        if (this.isAffiliateOrPartner()) {
+            Helix.instance().getBroadcasterSubscriptionsAsync(ViewerCache.instance().broadcaster().id(), null, 1, null)
+                .doOnSuccess(jso -> {
+                    if (jso != null && !jso.has("error")) {
+                        this.subscriberCount = jso.optInt("total");
+                        this.subscriberPoints = jso.optInt("points");
+                    }
                 }).doOnError(ex -> com.gmt2001.Console.err.printStackTrace(ex)).subscribe();
+        }
+    }
+
+    /**
+     * Sets the current Affiliate and Partner states, and sends ane vent if they changed
+     *
+     * @param isAffiliate {@code true} If the broadcaster is an Affiliate (not partner)
+     * @param isPartner {@code true} If the broadcaster is a Partner (not affiliate)
+     */
+    public void setAffiliatePartner(boolean isAffiliate, boolean isPartner) {
+        boolean changed = this.isAffiliate != isAffiliate || this.isPartner != isPartner;
+
+        if (changed) {
+            EventBus.instance().postAsync(new TwitchBroadcasterTypeEvent(this.isAffiliate, this.isPartner, isAffiliate, isPartner));
+        }
+
+        this.isAffiliate = isAffiliate;
+        this.isPartner = isPartner;
+    }
+
+    /**
+     * Indicates if this channel is an affiliate
+     *
+     * @return
+     */
+    public boolean isAffiliate() {
+        return this.isAffiliate;
+    }
+
+    /**
+     * Indicates if this channel is a partner
+     *
+     * @return
+     */
+    public boolean isPartner() {
+        return this.isPartner;
+    }
+
+    /**
+     * Indicates if this channel is either an affiliate or a partner
+     *
+     * @return
+     */
+    public boolean isAffiliateOrPartner() {
+        return this.isAffiliate() || this.isPartner();
     }
 
     /**
@@ -337,6 +428,16 @@ public final class TwitchCache {
         return Duration.between(this.streamUptime, ZonedDateTime.now()).getSeconds();
     }
 
+
+    /**
+     * Returns the uptime of the channel in seconds of the previous stream.
+     *
+     * @return {@code 0L} if no streams have ended since the last bot restart
+     */
+    public long getLastStreamUptimeSeconds() {
+        return this.lastStreamUptimeSeconds;
+    }
+
     /**
      * Returns the stream created_at date from Twitch.
      *
@@ -356,19 +457,19 @@ public final class TwitchCache {
     }
 
     /**
-     * Sets the game title.Useful for when !game is used.
+     * Sets the game title
      *
-     * @param gameTitle
+     * @param gameTitle The new game name
      */
     public void setGameTitle(String gameTitle) {
         this.setGameTitle(gameTitle, true);
     }
 
     /**
-     * Sets the game title.Useful for when !game is used.
+     * Sets the game title
      *
-     * @param gameTitle
-     * @param sendEvent
+     * @param gameTitle The new game name
+     * @param sendEvent {@code true} to send a {@link TwitchGameChangeEvent}
      */
     public void setGameTitle(String gameTitle, boolean sendEvent) {
         boolean changed = !this.gameTitle.equals(gameTitle);
@@ -380,7 +481,7 @@ public final class TwitchCache {
     }
 
     /**
-     * Returns the title (status) of the stream.
+     * Returns the title (status) of the stream
      *
      * @return
      */
@@ -389,19 +490,19 @@ public final class TwitchCache {
     }
 
     /**
-     * Sets the title (status) of the stream.Useful for when !title is used.
+     * Sets the title (status) of the stream
      *
-     * @param streamTitle
+     * @param streamTitle The new title
      */
     public void setStreamStatus(String streamTitle) {
         this.setStreamStatus(streamTitle, true);
     }
 
     /**
-     * Sets the title (status) of the stream.Useful for when !title is used.
+     * Sets the title (status) of the stream
      *
-     * @param streamTitle
-     * @param sendEvent
+     * @param streamTitle The new title
+     * @param sendEvent {@code true} to send a {@link TwitchTitleChangeEvent}
      */
     public void setStreamStatus(String streamTitle, boolean sendEvent) {
         boolean changed = !this.streamTitle.equals(streamTitle);
@@ -418,7 +519,11 @@ public final class TwitchCache {
      * @return
      */
     public String getDisplayName() {
-        return UsernameCache.instance().resolveCaster();
+        try {
+            return ViewerCache.instance().broadcaster().name();
+        } catch (Exception ex) {
+            return PhantomBot.instance().getChannelName();
+        }
     }
 
     /**
@@ -443,18 +548,84 @@ public final class TwitchCache {
      * Returns the viewer count.
      *
      * @return
+     * @deprecated Please use {@link #viewers()} instead
      */
+    @Deprecated(since = "3.8.0.0", forRemoval = true)
     public int getViewerCount() {
         return this.viewerCount;
     }
 
     /**
-     * Returns the views count.
+     * The current number of followers of the broadcaster.
+     * <br/><br/>
+     * This number may be slightly off from the actual live numbers due to the nature of Twitch API caching
      *
-     * @return
+     * @return The number of followers of the broadcaster
      */
+    public int followers() {
+        return FollowersCache.instance().total();
+    }
+
+    /**
+     * The current number of subscribers of the broadcaster.
+     * <br/><br/>
+     * This number may be slightly off from the actual live numbers due to the nature of Twitch API caching
+     *
+     * @return The number of subscribers of the broadcaster
+     */
+    public int subscribers() {
+        return this.subscriberCount;
+    }
+
+    /**
+     * The current number of subscriber points of the broadcaster.
+     * <br/><br/>
+     * This number may be slightly off from the actual live numbers due to the nature of Twitch API caching
+     *
+     * @return The number of subscriber points of the broadcaster
+     */
+    public int subscriberPoints() {
+        return this.subscriberPoints;
+    }
+
+    /**
+     * The current number of viewers of the live stream.
+     * <br/><br/>
+     * This number may be slightly off from the actual live numbers due to the nature of Twitch API caching
+     *
+     * @return The number of viewers in the stream; {@code 0} if not live
+     */
+    public int viewers() {
+        return this.viewerCount;
+    }
+
+    /**
+     * Returns the views count. Twitch does not report this anymore
+     *
+     * @return {@code -1} as Twitch does not report this anymore
+     * @deprecated Twitch does not report this anymore, this method is temporarily available to prevent script errors and will be removed soon
+     */
+    @Deprecated(since = "3.8.0.0", forRemoval = true)
     public int getViews() {
         return -1;
+    }
+
+    /**
+     * Sets the current state of EventSub mode. When EventSub mode is enabled, stream title, game, and online state are not synced by TwitchAPI
+     *
+     * @param enabled {@code true} to enable EventSub mode
+     */
+    public synchronized void eventSubMode(boolean enabled) {
+        this.eventSubMode = enabled;
+    }
+
+    /**
+     * Returns the current state of EventSub mode. When EventSub mode is enabled, stream title, game, and online state are not synced by TwitchAPI
+     *
+     * @return {@code true} if EventSub mode is enabled
+     */
+    public boolean eventSubMode() {
+        return this.eventSubMode;
     }
 
     /**
@@ -481,10 +652,19 @@ public final class TwitchCache {
     /**
      * Sets online state
      *
-     * @param shouldSendEvent
+     * @param shouldSendEvent {@code true} to send a {@link TwitchOnlineEvent}
      */
     public void goOnline(boolean shouldSendEvent) {
-        if (!this.isOnline && Instant.now().isAfter(this.offlineTimeout)) {
+        this.goOnline(shouldSendEvent, true);
+    }
+
+    /**
+     * Sets online state
+     *
+     * @param shouldSendEvent {@code true} to send a {@link TwitchOnlineEvent}
+     */
+    public void goOnline(boolean shouldSendEvent, boolean useOfflineTimeout) {
+        if (!this.isOnline && (!useOfflineTimeout || Instant.now().isAfter(this.offlineTimeout))) {
             this.isOnline = true;
             this.streamUptime = ZonedDateTime.now();
 
@@ -497,12 +677,13 @@ public final class TwitchCache {
     /**
      * Sets offline state
      *
-     * @param shouldSendEvent
+     * @param shouldSendEvent {@code true} to send a {@link TwitchOfflineEvent}
      */
     public void goOffline(boolean shouldSendEvent) {
         if (this.isOnline) {
             this.isOnline = false;
             this.viewerCount = 0;
+            this.lastStreamUptimeSeconds = Duration.between(this.streamUptime, ZonedDateTime.now()).getSeconds();
             this.streamUptime = null;
             this.offlineTimeout = Instant.now().plusSeconds(CaselessProperties.instance().getPropertyAsInt("offlinetimeout", 300));
 
@@ -513,23 +694,46 @@ public final class TwitchCache {
     }
 
     /**
-     * Updates the stream status
+     * Syncs the stream status using both Get Streams and Get Channel Information, then sets the online status
+     */
+    public void syncOnline() {
+        Mono.delay(Duration.ofSeconds(10)).doFinally((SignalType s) -> {
+            this.syncStreamStatus(false, (hasStream) -> {
+                if (!hasStream) {
+                    this.syncStreamInfoFromChannel(false, (hasChannel) -> {
+                        this.goOffline(true);
+                    });
+                } else {
+                    this.goOnline(true, false);
+                }
+            });
+        }).subscribe();
+    }
+
+    /**
+     * Updates the stream status from the API
      */
     public void syncStreamStatus() {
         this.syncStreamStatus(false);
     }
 
     /**
-     * Updates the stream status
+     * Updates the stream status from the Get Streams endpoint
      *
-     * @param shouldSendEvent
+     * @param shouldSendEvent {@code true} to send {@link TwitchOnlineEvent} or {@link TwitchOfflineEvent}, if appropriate
      */
     public void syncStreamStatus(boolean shouldSendEvent) {
         this.syncStreamStatus(shouldSendEvent, null);
     }
 
+    /**
+     * Updates the stream title/game/online status from the Get Streams endpoint
+     *
+     * @param shouldSendEvent {@code true} to send events, if appropriate
+     * @param callback A callback to execute on success. The parameter is {@code true} if the stream information was successfully retrieved
+     */
     public void syncStreamStatus(boolean shouldSendEvent, Consumer<Boolean> callback) {
-        Helix.instance().getStreamsAsync(1, null, null, List.of(UsernameCache.instance().getIDCaster()), null, null, null).doOnSuccess(streams -> {
+        Helix.instance().getStreamsAsync(1, null, null, List.of(ViewerCache.instance().broadcaster().id()), null, null, null).doOnSuccess(streams -> {
             boolean hasData = false;
             if (streams != null && streams.has("data")) {
                 if (streams.getJSONArray("data").length() > 0) {
@@ -569,8 +773,14 @@ public final class TwitchCache {
         }).subscribe();
     }
 
+    /**
+     * Syncs teh current stream title/game via the Get Channel Information endpoint
+     *
+     * @param shouldSendEvent {@code true} to send {@link TwitchTitleChangeEvent} and/or {@link TwitchGameChangeEvent}, if appropriate
+     * @param callback A callback to execute on success. The parameter is {@code true} if the channel information was successfully retrieved
+     */
     public void syncStreamInfoFromChannel(boolean shouldSendEvent, Consumer<Boolean> callback) {
-        Helix.instance().getChannelInformationAsync(UsernameCache.instance().getIDCaster()).doOnSuccess(channels -> {
+        Helix.instance().getChannelInformationAsync(ViewerCache.instance().broadcaster().id()).doOnSuccess(channels -> {
             boolean hasData = false;
             if (channels != null && channels.has("data")) {
                 if (channels.getJSONArray("data").length() > 0) {
@@ -591,14 +801,14 @@ public final class TwitchCache {
     /**
      * Updates the viewer count
      *
-     * @param viewers
+     * @param viewers The new viewer count
      */
     public void updateViewerCount(int viewers) {
         this.viewerCount = viewers;
     }
 
     /**
-     * Updates the current game
+     * Updates the current game from the API
      */
     public void updateGame() {
         this.updateGame(false);
@@ -607,10 +817,10 @@ public final class TwitchCache {
     /**
      * Updates the current game
      *
-     * @param sendEvent
+     * @param sendEvent {@code true} to send {@link TwitchGameChangeEvent}, if appropriate
      */
     public void updateGame(boolean sendEvent) {
-        Helix.instance().getChannelInformationAsync(UsernameCache.instance().getIDCaster()).doOnSuccess(jso -> {
+        Helix.instance().getChannelInformationAsync(ViewerCache.instance().broadcaster().id()).doOnSuccess(jso -> {
             if (jso != null && !jso.has("error") && jso.has("data") && !jso.isNull("data")) {
                 JSONArray data = jso.getJSONArray("data");
 
@@ -619,5 +829,14 @@ public final class TwitchCache {
                 }
             }
         }).doOnError(ex -> com.gmt2001.Console.err.printStackTrace(ex)).subscribe();
+    }
+
+    public void kill() {
+        if (this.streamUpdate != null) {
+            this.streamUpdate.cancel(true);
+        }
+        if (this.clipUpdate != null) {
+            this.clipUpdate.cancel(true);
+        }
     }
 }

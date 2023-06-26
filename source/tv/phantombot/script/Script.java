@@ -35,8 +35,7 @@ import tv.phantombot.PhantomBot;
 public class Script {
 
     public static final NativeObject global = new NativeObject();
-    @SuppressWarnings("rawtypes")
-    private final List<ScriptDestroyable> destroyables = new ArrayList<>();
+    private final List<ScriptDestroyable<?>> destroyables = new ArrayList<>();
     private static final NativeObject vars = new NativeObject();
     private final File file;
     private final String fileName;
@@ -62,7 +61,6 @@ public class Script {
         return ScriptableObject.callMethod(global, method, obj).toString();
     }
 
-    @SuppressWarnings("rawtypes")
     public void reload() throws IOException {
         if (killed) {
             return;
@@ -78,7 +76,6 @@ public class Script {
         }
     }
 
-    @SuppressWarnings("rawtypes")
     public void reload(boolean silent) throws IOException {
         if (killed) {
             return;
@@ -134,9 +131,7 @@ public class Script {
         }
 
         context = ctxFactory.enterContext();
-        if (PhantomBot.getEnableRhinoES6()) {
-            context.setLanguageVersion(Context.VERSION_ES6);
-        }
+        context.setLanguageVersion(Context.VERSION_ES6);
 
         if (!PhantomBot.getEnableRhinoDebugger()) {
             context.setOptimizationLevel(9);
@@ -164,12 +159,10 @@ public class Script {
         }
     }
 
-    @SuppressWarnings("rawtypes")
-    public List<ScriptDestroyable> destroyables() {
+    public List<ScriptDestroyable<?>> destroyables() {
         return destroyables;
     }
 
-    @SuppressWarnings("rawtypes")
     public void doDestroyables() {
         destroyables.forEach((destroyable) -> {
             destroyable.destroy();

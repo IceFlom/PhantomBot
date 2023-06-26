@@ -64,17 +64,30 @@ public class HttpSslRedirectHandler extends SimpleChannelInboundHandler<FullHttp
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
         if (!req.decoderResult().isSuccess()) {
+            com.gmt2001.Console.debug.println("400 DECODER");
+            com.gmt2001.Console.err.printStackTrace(req.decoderResult().cause());
             HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.BAD_REQUEST));
             return;
         }
 
+        boolean allowNonSsl = false;
+
         QueryStringDecoder qsd = new QueryStringDecoder(req.uri());
         for (String u : ALLOWNONSSLPATHS) {
             if (qsd.path().startsWith(u)) {
-                ReferenceCountUtil.retain(req);
-                ctx.fireChannelRead(req);
-                return;
+                allowNonSsl = true;
+                break;
             }
+        }
+
+        if (req.headers().contains(HTTPWSServer.HEADER_X_FORWARDED_HOST) || req.headers().contains(HTTPWSServer.HEADER_CF_RAY)) {
+            allowNonSsl = true;
+        }
+
+        if (allowNonSsl) {
+            ReferenceCountUtil.retain(req);
+            ctx.fireChannelRead(req);
+            return;
         }
 
         String host = req.headers().get(HttpHeaderNames.HOST);

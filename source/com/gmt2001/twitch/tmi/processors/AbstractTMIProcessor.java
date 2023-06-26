@@ -103,25 +103,30 @@ public abstract class AbstractTMIProcessor implements Flow.Subscriber<TMIMessage
      */
     @Override
     public final void onNext(TMIMessage item) {
-        if (null != item.messageType()) {
-            switch (item.messageType()) {
-                case OPEN:
-                    this.onOpen();
-                    break;
-                case MESSAGE:
-                    if (commands.contains(item.command())) {
-                        this.onMessage(item);
-                    }
-                    break;
-                case CLOSE:
-                    this.onClose();
-                    break;
-                default:
-                    break;
+        try {
+            if (null != item.messageType()) {
+                switch (item.messageType()) {
+                    case OPEN:
+                        this.onOpen();
+                        break;
+                    case MESSAGE:
+                        if (commands.contains(item.command())) {
+                            this.onMessage(item);
+                        }
+                        break;
+                    case CLOSE:
+                        this.onClose();
+                        break;
+                    default:
+                        break;
+                }
             }
+
+            this.onFlowNext(item);
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
         }
 
-        this.onFlowNext(item);
         this.subscription.request(1);
     }
 
@@ -134,6 +139,7 @@ public abstract class AbstractTMIProcessor implements Flow.Subscriber<TMIMessage
     public final void onError(Throwable throwable) {
         com.gmt2001.Console.err.printStackTrace(throwable);
         this.onFlowError(throwable);
+        this.subscribe();
     }
 
     /**
@@ -229,7 +235,21 @@ public abstract class AbstractTMIProcessor implements Flow.Subscriber<TMIMessage
         return PhantomBot.instance().getSession();
     }
 
+    /**
+     * Shortcut to get the bot username
+     *
+     * @return
+     */
     protected String user() {
         return PhantomBot.instance().getBotName();
+    }
+
+    /**
+     * Shortcut to get the channel name
+     *
+     * @return
+     */
+    protected String channel() {
+        return this.session().getChannelName();
     }
 }

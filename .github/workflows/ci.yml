@@ -5,6 +5,8 @@ on:
       - '*'
       - '!edge'
       - '!iv-dev'
+    paths:
+      - '**.java'
   pull_request:
     branches:
       - '*'

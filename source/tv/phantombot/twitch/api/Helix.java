@@ -16,14 +16,6 @@
  */
 package tv.phantombot.twitch.api;
 
-import com.gmt2001.ExecutorService;
-import com.gmt2001.HttpRequest;
-import com.gmt2001.httpclient.HttpClient;
-import com.gmt2001.httpclient.HttpClientResponse;
-import com.gmt2001.httpclient.NotJSONException;
-import com.gmt2001.httpclient.URIUtil;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpMethod;
 import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
@@ -34,6 +26,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,9 +37,22 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+
+import com.gmt2001.ExecutorService;
+import com.gmt2001.HttpRequest;
+import com.gmt2001.httpclient.HttpClient;
+import com.gmt2001.httpclient.HttpClientResponse;
+import com.gmt2001.httpclient.NotJSONException;
+import com.gmt2001.httpclient.URIUtil;
+import com.gmt2001.twitch.cache.ViewerCache;
+import com.gmt2001.twitch.eventsub.EventSubSubscription;
+
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMethod;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 import tv.phantombot.CaselessProperties;
@@ -116,6 +122,22 @@ public class Helix {
     }
 
     /**
+     * The maximum value of {@link #remainingRateLimit()}
+     * @return
+     */
+    public int maxRateLimit() {
+        return this.maxRateLimit;
+    }
+
+    /**
+     * The remaining rate limit for Helix
+     * @return
+     */
+    public int remainingRateLimit() {
+        return this.remainingRateLimit;
+    }
+
+    /**
      * Method that gets the reset time for the rate limit.
      *
      * @return
@@ -182,6 +204,10 @@ public class Helix {
 
     private String qspValid(String key, String value) {
         return value != null && !value.isBlank() ? key + "=" + value : "";
+    }
+
+    private String qspValid(String key, int value) {
+        return this.qspValid(key, Integer.toString(value));
     }
 
     /**
@@ -291,7 +317,7 @@ public class Helix {
         }
 
         if (CaselessProperties.instance().getPropertyAsBoolean("helixdebug", false)) {
-            StackTraceElement st = com.gmt2001.Console.debug.findCaller("tv.phantombot.twitch.api.Helix");
+            StackTraceElement st = com.gmt2001.Console.debug.findCaller(Helix.class.getName());
             com.gmt2001.Console.debug.println("Caller: [" + st.getMethodName() + "()@" + st.getFileName() + ":" + st.getLineNumber() + "]");
             com.gmt2001.Console.debug.println(returnObject.toString(4));
         }
@@ -529,7 +555,9 @@ public class Helix {
      * @return
      * @throws JSONException
      * @throws IllegalArgumentException
+     * @deprecated This endpoint is deprecated by Twitch in favor of {@link #getChannelFollowers(String, int, String)}, which requires an OAuth scope
      */
+    @Deprecated(since = "3.8.0.0", forRemoval = true)
     public JSONObject getUsersFollows(@Nullable String from_id, @Nullable String to_id, int first, @Nullable String after)
             throws JSONException, IllegalArgumentException {
         return this.getUsersFollowsAsync(from_id, to_id, first, after).block();
@@ -548,7 +576,9 @@ public class Helix {
      * @return
      * @throws JSONException
      * @throws IllegalArgumentException
+     * @deprecated This endpoint is deprecated by Twitch in favor of {@link #getChannelFollowersAsync(String, int, String)}, which requires an OAuth scope
      */
+    @Deprecated(since = "3.8.0.0", forRemoval = true)
     public Mono<JSONObject> getUsersFollowsAsync(@Nullable String from_id, @Nullable String to_id, int first, @Nullable String after)
             throws JSONException, IllegalArgumentException {
         if ((from_id == null || from_id.isBlank()) && (to_id == null || to_id.isBlank())) {
@@ -2448,17 +2478,401 @@ public class Helix {
     public Mono<JSONObject> sendShoutoutAsync(String from_broadcaster_id, String to_broadcaster_id)
             throws JSONException, IllegalArgumentException {
         if (from_broadcaster_id == null || from_broadcaster_id.isBlank()) {
-            throw new IllegalArgumentException("from_broadcaster_id");
+            throw new IllegalArgumentException("from_broadcaster_id is required");
         }
 
         if (to_broadcaster_id == null || to_broadcaster_id.isBlank()) {
-            throw new IllegalArgumentException("to_broadcaster_id");
+            throw new IllegalArgumentException("to_broadcaster_id is required");
         }
 
         String endpoint = "/chat/shoutouts?" + this.qspValid("from_broadcaster_id", from_broadcaster_id) + this.qspValid("&to_broadcaster_id", to_broadcaster_id) + this.qspValid("&moderator_id", TwitchValidate.instance().getAPIUserID());
 
         return this.handleMutatorAsync(endpoint, () -> {
             return this.handleRequest(HttpMethod.POST, endpoint);
+        });
+    }
+
+    /**
+     * Gets a list of EventSub subscriptions that the client in the access token created.
+     * <br /><br />
+     * Use the status, type, and user_id query parameters to filter the list of subscriptions that are returned.
+     * The filters are mutually exclusive; the request fails if you specify more than one filter.
+     *
+     * @param status Filter subscriptions by its status.
+     * @param type Filter subscriptions by subscription type.
+     * @param user_id Filter subscriptions by user ID. The response contains subscriptions where this ID matches a user ID that you specified in the Condition when you created the subscription.
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> getEventSubSubscriptionsAsync(@Nullable EventSubSubscription.SubscriptionStatus status,
+            @Nullable String type, @Nullable String user_id, @Nullable String after)
+            throws JSONException, IllegalArgumentException {
+            String condition = "?";
+
+            if (status != null) {
+                condition += this.qspValid("status", status.name().toLowerCase());
+            }
+
+            if (type != null && !type.isBlank()) {
+                if (condition.length() > 1) {
+                    throw new IllegalArgumentException("can only use one of status, type, user_id");
+                }
+
+                condition += this.qspValid("type", type);
+            }
+
+            if (user_id != null && !user_id.isBlank()) {
+                if (condition.length() > 1) {
+                    throw new IllegalArgumentException("can only use one of status, type, user_id");
+                }
+
+                condition += this.qspValid("user_id", user_id);
+            }
+
+            condition += this.qspValid((condition.length() > 1 ? "&" : "") + "after", after);
+
+        String endpoint = "/eventsub/subscriptions" + (condition.length() > 1 ? condition : "");
+
+        return this.handleQueryAsync(endpoint, () -> {
+            return this.handleRequest(HttpMethod.GET, endpoint);
+        });
+    }
+
+    /**
+     * Creates an EventSub subscription.
+     *
+     * @param jsonString A JSON string describing the parameters of the new subscription
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> createEventSubSubscriptionAsync(String jsonString)
+            throws JSONException, IllegalArgumentException {
+        if (jsonString == null || jsonString.isBlank()) {
+            throw new IllegalArgumentException("jsonString is required");
+        }
+
+        String endpoint = "/eventsub/subscriptions";
+
+        return this.handleMutatorAsync(endpoint + jsonString, () -> {
+            return this.handleRequest(HttpMethod.POST, endpoint, jsonString);
+        });
+    }
+
+    /**
+     * Deletes an EventSub subscription.
+     *
+     * @param id The ID of the subscription to delete.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> deleteEventSubSubscriptionAsync(String id)
+            throws JSONException, IllegalArgumentException {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("id is required");
+        }
+
+        String endpoint = "/eventsub/subscriptions?" + this.qspValid("id", id);
+
+        return this.handleMutatorAsync(endpoint, () -> {
+            return this.handleRequest(HttpMethod.DELETE, endpoint);
+        });
+    }
+
+    /**
+     * Gets a list of Channel Points Predictions that the broadcaster created.
+     *
+     * @param id The ID of the prediction to get; {@code null} to get the most recent predictions. You may specify a maximum of 25 IDs.
+     * @param first The maximum number of items to return per page in the response. Minimum: 1. Maximum: 25.
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public JSONObject getPredictions(List<String> id, int first, String after)
+            throws JSONException, IllegalArgumentException {
+        return this.getPredictionsAsync(id, first, after).block();
+    }
+
+    /**
+     * Gets a list of Channel Points Predictions that the broadcaster created.
+     *
+     * @param id The ID of the prediction to get; {@code null} to get the most recent predictions. You may specify a maximum of 25 IDs.
+     * @param first The maximum number of items to return per page in the response. Minimum: 1. Maximum: 25.
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> getPredictionsAsync(List<String> id, int first, String after)
+            throws JSONException, IllegalArgumentException {
+        if (id != null && !id.isEmpty() && id.size() > 25) {
+            throw new IllegalArgumentException("Limit 25 ids");
+        }
+
+        first = Math.min(25, Math.max(1, first));
+
+        String ids = "";
+
+        if (id != null && !id.isEmpty()) {
+            ids = id.stream().limit(25).collect(Collectors.joining("&id="));
+        }
+
+        String endpoint = "/predictions?" + this.qspValid("broadcaster_id", TwitchValidate.instance().getAPIUserID())
+            + this.qspValid("&id", ids) + this.qspValid("&first", Integer.toString(first))
+            + this.qspValid("&after", after);
+
+        return this.handleQueryAsync(endpoint, () -> {
+            return this.handleRequest(HttpMethod.GET, endpoint);
+        });
+    }
+
+    /**
+     * Creates a Channel Points Prediction.
+     *
+     * @param title The question that the broadcaster is asking. The title is limited to a maximum of 45 characters.
+     * @param seconds The length of time (in seconds) that the prediction will run for. The minimum is 30 seconds and the maximum is 1800 seconds (30 minutes).
+     * @param choices The list of possible outcomes that the viewers may choose from. The list must contain a minimum of 2 choices and up to a maximum of 10 choices. Echo choice is limited to a maximum of 25 characters.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public JSONObject createPrediction(String title, long seconds, List<String> choices)
+            throws JSONException, IllegalArgumentException {
+        return this.createPrediction(title, Duration.ofSeconds(seconds), choices);
+    }
+
+    /**
+     * Creates a Channel Points Prediction.
+     *
+     * @param title The question that the broadcaster is asking. The title is limited to a maximum of 45 characters.
+     * @param duration The length of time that the prediction will run for. The minimum is 30 seconds and the maximum is 30 minutes.
+     * @param choices The list of possible outcomes that the viewers may choose from. The list must contain a minimum of 2 choices and up to a maximum of 10 choices. Echo choice is limited to a maximum of 25 characters.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public JSONObject createPrediction(String title, Duration duration, List<String> choices)
+            throws JSONException, IllegalArgumentException {
+        return this.createPredictionAsync(title, duration, choices).block();
+    }
+
+    /**
+     * Creates a Channel Points Prediction.
+     *
+     * @param title The question that the broadcaster is asking. The title is limited to a maximum of 45 characters.
+     * @param duration The length of time that the prediction will run for. The minimum is 30 seconds and the maximum is 30 minutes.
+     * @param choices The list of possible outcomes that the viewers may choose from. The list must contain a minimum of 2 choices and up to a maximum of 10 choices. Each choice is limited to a maximum of 25 characters.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> createPredictionAsync(String title, Duration duration, List<String> choices)
+            throws JSONException, IllegalArgumentException {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("title is required");
+        }
+
+        if (duration.toSeconds() < 30) {
+            duration = Duration.ofSeconds(30);
+        }
+
+        if (duration.toSeconds() > 1800) {
+            duration = Duration.ofMinutes(30);
+        }
+
+        if (choices == null) {
+            throw new IllegalArgumentException("choices is required");
+        }
+
+        List<String> validChoices = new ArrayList<>();
+
+        for (String choice: choices) {
+            if (choice != null &&  !choice.isBlank()) {
+                if (choice.length() > 25) {
+                    choice = choice.substring(0, 25);
+                }
+
+                validChoices.add(choice);
+            }
+        }
+
+        if (validChoices.size() < 2 || validChoices.size() > 10) {
+            throw new IllegalArgumentException("choices.size() must be >= 2 && <= 10");
+        }
+
+        if (title.length() > 45) {
+            title = title.substring(0, 45);
+        }
+
+        JSONStringer js = new JSONStringer();
+        js.object();
+
+        js.key("broadcaster_id").value(TwitchValidate.instance().getAPIUserID());
+        js.key("title").value(title);
+        js.key("outcomes").array();
+        validChoices.forEach(choice -> js.object().key("title").value(choice).endObject());
+        js.endArray();
+        js.key("prediction_window").value(duration.toSeconds());
+        js.endObject();
+
+        String endpoint = "/predictions";
+
+        return this.handleMutatorAsync(endpoint + js.toString(), () -> {
+            return this.handleRequest(HttpMethod.POST, endpoint, js.toString());
+        });
+    }
+
+    /**
+     * The status to set the prediction to for {@link #endPredictionAsync(String, PredictionStatus, String)})
+     */
+    public enum PredictionStatus {
+        /**
+         * The broadcaster is locking the prediction, which means viewers may no longer make predictions.
+         */
+        LOCKED,
+        /**
+         * The broadcaster is canceling the prediction and sending refunds to the participants.
+         */
+        CANCELED,
+        /**
+         * The winning outcome is determined and the Channel Points are distributed to the viewers who predicted the correct outcome.
+         */
+        RESOLVED
+    }
+
+    /**
+     * Locks, resolves, or cancels a Channel Points Prediction.
+     *
+     * The broadcaster can update an active prediction to {@link PredictionStatus.LOCKED}, {@link PredictionStatus.RESOLVED}, or {@link PredictionStatus.CANCELED};
+     * and update a locked prediction to {@link PredictionStatus.RESOLVED} or {@link PredictionStatus.CANCELED}.
+     *
+     * The broadcaster has up to 24 hours after the prediction window closes to resolve the prediction.
+     * If not, Twitch sets the status to {@link PredictionStatus.CANCELED} and returns the points.
+     *
+     * @param id The ID of the prediction to update.
+     * @param status The status to set the prediction to.
+     * @param winningOutcomeId The ID of the winning outcome. You must set this parameter if you set status to {@link PredictionStatus.RESOLVED}.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public JSONObject endPrediction(String id, PredictionStatus status, String winningOutcomeId)
+            throws JSONException, IllegalArgumentException {
+        return this.endPredictionAsync(id, status, winningOutcomeId).block();
+    }
+
+    /**
+     * Locks, resolves, or cancels a Channel Points Prediction.
+     *
+     * The broadcaster can update an active prediction to {@link PredictionStatus.LOCKED}, {@link PredictionStatus.RESOLVED}, or {@link PredictionStatus.CANCELED};
+     * and update a locked prediction to {@link PredictionStatus.RESOLVED} or {@link PredictionStatus.CANCELED}.
+     *
+     * The broadcaster has up to 24 hours after the prediction window closes to resolve the prediction.
+     * If not, Twitch sets the status to {@link PredictionStatus.CANCELED} and returns the points.
+     *
+     * @param id The ID of the prediction to update.
+     * @param status The status to set the prediction to.
+     * @param winningOutcomeId The ID of the winning outcome. You must set this parameter if you set status to {@link PredictionStatus.RESOLVED}.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> endPredictionAsync(String id, PredictionStatus status, String winningOutcomeId)
+            throws JSONException, IllegalArgumentException {
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("id is required");
+        }
+
+        if (status == PredictionStatus.RESOLVED && (winningOutcomeId == null || winningOutcomeId.isBlank())) {
+            throw new IllegalArgumentException("winningOutcomeId is required");
+        }
+
+        JSONStringer js = new JSONStringer();
+        js.object();
+
+        js.key("broadcaster_id").value(TwitchValidate.instance().getAPIUserID());
+        js.key("id").value(id);
+        js.key("status").value(status.name());
+
+        if (status == PredictionStatus.RESOLVED) {
+            js.key("winning_outcome_id").value(winningOutcomeId);
+        }
+
+        js.endObject();
+
+        String endpoint = "/predictions";
+
+        return this.handleMutatorAsync(endpoint + js.toString(), () -> {
+            return this.handleRequest(HttpMethod.PATCH, endpoint, js.toString());
+        });
+    }
+
+    /**
+     * Gets a list of users that follow the specified broadcaster.
+     *
+     * You can also use this endpoint to see whether a specific user follows the broadcaster.
+     *
+     * @param user_id A user's ID. Use this parameter to see whether the user follows this broadcaster. If specified, the response contains this user if they follow the broadcaster. If not specified, the response contains all users that follow the broadcaster.
+     * @param first The maximum number of items to return per page in the response. Minimum: 1. Maximum: 100.
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public JSONObject getChannelFollowers(@Nullable String user_id, int first, @Nullable String after)
+            throws JSONException, IllegalArgumentException {
+            return this.getChannelFollowersAsync(user_id, first, after).block();
+        }
+
+    /**
+     * Gets a list of users that follow the specified broadcaster.
+     *
+     * You can also use this endpoint to see whether a specific user follows the broadcaster.
+     *
+     * @param user_id A user's ID. Use this parameter to see whether the user follows this broadcaster. If specified, the response contains this user if they follow the broadcaster. If not specified, the response contains all users that follow the broadcaster.
+     * @param first The maximum number of items to return per page in the response. Minimum: 1. Maximum: 100.
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> getChannelFollowersAsync(@Nullable String user_id, int first, @Nullable String after)
+            throws JSONException, IllegalArgumentException {
+        first = Math.max(1, Math.min(100, first));
+
+        String endpoint = "/channels/followers?" + this.qspValid("broadcaster_id", ViewerCache.instance().broadcaster().id())
+        + this.qspValid("&user_id", user_id) + this.qspValid("&first", first) + this.qspValid("&after", after);
+
+        return this.handleQueryAsync(endpoint, () -> {
+            return this.handleRequest(HttpMethod.GET, endpoint);
+        });
+    }
+
+    /**
+     * Gets the list of users that are connected to the broadcaster’s chat session.
+     * <br /><br />
+     * NOTE: There is a delay between when users join and leave a chat and when the list is updated accordingly.
+     *
+     * @param first The maximum number of items to return per page in the response. Minimum: 1. Maximum: 1,000
+     * @param after The cursor used to get the next page of results.
+     * @return
+     * @throws JSONException
+     * @throws IllegalArgumentException
+     */
+    public Mono<JSONObject> getChattersAsync(int first, @Nullable String after)
+            throws JSONException, IllegalArgumentException {
+        first = Math.max(1, Math.min(1000, first));
+
+        String endpoint = "/chat/chatters?" + this.qspValid("broadcaster_id", ViewerCache.instance().broadcaster().id())
+        + this.qspValid("&moderator_id", TwitchValidate.instance().getAPIUserID()) + this.qspValid("&first", first)
+        + this.qspValid("&after", after);
+
+        return this.handleQueryAsync(endpoint, () -> {
+            return this.handleRequest(HttpMethod.GET, endpoint);
         });
     }
 

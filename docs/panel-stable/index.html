@@ -32,8 +32,10 @@
         <link rel="stylesheet" href="vendors/font-awesome/css/discord.min.css">
         <!-- Bootstrap 3.3.7 -->
         <link rel="stylesheet" href="vendors/bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="vendors/bootstrap-treeview/css/bootstrap-treeview.min.css">
         <!-- Datatables -->
         <link rel="stylesheet" href="vendors/datatables.net-bs/css/dataTables.bootstrap.min.css">
+        <link rel="stylesheet" href="vendors/datatables.net-bs/css/rowReorder.bootstrap.min.css">
         <!-- Toastr -->
         <link rel="stylesheet" href="vendors/toastr/toastr.min.css">
         <!-- Pace theme -->
@@ -47,6 +49,14 @@
         <!-- Google Font -->
         <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
         <!-- More css is loaded via JavaScript -->
+        <style>
+            .list-group-item {
+                background-color: inherit !important;
+            }
+            .list-group-item:hover {
+                background-color: inherit !important;
+            }
+        </style>
     </head>
 
     <!-- Main body -->
@@ -429,19 +439,11 @@
                         </div>
                         <div class="form-group">
                             <div class="control-sidebar-subheading">
-                                <button type="button" class="btn btn-primary pull-right" id="set-online-btn">Execute</button>
-                                <label for="set-online-btn">Force Online</label>
+                                <button type="button" class="btn btn-primary pull-right" id="sync-online-btn">Execute</button>
+                                <label for="sync-online-btn">Sync Online Status</label>
                             </div>
 
-                            <p>Force the bot to think the stream is online.</p>
-                        </div>
-                        <div class="form-group">
-                            <div class="control-sidebar-subheading">
-                                <button type="button" class="btn btn-primary pull-right" id="set-offline-btn">Execute</button>
-                                <label for="set-offline-btn">Force Offline</label>
-                            </div>
-
-                            <p>Force the bot to think the stream is offline.</p>
+                            <p>Sync the title, game, and online state with Twitch API.</p>
                         </div>
                     </div>
 
@@ -525,6 +527,7 @@
         <script src="vendors/jquery/jquery.min.js"></script>
         <!-- Bootstrap 3.3.7 -->
         <script src="vendors/bootstrap/js/bootstrap.min.js"></script>
+        <script src="vendors/bootstrap-treeview/js/bootstrap-treeview.min.js"></script>
         <!-- Pace -->
         <script src="vendors/PACE/pace.min.js" data-pace-options='{ "eventLag": false }'></script>
         <!-- Toastr -->
@@ -538,6 +541,7 @@
         <!-- Datatables -->
         <script src="vendors/datatables.net-bs/js/jquery.dataTables.min.js"></script>
         <script src="vendors/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
+        <script src="vendors/datatables.net-bs/js/dataTables.rowReorder.min.js"></script>
         <!-- Easy auto comeplete -->
         <script src="vendors/EasyAutocomplete-1.3.5/jquery.easy-autocomplete.min.js"></script>
         <!-- Panel config script -->

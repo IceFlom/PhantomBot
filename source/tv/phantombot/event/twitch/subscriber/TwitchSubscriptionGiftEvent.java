@@ -25,6 +25,7 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
     private final String months;
     private final String plan;
     private final String giftedMonths;
+    private final boolean fromBulk;
 
     /**
      * Class constructor.
@@ -39,6 +40,7 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
         this.months = null;
         this.plan = plan;
         this.giftedMonths = null;
+        this.fromBulk = false;
     }
 
     /**
@@ -55,6 +57,7 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
         this.months = months;
         this.plan = plan;
         this.giftedMonths = null;
+        this.fromBulk = false;
     }
 
     /**
@@ -72,6 +75,26 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
         this.months = months;
         this.plan = plan;
         this.giftedMonths = giftedMonths;
+        this.fromBulk = false;
+    }
+
+    /**
+     * Class constructor.
+     *
+     * @param username
+     * @param recipient
+     * @param months
+     * @param plan
+     * @param giftedMonths
+     * @param fromBulk
+     */
+    public TwitchSubscriptionGiftEvent(String username, String recipient, String months, String plan, String giftedMonths, boolean fromBulk) {
+        this.username = username;
+        this.recipient = recipient;
+        this.months = months;
+        this.plan = plan;
+        this.giftedMonths = giftedMonths;
+        this.fromBulk = fromBulk;
     }
 
     /**
@@ -117,5 +140,14 @@ public class TwitchSubscriptionGiftEvent extends TwitchEvent {
      */
     public String getPlan() {
         return this.plan;
+    }
+
+    /**
+     * Indicates if this gift subscription is likely from a bulk gift-sub event
+     *
+     * @return
+     */
+    public boolean fromBulk() {
+        return this.fromBulk;
     }
 }

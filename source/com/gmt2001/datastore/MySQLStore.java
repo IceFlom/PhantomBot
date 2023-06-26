@@ -16,16 +16,19 @@
  */
 package com.gmt2001.datastore;
 
-import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager;
-import com.mysql.jdbc.jdbc2.optional.MysqlConnectionPoolDataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.List;
+
+import com.mysql.cj.jdbc.MysqlConnectionPoolDataSource;
+
+import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager;
+import tv.phantombot.CaselessProperties;
 
 /**
  *
@@ -36,6 +39,8 @@ public final class MySQLStore extends DataStore {
     private static final int MAX_CONNECTIONS = 30;
     private static MySQLStore instance;
     private final MiniConnectionPoolManager poolMgr;
+    private static final String COLLATION = "utf8mb4_general_ci";
+    private static final String CHARSET= "utf8mb4";
 
     public static MySQLStore instance() {
         return instance("");
@@ -53,13 +58,27 @@ public final class MySQLStore extends DataStore {
         super(configStr);
 
         try {
-            Class.forName("com.mysql.jdbc.Driver");
+            Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException ex) {
             ex.printStackTrace(System.err);
         }
 
         MysqlConnectionPoolDataSource dataSource = new MysqlConnectionPoolDataSource();
         dataSource.setURL(configStr);
+        try {
+            //Ensure correct collation and encoding
+            dataSource.setConnectionCollation(COLLATION);
+            dataSource.setCharacterEncoding("UTF-8");
+            /**
+             * @botproperty mysqlallowpublickeyretrieval - Indicates if retrieval of the public key from the MySQL server is allowed for authentication (needed for newer authentication methods like 'caching_sha2_password')
+             * @botpropertytype mysqlallowpublickeyretrieval Boolean
+             * @botpropertycatsort mysqlallowpublickeyretrieval 260 30 Datastore
+             * @botpropertyrestart mysqlallowpublickeyretrieval
+             */
+            dataSource.setAllowPublicKeyRetrieval(CaselessProperties.instance().getPropertyAsBoolean("mysqlallowpublickeyretrieval", false));
+        } catch (SQLException ex) {
+            ex.printStackTrace(System.err);
+        }
 
         poolMgr = new MiniConnectionPoolManager(dataSource, MAX_CONNECTIONS);
     }
@@ -87,8 +106,8 @@ public final class MySQLStore extends DataStore {
     }
 
     @Override
-    public boolean CanConnect(String db, String user, String pass) {
-        try ( Connection connection = DriverManager.getConnection(db, user, pass)) {
+    public boolean CanConnect() {
+        try (Connection connection = GetConnection()) {
             return true;
         } catch (SQLException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
@@ -128,7 +147,7 @@ public final class MySQLStore extends DataStore {
         fName = validateFname(fName);
 
         try ( Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS phantombot_" + fName + " (section LONGTEXT, variable varchar(255) NOT NULL, value LONGTEXT, PRIMARY KEY (section(30), variable(150))) DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_general_ci;");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS phantombot_" + fName + " (section LONGTEXT, variable varchar(255) NOT NULL, value LONGTEXT, PRIMARY KEY (section(30), variable(150))) DEFAULT CHARSET=" + CHARSET + " COLLATE " + COLLATION + ";");
         } catch (SQLException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
@@ -871,8 +890,8 @@ public final class MySQLStore extends DataStore {
     }
 
     @Override
-    public String[][] executeSql(String sql, String[] replacements) {
-        ArrayList<ArrayList<String>> results = new ArrayList<>();
+    public List<List<String>> query(String sql, String[] replacements) {
+        List<List<String>> results = new ArrayList<>();
 
         try ( Connection connection = GetConnection()) {
             try ( PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -881,18 +900,19 @@ public final class MySQLStore extends DataStore {
                     statement.setString(i++, k);
                 }
 
-                try ( ResultSet rs = statement.executeQuery()) {
-                    int numcol = rs.getMetaData().getColumnCount();
-                    i = 0;
+                if (statement.execute()) {
+                    try ( ResultSet rs = statement.getResultSet()) {
+                        int numcol = rs.getMetaData().getColumnCount();
 
-                    while (rs.next()) {
-                        results.add(new ArrayList<>());
+                        while (rs.next()) {
+                            List<String> row = new ArrayList<>();
 
-                        for (int b = 1; b <= numcol; b++) {
-                            results.get(i).add(rs.getString(b));
+                            for (int b = 1; b <= numcol; b++) {
+                                row.add(rs.getString(b));
+                            }
+
+                            results.add(row);
                         }
-
-                        i++;
                     }
                 }
             }
@@ -900,6 +920,6 @@ public final class MySQLStore extends DataStore {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
 
-        return results.stream().map(al -> al.stream().toArray(String[]::new)).toArray(String[][]::new);
+        return results;
     }
 }

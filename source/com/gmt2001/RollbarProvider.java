@@ -152,11 +152,15 @@ public final class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
-                                if (error.getClass().equals(com.mysql.jdbc.exceptions.jdbc4.MySQLQueryInterruptedException.class)) {
+                                if (error.getClass().equals(com.mysql.cj.jdbc.exceptions.MySQLQueryInterruptedException.class)) {
                                     return true;
                                 }
 
-                                if (error.getClass().equals(com.mysql.jdbc.exceptions.jdbc4.MySQLNonTransientConnectionException.class)) {
+                                if (error.getClass().equals(java.sql.SQLNonTransientConnectionException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(org.h2.jdbc.JdbcSQLNonTransientConnectionException.class)) {
                                     return true;
                                 }
 
@@ -308,11 +312,63 @@ public final class RollbarProvider implements AutoCloseable {
                                     return true;
                                 }
 
+                                if (error.getClass().equals(java.lang.IllegalStateException.class) && error.getMessage().equals("session_id")) {
+                                    return true;
+                                }
+
                                 if (error.getClass().equals(java.lang.IllegalStateException.class) && error.getMessage().startsWith("Not connected to Discord")) {
                                     return true;
                                 }
 
+                                if (error.getClass().equals(java.lang.NullPointerException.class) && error.getMessage().equals("t2")) {
+                                    return true;
+                                }
+
                                 if (error.getMessage().contains("Keystore was tampered with, or password was incorrect")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().matches("\\\"status\\\":[45][0-9]{2}")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("\"_exception\":\"TimeoutException\"")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Connection refused")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Host is down")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("No space left")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("The database is read only")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("Script Execution terminated")) {
+                                    return true;
+                                }
+
+                                if (error.getMessage().contains("NOT SUPPORTED")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.io.UncheckedIOException.class)) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(java.util.NoSuchElementException.class) && error.getMessage().equals("Source was empty")) {
+                                    return true;
+                                }
+
+                                if (error.getClass().equals(org.h2.jdbc.JdbcSQLNonTransientException.class) && error.getMessage().contains("90031")) {
                                     return true;
                                 }
                             }

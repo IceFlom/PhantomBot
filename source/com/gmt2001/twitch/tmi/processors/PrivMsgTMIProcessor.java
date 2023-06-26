@@ -16,16 +16,20 @@
  */
 package com.gmt2001.twitch.tmi.processors;
 
-import com.gmt2001.twitch.tmi.TMIMessage;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import tv.phantombot.cache.UsernameCache;
+
+import com.gmt2001.twitch.tmi.TMIMessage;
+import com.gmt2001.twitch.tmi.TMISlashCommands;
+
+import reactor.core.publisher.SignalType;
 import tv.phantombot.event.EventBus;
 import tv.phantombot.event.command.CommandEvent;
 import tv.phantombot.event.irc.channel.IrcChannelUserModeEvent;
 import tv.phantombot.event.irc.message.IrcChannelMessageEvent;
 import tv.phantombot.event.irc.message.IrcModerationEvent;
+import tv.phantombot.event.irc.message.IrcModerationEvent.ModerationActions.Actions;
 import tv.phantombot.event.irc.message.IrcPrivateMessageEvent;
 import tv.phantombot.event.twitch.bits.TwitchBitsEvent;
 
@@ -54,10 +58,6 @@ public final class PrivMsgTMIProcessor extends AbstractTMIProcessor {
 
         com.gmt2001.Console.debug.println("IRCv3 Tags: " + item.tags());
 
-        if (item.tags().containsKey("display-name") && item.tags().containsKey("user-id")) {
-            UsernameCache.instance().addUser(item.nick(), item.tags().get("display-name"), item.tags().get("user-id"));
-        }
-
         if (!item.nick().equalsIgnoreCase(this.user())) {
             if (item.tags().get("mod").equals("1") || !item.tags().get("user-type").isEmpty()) {
                 if (!this.moderators.contains(item.nick())) {
@@ -72,7 +72,7 @@ public final class PrivMsgTMIProcessor extends AbstractTMIProcessor {
             }
         }
 
-        IrcModerationEvent modEvent = new IrcModerationEvent(this.session(), item.nick(), message, item.tags());
+        IrcModerationEvent modEvent = new IrcModerationEvent(this.session(), item.nick(), message, item.tags(), item);
 
         EventBus.instance().postAsync(modEvent);
 
@@ -94,7 +94,36 @@ public final class PrivMsgTMIProcessor extends AbstractTMIProcessor {
                 EventBus.instance().postAsync(CommandEvent.asCommand(item.nick(), fmessage, item.tags()));
             }
 
-            EventBus.instance().postAsync(new IrcChannelMessageEvent(this.session(), item.nick(), fmessage, item.tags()));
+            EventBus.instance().postAsync(new IrcChannelMessageEvent(this.session(), item.nick(), fmessage, item.tags(), item));
+        }).subscribe();
+
+        modEvent.completedMono().doFinally(sig -> {
+            if (sig == SignalType.ON_COMPLETE) {
+                IrcModerationEvent.ModerationAction action = modEvent.action();
+
+                switch (action.action()) {
+                    case UnBan:
+                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/unban " + item.nick());
+                        break;
+                    case Delete:
+                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/delete " + item.tags().get("id"));
+                        break;
+                    case ClearChat:
+                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/clear");
+                        break;
+                    case Timeout:
+                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/timeout " + item.nick() + " " + action.time() + (action.reason() != null ? " " + action.reason() : null));
+                        break;
+                    case Ban:
+                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/ban " + item.nick() + (action.reason() != null ? " " + action.reason() : null));
+                        break;
+                    default:
+                }
+
+                if (action.action() != Actions.None && action.warning() != null && !action.warning().isBlank()) {
+                    this.session().sayNow(action.warning());
+                }
+            }
         }).subscribe();
     }
 }

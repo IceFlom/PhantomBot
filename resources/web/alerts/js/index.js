@@ -209,6 +209,7 @@ $(function () {
      */
     function sendToSocket(message) {
         try {
+            printDebug('sendToDocket: ' + JSON.stringify(message));
             webSocket.send(JSON.stringify(message));
         } catch (ex) {
             printDebug('Failed to send a message to the socket: ' + ex.stack);
@@ -246,47 +247,60 @@ $(function () {
 
         queueProcessing = true;
         try {
-            // Process the whole queue at once
-            while (queue.length > 0) {
-                let event = queue[0];
+            let played = [];
+            for (let i = 0; i < queue.length; i++) {
+                let event = queue.slice(i, i + 1)[0];
                 /** TODO - Handle TTS, before:
 
                 if (event.tts_signal !== undefined) {
                   handleTts(event);
                 } */
                 let ignoreIsPlaying = (event.ignoreIsPlaying !== undefined ? event.ignoreIsPlaying : false);
+                let isplayed = false;
 
-                if (event === undefined) {
-                    console.error('Received event of type undefined. Ignoring.');
-                } else if (event.emoteId !== undefined) {
-                    // do not respect isPlaying for emotes
-                    handleEmote(event);
-                } else if (event.script !== undefined) {
-                    handleMacro(event);
-                } else if (event.stopMedia !== undefined) {
-                    handleStopMedia(event);
-                } else if (ignoreIsPlaying || isPlaying === false) {
-                    // sleep a bit to reduce the overlap
-                    await sleep(100);
-                    printDebug('Processing event: ' + JSON.stringify(event));
-                    // called method is responsible to reset this
-                    isPlaying = true;
-                    if (event.type === 'playVideoClip') {
-                        handleVideoClip(event);
-                    } else if (event.alert_image !== undefined) {
-                        handleGifAlert(event);
-                    } else if (event.audio_panel_hook !== undefined) {
-                        handleAudioHook(event);
-                    } else {
-                        printDebug('Received message and don\'t know what to do about it: ' + event);
-                        isPlaying = false;
+                try {
+                    if (event === undefined) {
+                        isplayed = true;
+                        console.error('Received event of type undefined. Ignoring.');
+                    } else if (event.emoteId !== undefined) {
+                        isplayed = true;
+                        // do not respect isPlaying for emotes
+                        printDebug('Processing event: ' + JSON.stringify(event));
+                        handleEmote(event);
+                    } else if (event.script !== undefined) {
+                        isplayed = true;
+                        printDebug('Processing event: ' + JSON.stringify(event));
+                        handleMacro(event);
+                    } else if (event.stopMedia !== undefined) {
+                        isplayed = true;
+                        printDebug('Processing event: ' + JSON.stringify(event));
+                        handleStopMedia(event);
+                    } else if (ignoreIsPlaying || isPlaying === false) {
+                        isplayed = true;
+                        // sleep a bit to reduce the overlap
+                        await sleep(100);
+                        printDebug('Processing event: ' + JSON.stringify(event));
+                        // called method is responsible to reset this
+                        isPlaying = true;
+                        if (event.type === 'playVideoClip') {
+                            handleVideoClip(event);
+                        } else if (event.alert_image !== undefined) {
+                            handleGifAlert(event);
+                        } else if (event.audio_panel_hook !== undefined) {
+                            handleAudioHook(event);
+                        } else {
+                            printDebug('Received message and don\'t know what to do about it: ' + event);
+                            isPlaying = false;
+                        }
                     }
-                } else {
-                    return;
+                } finally {
+                    if (isplayed) {
+                        played.push(i);
+                    }
                 }
-                // Remove the event
-                queue.splice(0, 1);
             }
+
+            played.reverse().forEach(i => queue.splice(i, 1));
         } finally {
             queueProcessing = false;
         }
@@ -310,9 +324,9 @@ $(function () {
             }
             if (stopAudio) {
                 while (playingAudioFiles.length > 0) {
-                    playingAudioFiles[0].pause();
-                    playingAudioFiles[0].remove();
-                    playingAudioFiles.splice(0, 1);
+                    let audio = playingAudioFiles.shift();
+                    audio.pause();
+                    audio.remove();
                 }
             }
         } finally {
@@ -372,6 +386,8 @@ $(function () {
 
         if (fileName.length === 0) {
             printDebug(`Could not find a supported audio file for ${name}.`, true);
+        } else {
+            printDebug('Audio file selected: ' + fileName);
         }
 
         if (getOptionSetting('enableDebug', getOptionSetting('show-debug', 'false')) === 'true' && fileName.length === 0) {
@@ -408,12 +424,16 @@ $(function () {
             }
             // Add an event handler.
             $(audio).on('ended', function () {
+                printDebug('Audio finished, duration: ' + audio.duration);
+                playingAudioFiles = playingAudioFiles.filter((elm) => elm !== audio);
                 audio.currentTime = 0;
                 isPlaying = false;
             });
             playingAudioFiles.push(audio);
             // Play the audio.
+            printDebug('Playing audio');
             audio.play().catch(function (err) {
+                playingAudioFiles = playingAudioFiles.filter((elm) => elm !== audio);
                 console.log(err);
             });
         } else {
@@ -483,7 +503,9 @@ $(function () {
         emote.id = `emote-${browserSafeId}-${uniqueId}`;
         emote.dataset['browserSafeId'] = browserSafeId;
         emote.dataset['uniqueId'] = uniqueId;
+        printDebug('Loading emote: ' + emote.src);
         await emote.decode();
+        printDebug('Animating emote');
 
         emote = document.getElementById('main-emotes').appendChild(emote);
         if (animationName === 'flyUp') {
@@ -562,6 +584,7 @@ $(function () {
                 timingFunction: 'ease-in'
             }], {
             onEnd: (event) => {
+                printDebug('Animation complete');
                 event.target.remove();
             }
         });
@@ -595,22 +618,27 @@ $(function () {
         const videoIsReady = () => {
             return isReady;
         };
+        printDebug('Loading video: ' + `${defaultPath}/${filename}`);
         video.load();
         await promisePoll(() => videoIsReady(), {pollIntervalMs: 250});
         let frame = document.getElementById('main-video-clips');
         frame.append(video);
+
+        printDebug('Playing video, duration: ' + video.duration);
 
         video.play().catch(() => {
             console.error('Failed to play ' + video.src);
             isPlaying = false;
         });
         video.addEventListener('ended', (event) => {
+            printDebug('Video complete (ended)');
             isPlaying = false;
             video.pause();
             video.remove();
         });
         if (duration > 0) {
             setTimeout(() => {
+                printDebug('Video complete (duration)');
                 video.pause();
                 video.remove();
                 isPlaying = false;
@@ -705,18 +733,22 @@ $(function () {
                 if (!videoFormats.probably.includes(ext) && !videoFormats.maybe.includes(ext)) {
                     printDebug('Video format ' + ext + ' was not supported by the browser!', true);
                 }
+                printDebug('Gif is video: ' + defaultPath + gifFile);
             } else {
                 htmlObj = $('<img/>', {
                     'src': defaultPath + gifFile,
                     'style': gifCss,
                     'alt': "Video"
                 });
+                printDebug('Loading gif: ' + defaultPath + gifFile);
                 await htmlObj[0].decode();
+                printDebug('Loading complete');
             }
 
             let audioPath = getAudioFile(gifFile.slice(0, gifFile.indexOf('.')), defaultPath);
 
             if (audioPath.length > 0 && gifFile.substring(gifFile.lastIndexOf('.') + 1) !== audioPath.substring(audioPath.lastIndexOf('.') + 1)) {
+                printDebug('Gif has audio: ' + audioPath);
                 hasAudio = true;
                 audio = new Audio(audioPath);
             }
@@ -739,8 +771,10 @@ $(function () {
                 const videoIsReady = () => {
                     return isReady;
                 };
+                printDebug('Loading gif video');
                 htmlObj[0].load();
                 await promisePoll(() => videoIsReady(), {pollIntervalMs: 250});
+                printDebug('Loading complete');
             }
             if (hasAudio) {
                 let isReady = false;
@@ -754,12 +788,16 @@ $(function () {
                     return isReady;
                 };
 
+                printDebug('Loading gif audio');
                 audio.load();
                 await promisePoll(() => audioIsReady(), {pollIntervalMs: 250});
                 audio.volume = gifVolume;
+                printDebug('Loading complete');
             }
 
             await sleep(500);
+
+            printDebug('Animating the gif');
 
             // Append the custom text object to the page
             $('#alert-text').append(textObj).fadeIn(1e2).delay(gifDuration)
@@ -797,15 +835,18 @@ $(function () {
                         }
 
                         if (hasAudio) {
+                            printDebug('Audio duration: ' + audio.duration);
                             // Stop the audio.
                             audio.pause();
                             // Reset the duration.
                             audio.currentTime = 0;
                         }
                         if (isVideo) {
+                            printDebug('Video duration: ' + htmlObj[0].duration);
                             htmlObj[0].pause();
                             htmlObj[0].currentTime = 0;
                         }
+                        printDebug('Gif complete');
                         // Mark as done playing.
                         isPlaying = false;
                     });

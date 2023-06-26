@@ -16,24 +16,27 @@
  */
 package tv.phantombot.console;
 
-import com.gmt2001.GamesListUpdater;
-import com.gmt2001.HttpRequest;
-import com.gmt2001.HttpResponse;
-import com.gmt2001.Reflect;
-import com.gmt2001.TwitchAPIv5;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import net.engio.mbassy.listener.Handler;
+import java.util.Map;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.gmt2001.GamesListUpdater;
+import com.gmt2001.HttpRequest;
+import com.gmt2001.HttpResponse;
+import com.gmt2001.Reflect;
+import com.gmt2001.twitch.tmi.TwitchMessageInterface;
+
+import net.engio.mbassy.listener.Handler;
 import tv.phantombot.CaselessProperties;
 import tv.phantombot.CaselessProperties.Transaction;
 import tv.phantombot.PhantomBot;
-import static tv.phantombot.PhantomBot.getTimeZoneId;
 import tv.phantombot.discord.DiscordAPI;
 import tv.phantombot.event.EventBus;
 import tv.phantombot.event.Listener;
@@ -52,6 +55,7 @@ import tv.phantombot.event.twitch.subscriber.TwitchPrimeSubscriberEvent;
 import tv.phantombot.event.twitch.subscriber.TwitchReSubscriberEvent;
 import tv.phantombot.event.twitch.subscriber.TwitchSubscriberEvent;
 import tv.phantombot.event.twitch.subscriber.TwitchSubscriptionGiftEvent;
+import tv.phantombot.panel.PanelUser.PanelUserHandler;
 import tv.phantombot.script.Script;
 
 public final class ConsoleEventHandler implements Listener {
@@ -231,27 +235,9 @@ public final class ConsoleEventHandler implements Listener {
          */
         if (message.equalsIgnoreCase("backupdb")) {
             com.gmt2001.Console.out.println("[CONSOLE] Executing backupdb");
-            String timestamp = LocalDateTime.now(getTimeZoneId()).format(DateTimeFormatter.ofPattern("ddMMyyyy.hhmmss"));
+            String timestamp = LocalDateTime.now(PhantomBot.getTimeZoneId()).format(DateTimeFormatter.ofPattern("ddMMyyyy.hhmmss"));
 
             PhantomBot.instance().getDataStore().backupDB("phantombot.manual.backup." + timestamp + ".db");
-            return;
-        }
-
-        /**
-         * @consolecommand fixfollowedtable - Grabs the last 10,000 followers from the Twitch API.
-         */
-        if (message.equalsIgnoreCase("fixfollowedtable")) {
-            com.gmt2001.Console.out.println("[CONSOLE] Executing fixfollowedtable");
-            TwitchAPIv5.instance().FixFollowedTable(PhantomBot.instance().getChannelName(), PhantomBot.instance().getDataStore(), false);
-            return;
-        }
-
-        /**
-         * @consolecommand fixfollowedtable-force - Grabs all followers from the Twitch API.
-         */
-        if (message.equalsIgnoreCase("fixfollowedtable-force")) {
-            com.gmt2001.Console.out.println("[CONSOLE] Executing fixfollowedtable-force");
-            TwitchAPIv5.instance().FixFollowedTable(PhantomBot.instance().getChannelName(), PhantomBot.instance().getDataStore(), true);
             return;
         }
 
@@ -446,6 +432,36 @@ public final class ConsoleEventHandler implements Listener {
         }
 
         /**
+         * @consolecommand masssubgifttest (amount) (tier) - Test a mass sub gift subscription.
+         */
+        if (message.equalsIgnoreCase("masssubgifttest")) {
+            int amount = 10;
+            String tier = "1000";
+            String newLine = System.getProperty("line.separator");
+            if (argument != null && argument.length > 0 && !argument[0].isBlank()) {
+                amount = Integer.parseInt(argument[0]);
+            }
+
+            if (argument != null && argument.length > 1 && !argument[1].isBlank()) {
+                tier = argument[1].equalsIgnoreCase("prime") ? argument[1] : argument[1] + "000";
+            }
+            com.gmt2001.Console.out.println("Testing Mass Anonymous Gift Sub (Amount: " + amount + ", tier: " + tier + ")");
+            TwitchMessageInterface tmi = PhantomBot.instance().getTMI();
+
+
+
+            String messages = "@display-name=testgifter;msg-param-sub-plan=" + tier + ";login=testgifter;msg-id=submysterygift;tmi-sent-ts=" + (System.currentTimeMillis() / 1000L) + ";msg-param-mass-gift-count=" + amount + " :phantombot!phantombot@test USERNOTICE #phantombot :";
+            for (int i = 0; i < amount; i++) {
+                String recipient = PhantomBot.generateRandomString(10).toLowerCase();
+                messages += newLine;
+                messages += "@display-name=testgifter;msg-param-sub-plan=" + tier + ";login=testgifter;msg-id=subgift;tmi-sent-ts=" + (System.currentTimeMillis() / 1000L) + ";msg-param-recipient-user-name=" + recipient + " :phantombot!phantombot@test USERNOTICE #phantombot :";
+            }
+
+            tmi.onMessages(messages);
+            return;
+        }
+
+        /**
          * @consolecommand anonsubgifttest (userName) (tier) (months) - Test an anonymous gift subscription
          */
         if (message.equalsIgnoreCase("anonsubgifttest")) {
@@ -583,16 +599,6 @@ public final class ConsoleEventHandler implements Listener {
             com.gmt2001.Console.out.println("[CONSOLE] Executing debuglog: Enable Debug Mode - Log Only");
 
             PhantomBot.setDebuggingLogOnly(true);
-            return;
-        }
-
-        /**
-         * @consolecommand save - Forces the database to save.
-         */
-        if (message.equalsIgnoreCase("save")) {
-            com.gmt2001.Console.out.println("[CONSOLE] Executing save");
-
-            PhantomBot.instance().getDataStore().SaveAll(true);
             return;
         }
 
@@ -768,11 +774,59 @@ public final class ConsoleEventHandler implements Listener {
             com.gmt2001.Console.out.println("Heap Dump Completed");
         }
 
+        if(message.equalsIgnoreCase("paneluser")) {
+            if (argument != null && argument.length > 1 && !argument[0].isBlank() && !argument[1].isBlank()) {
+                /**
+                 * @consolecommand paneluser add username - Creates a new panel user with full access to all panel sections if the user does not exist and prints the randomly generated password
+                 */
+                if (argument[0].equalsIgnoreCase("add")) {
+                    PanelUserHandler.PanelMessage response = PanelUserHandler.createNewUser(argument[1], false);
+                    com.gmt2001.Console.out.println("Password for new user " + argument[1] + " is:");
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+                /**
+                 * @consolecommand paneluser delete username - Deletes a panel user if the user exists
+                 */
+                else if (argument[0].equalsIgnoreCase("delete")) {
+                    PanelUserHandler.PanelMessage response = PanelUserHandler.deleteUser(argument[1]);
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+                /**
+                 * @consolecommand paneluser enable username - Enables a panel user if the user exists
+                 */
+                else if (argument[0].equalsIgnoreCase("enable")) {
+                    PanelUserHandler.PanelMessage response = PanelUserHandler.editUser(argument[1], null, (Map<String, PanelUserHandler.Permission>)null, true);
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+                /**
+                 * @consolecommand paneluser enable username - Disables a panel user if the user exists
+                 */
+                else if (argument[0].equalsIgnoreCase("disable")) {
+                    PanelUserHandler.PanelMessage response = PanelUserHandler.editUser(argument[1], null, (Map<String, PanelUserHandler.Permission>)null, false);
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+                /**
+                 * @consolecommand paneluser resetpassword username - Resets a panel users password if the user exists and prints the new and randomly generated password
+                 */
+                else if (argument[0].equalsIgnoreCase("resetpassword")) {
+                    PanelUserHandler.PanelMessage response = PanelUserHandler.resetPassword(argument[1]);
+                    com.gmt2001.Console.out.println("New password for user " + argument[1] + " is:");
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+                /**
+                 * @consolecommand paneluser resetpermission username - Gives a panel user full access to all panel sections if the user exists
+                 */
+                else if (argument[0].equalsIgnoreCase("resetpassword")) {
+                    PanelUserHandler.PanelMessage response =PanelUserHandler.editUser(argument[1], null, PanelUserHandler.getFullAccessPermissions(), false);
+                    com.gmt2001.Console.out.println("New password for user " + argument[1] + " is:");
+                    com.gmt2001.Console.out.println(response.getMessage());
+                }
+            }
+        }
+
         // Check to see if any settings have been changed.
         if (changed) {
             transaction.commit();
-
-            PhantomBot.instance().getDataStore().SaveAll(true);
 
             com.gmt2001.Console.out.println("");
             com.gmt2001.Console.out.println("Changes have been saved, now exiting PhantomBot.");

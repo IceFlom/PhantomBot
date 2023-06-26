@@ -16,34 +16,6 @@
  */
 package tv.phantombot;
 
-import com.gmt2001.ExecutorService;
-import com.gmt2001.GamesListUpdater;
-import com.gmt2001.PathValidator;
-import com.gmt2001.Reflect;
-import com.gmt2001.RestartRunner;
-import com.gmt2001.RollbarProvider;
-import com.gmt2001.TwitchAPIv5;
-import com.gmt2001.datastore.DataStore;
-import com.gmt2001.datastore.DataStoreConverter;
-import com.gmt2001.datastore.H2Store;
-import com.gmt2001.datastore.MySQLStore;
-import com.gmt2001.datastore.SqliteStore;
-import com.gmt2001.eventsub.EventSub;
-import com.gmt2001.httpclient.HttpClient;
-import com.gmt2001.httpclient.URIUtil;
-import com.gmt2001.httpwsserver.HTTPWSServer;
-import com.gmt2001.ratelimiters.ExponentialBackoff;
-import com.gmt2001.twitch.TwitchAuthorizationCodeFlow;
-import com.gmt2001.twitch.TwitchClientCredentialsFlow;
-import com.gmt2001.twitch.tmi.TwitchMessageInterface;
-import com.illusionaryone.GitHubAPIv3;
-import com.illusionaryone.TwitchAlertsAPIv1;
-import com.illusionaryone.YouTubeAPIv3;
-import com.scaniatv.CustomAPI;
-import com.scaniatv.StreamElementsAPIv2;
-import com.scaniatv.TipeeeStreamAPIv1;
-import io.netty.util.internal.logging.InternalLoggerFactory;
-import io.netty.util.internal.logging.JdkLoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -60,11 +32,40 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.SystemUtils;
 import org.json.JSONException;
+
+import com.gmt2001.ExecutorService;
+import com.gmt2001.GamesListUpdater;
+import com.gmt2001.PathValidator;
+import com.gmt2001.Reflect;
+import com.gmt2001.RestartRunner;
+import com.gmt2001.RollbarProvider;
+import com.gmt2001.TwitchAPIv5;
+import com.gmt2001.datastore.DataStore;
+import com.gmt2001.datastore.DataStoreConverter;
+import com.gmt2001.datastore.H2Store;
+import com.gmt2001.datastore.MySQLStore;
+import com.gmt2001.datastore.SqliteStore;
+import com.gmt2001.httpclient.HttpClient;
+import com.gmt2001.httpclient.URIUtil;
+import com.gmt2001.httpwsserver.HTTPWSServer;
+import com.gmt2001.ratelimiters.ExponentialBackoff;
+import com.gmt2001.twitch.TwitchAuthorizationCodeFlow;
+import com.gmt2001.twitch.cache.ViewerCache;
+import com.gmt2001.twitch.eventsub.EventSub;
+import com.gmt2001.twitch.tmi.TwitchMessageInterface;
+import com.illusionaryone.GitHubAPIv3;
+import com.illusionaryone.StreamLabsAPI;
+import com.illusionaryone.YouTubeAPIv3;
+import com.scaniatv.CustomAPI;
+
+import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.netty.util.internal.logging.JdkLoggerFactory;
+import net.engio.mbassy.listener.Handler;
 import reactor.util.Loggers;
 import tv.phantombot.CaselessProperties.Transaction;
 import tv.phantombot.cache.DonationsCache;
@@ -109,7 +110,6 @@ public final class PhantomBot implements Listener {
 
     /* Bot Information */
     private TwitchAuthorizationCodeFlow authflow;
-    private TwitchClientCredentialsFlow appflow;
 
     /* DataStore Information */
     private DataStore dataStore;
@@ -140,7 +140,6 @@ public final class PhantomBot implements Listener {
     private static boolean enableDebugging = false;
     private static boolean enableDebuggingLogOnly = false;
     private static boolean enableRhinoDebugger = false;
-    private static boolean enableRhinoES6 = false;
     private static boolean isInExitState = false;
     private boolean isExiting = false;
 
@@ -156,7 +155,7 @@ public final class PhantomBot implements Listener {
     private static final int EXIT_STATUS_OK = 0;
     private static final int EXIT_STATUS_ERROR = 1;
 
-    private ExponentialBackoff initChatBackoff = new ExponentialBackoff(5000L, 900000L);
+    private ExponentialBackoff initChatBackoff = new ExponentialBackoff(5000L, 60000L);
 
     /**
      * PhantomBot Instance.
@@ -305,11 +304,13 @@ public final class PhantomBot implements Listener {
         this.print(this.getWebSite());
         this.print("");
 
+        try {
+            Files.deleteIfExists(Paths.get("./logs/.placeholder"));
+        } catch (IOException ex) {}
+
         this.authflow = new TwitchAuthorizationCodeFlow(CaselessProperties.instance().getProperty("clientid"), CaselessProperties.instance().getProperty("clientsecret"));
-        this.appflow = new TwitchClientCredentialsFlow(CaselessProperties.instance().getProperty("clientid"), CaselessProperties.instance().getProperty("clientsecret"));
         boolean authflowrefreshed = this.authflow.checkAndRefreshTokens();
-        boolean appflowrefreshed = this.appflow.checkExpirationAndGetNewToken();
-        if (authflowrefreshed || appflowrefreshed) {
+        if (authflowrefreshed) {
             ConfigurationManager.getConfiguration();
         }
 
@@ -319,9 +320,18 @@ public final class PhantomBot implements Listener {
         /* Load up a new SecureRandom for the scripts to use */
         this.random = new SecureRandom();
 
+        if (CaselessProperties.instance().getProperty("datastore", "NONESTORE").equals("NONESTORE")
+            && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+            && SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+            && SqliteStore.instance().GetFileList().length > 0) {
+            Transaction t = CaselessProperties.instance().startTransaction(CaselessProperties.Transaction.PRIORITY_MAX);
+            t.setProperty("datastore", "sqlite3store");
+            t.commit();
+        }
+
         /* Load the datastore */
         /**
-         * @botproperty datastore - The type of DB to use. Valid values: `sqlite3store`, `mysqlstore`, `h2store`. Default `sqlite3store`
+         * @botproperty datastore - The type of DB to use. Valid values: `sqlite3store`, `mysqlstore`, `h2store`. Default `h2store`
          * @botpropertycatsort datastore 10 30 Datastore
          * @botpropertyrestart datastore
          */
@@ -330,7 +340,7 @@ public final class PhantomBot implements Listener {
          * @botpropertycatsort datastoreconfig 900 30 Datastore
          * @botpropertyrestart datastoreconfig
          */
-        if (CaselessProperties.instance().getProperty("datastore", "sqlite3store").equalsIgnoreCase("mysqlstore")) {
+        if (CaselessProperties.instance().getProperty("datastore", "h2store").equalsIgnoreCase("mysqlstore")) {
             /**
              * @botproperty mysqlport - The port to use for MySQL connections. Default `3306`
              * @botpropertycatsort mysqlport 210 30 Datastore
@@ -356,41 +366,50 @@ public final class PhantomBot implements Listener {
              * @botpropertycatsort mysqlpass 240 30 Datastore
              * @botpropertyrestart mysqlpass
              */
+            /**
+             * @botproperty mysqlssl - Indicates if SSL should be used for the MySQL connection
+             * @botpropertycatsort mysqlssl 250 30 Datastore
+             * @botpropertyrestart mysqlssl
+             */
             String mySqlConn;
             if (CaselessProperties.instance().getProperty("mysqlport", "").isEmpty()) {
-                mySqlConn = "jdbc:mysql://" + CaselessProperties.instance().getProperty("mysqlhost", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=false&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
+                mySqlConn = "jdbc:mysql://" + CaselessProperties.instance().getProperty("mysqlhost", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
             } else {
-                mySqlConn = "jdbc:mysql://" + CaselessProperties.instance().getProperty("mysqlhost", "") + ":" + CaselessProperties.instance().getProperty("mysqlport", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=false&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
+                mySqlConn = "jdbc:mysql://" + CaselessProperties.instance().getProperty("mysqlhost", "") + ":" + CaselessProperties.instance().getProperty("mysqlport", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
             }
 
             this.dataStore = MySQLStore.instance(mySqlConn);
 
             /* Check to see if we can create a connection */
-            if (!this.dataStore.CanConnect(mySqlConn, CaselessProperties.instance().getProperty("mysqluser", ""), CaselessProperties.instance().getProperty("mysqlpass", ""))) {
+            if (!this.dataStore.CanConnect()) {
                 this.print("Could not create a connection with MySQL Server. PhantomBot now shutting down...");
                 PhantomBot.exitError();
             }
             /* Convert to MySql */
-            if (SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", "")) && SqliteStore.isAvailable() && SqliteStore.instance().GetFileList().length > 0 && MySQLStore.instance().GetFileList().length == 0) {
+            if (MySQLStore.instance().GetFileList().length == 0 && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+                && SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+                && SqliteStore.instance().GetFileList().length > 0) {
                 DataStoreConverter.convertDataStore(MySQLStore.instance(), SqliteStore.instance());
             }
-        } else if (CaselessProperties.instance().getProperty("datastore", "sqlite3store").equalsIgnoreCase("h2store") || !SqliteStore.isAvailable()) {
+        } else if (CaselessProperties.instance().getProperty("datastore", "h2store").equalsIgnoreCase("h2store")
+            || !SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))) {
             this.dataStore = H2Store.instance(CaselessProperties.instance().getProperty("datastoreconfig", ""));
 
-            if (!this.dataStore.CanConnect()) {
-                this.print("Could not create a connection with H2 Database. PhantomBot now shutting down...");
-                PhantomBot.exitError();
-            }
-
-            if (SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", "")) && SqliteStore.isAvailable() && SqliteStore.instance().GetFileList().length > 0 && H2Store.instance().GetFileList().length == 0) {
+            if (H2Store.instance().GetFileList().length == 0 && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+                && SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+                && SqliteStore.instance().GetFileList().length > 0) {
                 DataStoreConverter.convertDataStore(H2Store.instance(), SqliteStore.instance());
             }
-        } else {
+        } else if (CaselessProperties.instance().getProperty("datastore", "h2store").equalsIgnoreCase("sqlite3store")
+            || CaselessProperties.instance().getProperty("datastore", "h2store").isBlank()) {
             this.dataStore = SqliteStore.instance(CaselessProperties.instance().getProperty("datastoreconfig", ""));
 
             /* Handle index operations. */
             com.gmt2001.Console.debug.println("Checking database indexes, please wait...");
             this.dataStore.CreateIndexes();
+        } else {
+            com.gmt2001.Console.err.println("Invalid datastore selected. PhantomBot now shutting down...");
+            PhantomBot.exitError();
         }
 
         /* Set the oauth key in the Twitch api and perform a validation. */
@@ -399,9 +418,9 @@ public final class PhantomBot implements Listener {
         /* Check if the OS is Linux. */
         if (SystemUtils.IS_OS_LINUX && System.getProperty("interactive") == null) {
             try {
-                int pid = Reflect.pid();
+                long pid = Reflect.pid();
 
-                Files.write(Paths.get(Reflect.GetExecutionPath(), "PhantomBot." + this.getBotName() + ".pid"), Integer.toString(pid).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE,
+                Files.write(Paths.get(Reflect.GetExecutionPath(), "PhantomBot." + this.getBotName() + ".pid"), Long.toString(pid).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE,
                         StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
             } catch (IOException | NumberFormatException ex) {
                 com.gmt2001.Console.err.printStackTrace(ex);
@@ -437,7 +456,7 @@ public final class PhantomBot implements Listener {
                     ConfigurationManager.doSetup();
                 } else {
                     com.gmt2001.Console.warn.println();
-                    com.gmt2001.Console.warn.println("Setup not completed yet");
+                    com.gmt2001.Console.warn.println("Setup not completed yet. Please set the channel to join");
                 }
             } else {
                 com.gmt2001.Console.warn.println();
@@ -488,19 +507,15 @@ public final class PhantomBot implements Listener {
 
     /**
      * Tells you if the build is a pre-release.
-     *
-     * @return
+     * @deprecated This build type is not used
      */
+    @Deprecated(since = "3.8.0.0", forRemoval = true)
     public boolean isPrerelease() {
         return RepoVersion.isPrereleaseBuild();
     }
 
     public TwitchAuthorizationCodeFlow getAuthFlow() {
         return this.authflow;
-    }
-
-    public TwitchClientCredentialsFlow getAppFlow() {
-        return this.appflow;
     }
 
     public void reconnect() {
@@ -579,6 +594,10 @@ public final class PhantomBot implements Listener {
         return TwitchValidate.instance().getChatLogin();
     }
 
+    public HTTPPanelAndYTHandler getHTTPPanelAndYTHandler() {
+        return this.httpPanelHandler;
+    }
+
     public HTTPOAuthHandler getHTTPOAuthHandler() {
         return this.oauthHandler;
     }
@@ -625,7 +644,7 @@ public final class PhantomBot implements Listener {
      * @return
      */
     public boolean hasDiscordToken() {
-        return CaselessProperties.instance().getProperty("discord_token", "").isEmpty();
+        return !CaselessProperties.instance().getProperty("discord_token", "").isEmpty();
     }
 
     /**
@@ -659,7 +678,7 @@ public final class PhantomBot implements Listener {
     }
 
     public String getDataStoreType() {
-        return CaselessProperties.instance().getProperty("datastore", "sqlite3store");
+        return CaselessProperties.instance().getProperty("datastore", "h2store");
     }
 
     /**
@@ -691,9 +710,9 @@ public final class PhantomBot implements Listener {
      * Method that gets the PhantomBot properties.
      *
      * @return
-     * @deprecated
+     * @deprecated Please use {@link CaselessProperties#instance()} instead
      */
-    @Deprecated
+    @Deprecated(since = "3.6.4.0", forRemoval = true)
     public CaselessProperties getProperties() {
         return CaselessProperties.instance();
     }
@@ -755,16 +774,10 @@ public final class PhantomBot implements Listener {
             this.httpSetupHandler.register();
             this.httpAuthenticatedHandler = new HTTPAuthenticatedHandler(CaselessProperties.instance().getProperty("webauth"), this.getPanelOAuth().replace("oauth:", ""));
             this.httpAuthenticatedHandler.register();
-            /**
-             * @botproperty useeventsub - If `true`, enables the EventSub module. Default `false`
-             */
             this.httpPanelHandler = new HTTPPanelAndYTHandler();
             this.httpPanelHandler.register();
             this.oauthHandler = new HTTPOAuthHandler();
             this.oauthHandler.register();
-            if (CaselessProperties.instance().getPropertyAsBoolean("useeventsub", false)) {
-                EventSub.instance().register();
-            }
             this.panelHandler = (WsPanelHandler) new WsPanelHandler(CaselessProperties.instance().getProperty("webauthro"), CaselessProperties.instance().getProperty("webauth")).register();
             new WsPanelRemoteLoginHandler().register();
             RestartRunner.instance().register();
@@ -795,10 +808,6 @@ public final class PhantomBot implements Listener {
         this.alertsPollsHandler = (WsAlertsPollsHandler) new WsAlertsPollsHandler(CaselessProperties.instance().getProperty("webauthro"),
                 CaselessProperties.instance().getProperty("webauth")).register();
 
-        if (CaselessProperties.instance().getPropertyAsBoolean("useeventsub", false)) {
-            TwitchValidate.instance().validateApp(CaselessProperties.instance().getProperty("apptoken"), "APP (EventSub)");
-        }
-
         /* Is the music toggled on? */
         /**
          * @botproperty musicenable - If `true`, enables the websocket handler for the Song Request/YouTube player. Default `true`
@@ -818,27 +827,6 @@ public final class PhantomBot implements Listener {
             DiscordAPI.instance().connect(CaselessProperties.instance().getProperty("discord_token", ""));
         }
 
-        /* Set Streamlabs currency code, if possible */
-        if (this.dataStore.HasKey("donations", "", "currencycode")) {
-            TwitchAlertsAPIv1.instance().SetCurrencyCode(this.dataStore.GetString("donations", "", "currencycode"));
-        }
-
-        /* Set the TwitchAlerts OAuth key and limiter. */
-        /**
-         * @botproperty twitchalertskey - The access token for retrieving donations from StreamLabs
-         * @botpropertycatsort twitchalertskey 20 260 StreamLabs
-         * @botpropertyrestart twitchalertskey
-         */
-        /**
-         * @botproperty twitchalertslimit - The maximum number of donations to pull from StreamLabs when updating. Default `5`
-         * @botpropertycatsort twitchalertslimit 30 260 StreamLabs
-         * @botpropertyrestart twitchalertslimit
-         */
-        if (!CaselessProperties.instance().getProperty("twitchalertskey", "").isEmpty()) {
-            TwitchAlertsAPIv1.instance().SetAccessToken(CaselessProperties.instance().getProperty("twitchalertskey", ""));
-            TwitchAlertsAPIv1.instance().SetDonationPullLimit(CaselessProperties.instance().getPropertyAsInt("twitchalertslimit", 5));
-        }
-
         /* Set the YouTube API Key if provided. */
         /**
          * @botproperty youtubekey - The access token for YouTube APIv3
@@ -847,43 +835,6 @@ public final class PhantomBot implements Listener {
          */
         if (!CaselessProperties.instance().getProperty("youtubekey", "").isEmpty()) {
             YouTubeAPIv3.instance().SetAPIKey(CaselessProperties.instance().getProperty("youtubekey", ""));
-        }
-
-        /* Set the TipeeeStream oauth key. */
-        /**
-         * @botproperty tipeeestreamkey - The access token for retrieving donations from TipeeeStream
-         * @botpropertycatsort tipeeestreamkey 20 220 TipeeeStream
-         * @botpropertyrestart tipeeestreamkey
-         */
-        /**
-         * @botproperty tipeeestreamlimit - The maximum number of donations to pull from TipeeeStream when updating. Default `5`
-         * @botpropertycatsort tipeeestreamlimit 30 220 TipeeeStream
-         */
-        if (!CaselessProperties.instance().getProperty("tipeeestreamkey", "").isEmpty()) {
-            TipeeeStreamAPIv1.instance().SetOauth(CaselessProperties.instance().getProperty("tipeeestreamkey", ""));
-            TipeeeStreamAPIv1.instance().SetLimit(CaselessProperties.instance().getPropertyAsInt("tipeeestreamlimit", 5));
-        }
-
-        /* Set the StreamElements JWT token. */
-        /**
-         * @botproperty streamelementsjwt - The JWT token for retrieving donations from StreamElements
-         * @botpropertycatsort streamelementsjwt 20 210 StreamElements
-         * @botpropertyrestart streamelementsjwt
-         */
-        /**
-         * @botproperty streamelementsid - The user id for retrieving donations from StreamElements
-         * @botpropertycatsort streamelementsid 10 210 StreamElements
-         * @botpropertyrestart streamelementsid
-         */
-        /**
-         * @botproperty streamelementslimit - The maximum number of donations to pull from StreamElements when updating. Default `5`
-         * @botpropertycatsort streamelementslimit 30 210 StreamElements
-         * @botpropertyrestart streamelementslimit
-         */
-        if (!CaselessProperties.instance().getProperty("streamelementsjwt", "").isEmpty() && !CaselessProperties.instance().getProperty("streamelementsid", "").isEmpty()) {
-            StreamElementsAPIv2.instance().SetJWT(CaselessProperties.instance().getProperty("streamelementsjwt", ""));
-            StreamElementsAPIv2.instance().SetID(CaselessProperties.instance().getProperty("streamelementsid", ""));
-            StreamElementsAPIv2.instance().SetLimit(CaselessProperties.instance().getPropertyAsInt("streamelementslimit", 5));
         }
 
         /* print a extra line in the console. */
@@ -982,7 +933,7 @@ public final class PhantomBot implements Listener {
         Script.global.defineProperty("helix", Helix.instance(), 0);
         Script.global.defineProperty("botName", this.getBotName(), 0);
         Script.global.defineProperty("channelName", this.getChannelName(), 0);
-        Script.global.defineProperty("ownerName", CaselessProperties.instance().getProperty("owner").toLowerCase(), 0);
+        Script.global.defineProperty("ownerName", CaselessProperties.instance().getProperty("owner", this.getChannelName()).toLowerCase(), 0);
         Script.global.defineProperty("ytplayer", this.ytHandler, 0);
         Script.global.defineProperty("panelsocketserver", this.panelHandler, 0);
         Script.global.defineProperty("alertspollssocket", this.alertsPollsHandler, 0);
@@ -996,7 +947,10 @@ public final class PhantomBot implements Listener {
         Script.global.defineProperty("discordAPI", DiscordAPI.instance(), 0);
         Script.global.defineProperty("hasDiscordToken", hasDiscordToken(), 0);
         Script.global.defineProperty("customAPI", CustomAPI.instance(), 0);
-        Script.global.defineProperty("streamLabsAPI", TwitchAlertsAPIv1.instance(), 0);
+        Script.global.defineProperty("streamLabsAPI", StreamLabsAPI.instance(), 0);
+        this.twitchCache = TwitchCache.instance();
+        Script.global.defineProperty("twitchcache", this.twitchCache, 0);
+        Script.global.defineProperty("viewer", ViewerCache.instance(), 0);
 
         /* And finally try to load init, that will then load the scripts */
         try {
@@ -1065,10 +1019,17 @@ public final class PhantomBot implements Listener {
             this.pubSubEdge.shutdown();
         }
 
+        EventSub.instance().shutdown();
+
         /* Shutdown all caches */
+        if (this.twitchCache != null) {
+            this.print("Terminating the Twitch status cache...");
+            TwitchCache.instance().kill();
+        }
+
         if (this.followersCache != null) {
             this.print("Terminating the Twitch channel follower cache...");
-            FollowersCache.killall();
+            FollowersCache.instance().kill();
         }
 
         this.print("Terminating the Streamlabs cache...");
@@ -1076,12 +1037,12 @@ public final class PhantomBot implements Listener {
 
         if (this.tipeeeStreamCache != null) {
             this.print("Terminating the TipeeeStream cache...");
-            TipeeeStreamCache.killall();
+            TipeeeStreamCache.instance().kill();
         }
 
         if (this.streamElementCache != null) {
             this.print("Terminating the StreamElementsCache cache...");
-            StreamElementsCache.killall();
+            StreamElementsCache.instance().kill();
         }
 
         this.print("Terminating all script modules...");
@@ -1089,9 +1050,6 @@ public final class PhantomBot implements Listener {
         scripts.entrySet().forEach((script) -> {
             script.getValue().kill();
         });
-
-        this.print("Saving all data...");
-        this.dataStore.SaveAll(true);
 
         /* Check to see if web is enabled */
         if (CaselessProperties.instance().getPropertyAsBoolean("webenable", true)) {
@@ -1164,32 +1122,21 @@ public final class PhantomBot implements Listener {
         }
 
         /* Load the caches for each channels */
-        this.twitchCache = TwitchCache.instance();
         this.twitchTeamCache = TwitchTeamsCache.instance(this.getChannelName());
         this.emotesCache = EmotesCache.instance(this.getChannelName());
-        this.followersCache = FollowersCache.instance(this.getChannelName());
+        this.followersCache = FollowersCache.instance();
         this.viewerListCache = ViewerListCache.instance(this.getChannelName());
 
-        /* Start the donations cache if the keys are not null and the module is enabled */
-        if (CaselessProperties.instance().getProperty("twitchalertskey", "") != null && !CaselessProperties.instance().getProperty("twitchalertskey", "").isEmpty() && checkModuleEnabled("./handlers/donationHandler.js")) {
-            DonationsCache.instance().start();
-        }
-
-        /* Start the TipeeeStream cache if the keys are not null and the module is enabled. */
-        if (CaselessProperties.instance().getProperty("tipeeestreamkey", "") != null && !CaselessProperties.instance().getProperty("tipeeestreamkey", "").isEmpty() && checkModuleEnabled("./handlers/tipeeeStreamHandler.js")) {
-            this.tipeeeStreamCache = TipeeeStreamCache.instance(this.getChannelName());
-        }
-
-        /* Start the StreamElements cache if the keys are not null and the module is enabled. */
-        if (CaselessProperties.instance().getProperty("streamelementsjwt", "") != null && !CaselessProperties.instance().getProperty("streamelementsjwt", "").isEmpty() && checkModuleEnabled("./handlers/streamElementsHandler.js")) {
-            this.streamElementCache = StreamElementsCache.instance(this.getChannelName());
-        }
+        DonationsCache.instance();
+        this.tipeeeStreamCache = TipeeeStreamCache.instance();
+        this.streamElementCache = StreamElementsCache.instance();
 
         /* Export these to the $. api for the sripts to use */
-        Script.global.defineProperty("twitchcache", this.twitchCache, 0);
         Script.global.defineProperty("twitchteamscache", this.twitchTeamCache, 0);
         Script.global.defineProperty("emotes", this.emotesCache, 0);
+        Script.global.defineProperty("followers", this.followersCache, 0);
         Script.global.defineProperty("usernameCache", this.viewerListCache, 0);
+        EventSub.instance();
     }
 
     /**
@@ -1319,14 +1266,6 @@ public final class PhantomBot implements Listener {
          * @botpropertyrestart rhinodebugger
          */
         PhantomBot.setEnableRhinoDebugger(ConfigurationManager.getBoolean(startProperties, ConfigurationManager.PROP_RHINODEBUGGER, false));
-
-        /**
-         * @botproperty rhino_es6 - If `true`, enables newer features from ECMAScript 6 in Rhino. Default `true`
-         * @botpropertytype rhino_es6 Boolean
-         * @botpropertycatsort rhino_es6 100 50 Misc
-         * @botpropertyrestart rhino_es6
-         */
-        PhantomBot.setEnableRhinoES6(startProperties.getPropertyAsBoolean("rhino_es6", true));
     }
 
     private static void setEnableRhinoDebugger(boolean enableRhinoDebugger) {
@@ -1334,13 +1273,6 @@ public final class PhantomBot implements Listener {
             com.gmt2001.Console.out.println("Rhino Debugger will be launched if system supports it.");
         }
         PhantomBot.enableRhinoDebugger = enableRhinoDebugger;
-    }
-
-    private static void setEnableRhinoES6(boolean enableRhinoES6) {
-        if (enableRhinoES6) {
-            com.gmt2001.Console.out.println("Rhino ECMAScript6 support enabled.");
-        }
-        PhantomBot.enableRhinoES6 = enableRhinoES6;
     }
 
     private static void setReloadScripts(boolean reloadScripts) {
@@ -1414,6 +1346,9 @@ public final class PhantomBot implements Listener {
      * doCheckPhantomBotUpdate
      */
     private void doCheckPhantomBotUpdate() {
+        if (RepoVersion.isEdgeBuild() || RepoVersion.isCustomBuild()) {
+            this.dataStore.del("settings", "newrelease_info");
+        }
         ExecutorService.scheduleAtFixedRate(() -> {
             if (!RepoVersion.isEdgeBuild() && !RepoVersion.isCustomBuild()) {
                 try {
@@ -1498,7 +1433,7 @@ public final class PhantomBot implements Listener {
 
             String timestamp = LocalDateTime.now(getTimeZoneId()).format(DateTimeFormatter.ofPattern("ddMMyyyy.hhmmss"));
 
-            this.dataStore.backupDB("phantombot.auto.backup." + timestamp + ".db");
+            this.dataStore.backupDB("phantombot.auto.backup." + timestamp);
 
             try {
                 Iterator<File> dirIterator = FileUtils.iterateFiles(new File("./dbbackup"), new WildcardFileFilter("phantombot.auto.*"), null);
@@ -1599,10 +1534,6 @@ public final class PhantomBot implements Listener {
         return enableRhinoDebugger;
     }
 
-    public static boolean getEnableRhinoES6() {
-        return enableRhinoES6;
-    }
-
     public static String getTimeZone() {
         /**
          * @botproperty logtimezone - The timezone for timestamps in the log. Must be a valid IANA Time Zone Database name. Default `GMT`
@@ -1641,5 +1572,9 @@ public final class PhantomBot implements Listener {
 
     public void setSession(TwitchSession session) {
         this.session = session;
+    }
+
+    public WsPanelHandler panelhandler() {
+        return this.panelHandler;
     }
 }

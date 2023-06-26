@@ -37,12 +37,13 @@ import tv.phantombot.cache.UsernameCache;
 import tv.phantombot.twitch.api.Helix;
 
 /**
- * Stubs to @see Helix for backwards compatibility
+ * Stubs to {@link Helix} for backwards compatibility
  *
  * @author gmt2001
  * @author illusionaryone
+ * @deprecated Please use {@link Helix} instead. In scripts, use {@code $.helix} instead of {@code $.twitch}
  */
-@Deprecated
+@Deprecated(since = "3.6.4.1", forRemoval = true)
 public class TwitchAPIv5 {
 
     private static final TwitchAPIv5 instance = new TwitchAPIv5();
