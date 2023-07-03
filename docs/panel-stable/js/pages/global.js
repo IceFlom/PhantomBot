@@ -18,7 +18,6 @@
 /* global toastr */
 
 // Script that handles all of the global things.
-
 $(function () {
     helpers.getBotVersion();
     socket.addListener('notification', function (e) {
@@ -49,7 +48,17 @@ $(function () {
                 break;
             case 'error':
                 toastr.error(e.message, e.title, options);
-                break
+                break;
+            case 'permission':
+                if (!helpers.isPermissionErrorRunning) {
+                    helpers.isPermissionErrorRunning = true;
+                    toastr.error(e.message, e.title, options);
+                    setTimeout(function () {
+                        helpers.isPermissionErrorRunning = false;
+                    }, 5e3);
+                }
+
+                break;
             default:
                 toastr.info(e.message, e.title, options);
         }
@@ -102,15 +111,99 @@ $(function () {
 
     // the button that signs out.
     $('#sign-out-btn').on('click', function () {
-        toastr.info('Signing out...', '', {timeOut: 0});
-        socket.close();
-        window.sessionStorage.removeItem("webauth");
-        window.location = window.location.origin + window.location.pathname + 'login/#logoutSuccess=true';
+        helpers.signOut();
     });
 
+    const passwordChangeForm = $('<form/>', {
+        'role': 'form'
+    })
+    .append(helpers.getInputGroup('user-old-pwd', 'password', 'Current password', '', '', 'Your current password'))
+    .append(helpers.getInputGroup('user-new-pwd', 'password', 'New password', '', '', 'Your new password'))
+    .append(helpers.getInputGroup('user-new-pwd-2', 'password', 'Repeat new password', '', '', 'Your new password'));
+
+    const passwordChangeCallback = function () {
+        let currentPassword = $('#user-old-pwd'),
+                newPassword = $('#user-new-pwd'),
+                newPassword2 = $('#user-new-pwd-2');
+
+        switch (false) {
+            case helpers.handleInputString(currentPassword):
+            case helpers.handleInputString(newPassword):
+            case helpers.handleInputString(newPassword2):
+                break;
+            default:
+                if (currentPassword.val() === newPassword.val()) {
+                    toastr.error('New password is identical to your current password!');
+                    break;
+                }
+                if (newPassword.val() !== newPassword2.val()) {
+                    toastr.error('New passwords do not match!');
+                    break;
+                }
+
+                socket.changePanelUserPWD('change_panel_user_pwd', helpers.currentPanelUserData.username, currentPassword.val(), newPassword.val(), function (res) {
+                    if (res.error !== undefined) {
+                        toastr.error(res.error);
+                        return;
+                    }
+
+                    $('#pwdChange-panelUser').modal('hide');
+                    toastr.success(res.success);
+                    helpers.getConfirmDeleteModal('sign-out-user-modal', 'Sign out required', false, '',
+                        function () {
+                            helpers.signOut();
+                        },
+                        {
+                            deleteText: 'Sign out',
+                            blockClosing: true
+                        });
+                });
+        }
+    };
+
+    // the change password button.
+    $('#user-pwd-btn').on('click', function () {
+        helpers.getModal('pwdChange-panelUser', 'Change password', 'Save', passwordChangeForm, passwordChangeCallback).modal('toggle');
+    });
     // Load the display name.
     $(function () {
-        $('#main-name, #second-name').text(getDisplayName());
+        //Remove sections to which the user has no permissions
+        socket.getPanelSections('get_panel_sections', function (res) {
+            let sectionsToRemove = res.filter(item => !helpers.currentPanelUserData.permission.some(obj => obj.section === item));
+
+            for (let i in sectionsToRemove) {
+                if (sectionsToRemove[i] === 'stream overlay') {
+                    sectionsToRemove[i] = 'overlay';
+                }
+                if (sectionsToRemove[i] === 'keywords & emotes') {
+                    sectionsToRemove[i] = 'keywords';
+                }
+
+                $('[data-folder="' + sectionsToRemove[i] + '"]').closest('li.treeview').remove();
+            }
+        });
+        if (helpers.currentPanelUserData.userType === 'CONFIG') {
+            $('[data-removeForConfigUser="true"]').remove();//Panel user is defined in the config
+        } else {
+            $('[data-removeForCantRestart="true"]').remove();
+            $('[data-removeForNonConfigUser="true"]').remove();
+        }
+
+        if (!helpers.currentPanelUserData.canManageUsers) { //Remove panel user manager
+            $('[data-removeForCantManage="true"]').remove();
+        }
+
+
+        $('#main-name').text(getChannelName() + ' | ' + helpers.currentPanelUserData.username);
+        $('#second-name').text(helpers.currentPanelUserData.username);
+
+        if (!helpers.currentPanelUserData.hasSetPassword) { //Force password change upon first login
+            helpers.getModal('pwdChange-panelUser', 'Password change required', 'Save', passwordChangeForm, passwordChangeCallback, {blockClosing: true, removecancel: true})
+                    .modal({
+                        keyboard: false,
+                        backdrop: 'static'
+                    });
+        }
     });
 
     // Check if Discord is enabled.

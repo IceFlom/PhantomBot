@@ -32,14 +32,17 @@ $(function(){
     function onValueChangeEvent(event) {
         const key = $(this).prop('id')
         const value = $(this).prop('value');
-        
-        if (value.length > 0) {
+        const curvalue = $(this).attr('data-curval') === undefined || $(this).attr('data-curval') === null ? '' : $(this).attr('data-curval');
+
+        if (value === curvalue) {
+            delete pendingSettings[key];
+        } else if (value.length > 0) {
             pendingSettings[key] = value;
         } else {
-            if (pendingSettings[key] !== undefined) {
-                delete pendingSettings[key];
-            }
+            pendingSettings[key] = null;
         }
+
+        $('#save-button').prop('disabled', Object.keys(pendingSettings).length == 0);
     }
 
     // Creates the settings list.
@@ -80,7 +83,7 @@ $(function(){
                     'data-toggle': 'collapse',
                     'data-parent': '#accordion',
                     'style': 'color: #ccc !important',
-                    'href': '#' + json[i].category.sanitize().toLowerCase() + '_accodion' 
+                    'href': '#' + json[i].category.sanitize().toLowerCase() + '_accodion'
                 }).append($('<h4/>', {
                     'class': 'panel-title',
                     'html': json[i].category
@@ -109,7 +112,7 @@ $(function(){
                 userInput = $('<select/>', {
                     'class': 'form-control',
                     'style': 'cursor: pointer',
-                    'id': json.botproperty
+                    'id': json.botproperty.toLowerCase()
                 });
 
                 ['true', 'false'].map(val => {
@@ -128,7 +131,7 @@ $(function(){
                     'type': 'number',
                     'value': defaultValue,
                     'step': '1',
-                    'id': json.botproperty,
+                    'id': json.botproperty.toLowerCase(),
                     'placeholder': 'Please enter a value.'
                 });
                 break;
@@ -138,7 +141,7 @@ $(function(){
                     'type': 'number',
                     'value': defaultValue,
                     'step': '0.1',
-                    'id': json.botproperty,
+                    'id': json.botproperty.toLowerCase(),
                     'placeholder': 'Please enter a value.'
                 });
                 break;
@@ -147,13 +150,14 @@ $(function(){
                     'class': 'form-control',
                     'type': 'text',
                     'value': defaultValue,
-                    'id': json.botproperty,
+                    'id': json.botproperty.toLowerCase(),
                     'placeholder': 'Please enter a value.'
                 });
         }
 
         // Handles the event for when a value is changed.
         userInput.on('change', onValueChangeEvent);
+        userInput.on('keyup', onValueChangeEvent);
 
         // Append the form on the page.
         $('#' + json.category.sanitize().toLowerCase() + '_accodion_html')
@@ -171,17 +175,18 @@ $(function(){
 
         // For select boxes only, set the default value.
         if (defaultValue === 'true' || defaultValue === 'false') {
-            $('#' + json.botproperty + ' option[value=' + defaultValue + ']').prop('selected', true);
+            $('#' + json.botproperty.toLowerCase() + ' option[value=' + defaultValue + ']').prop('selected', true);
         }
     }
 
-    // Fills the user interactable inputs with their acctual values. 
+    // Fills the user interactable inputs with their acctual values.
     function populateInteractableInputs(json) {
         for (let i in json) {
-            $('#' + i).val(json[i]);
+            $('#' + i.toLowerCase()).val(json[i] === null ? '' : json[i]);
+            $('#' + i.toLowerCase()).attr('data-curval', json[i] === null ? '' : json[i]);
         }
     }
- 
+
     // Gets the bot settings from our API.
     function getBotSettings() {
         $.ajax({
@@ -249,8 +254,11 @@ $(function(){
                         $('html, body').animate({
                             scrollTop: 0
                         }, 100);
-                        $('#save-button').prop('disabled', false);
-                        
+
+                        for (let i in pendingSettings) {
+                            $('#' + i).attr('data-curval', pendingSettings[i] === null ? '' : pendingSettings[i]);
+                        }
+
                         pendingSettings = {};
                     }
                 },
@@ -333,4 +341,5 @@ $(function(){
             toastr.error('Failed to retrieve current settings: ' + msg + '!');
         }
     });
+    $('#save-button').prop('disabled', true);
 });
