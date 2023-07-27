@@ -1,16 +1,17 @@
 package tv.phantombot.panel.PanelUser;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONStringer;
-import com.gmt2001.datastore.DataStore;
+
 import tv.phantombot.PhantomBot;
+import tv.phantombot.panel.WsPanelHandler;
 
 /**
  * {@link PanelUser Panel user} management for the web panel and websocket
@@ -19,11 +20,6 @@ import tv.phantombot.PhantomBot;
  */
 public final class PanelUserHandler {
     /**
-     * Database table suffix for the {@link PanelUser panel users}
-     */
-    public static final String PANEL_USER_TABLE = "panelUsers";
-
-    /**
      * Sections on the panel to which a user can be granted permissions to
      */
     private static final String[] PANEL_SECTIONS = {"dashboard", "commands", "moderation", "permissions", "timers", "alerts", "loyalty", "ranking",
@@ -31,7 +27,7 @@ public final class PanelUserHandler {
                                                     "audio", "stream overlay", "settings", "youtube player"};
 
     /**
-     * Database tables that are generally called on the panel and are allowed with {@link Permission.READ_ONLY read only permission}
+     * Database tables that are generally called on the panel and are allowed with {@link Permission#READ_ONLY read only permission}
      */
     private static final List<String> READ_ONLY_TABLES = List.of("paneluser", "settings", "groups", "panelsettings", "paneldata", "modules", "command");
     /**
@@ -40,7 +36,7 @@ public final class PanelUserHandler {
     private static final Map<String, List<String>> PANEL_SECTION_SCRIPTS = Map.of("alerts", List.of("donationscache.java"),
                                                                                     "audio", List.of("./core/commandcooldown.js"),
                                                                                     "commands", List.of("./commands/customcommands.js", "./core/commandcooldown.js", "./core/commandregister.js"),
-                                                                                    "dashboard", List.of("./core/panelhandler.js", "restartrunner"),
+                                                                                    "dashboard", List.of("./core/panelhandler.js"),
                                                                                     "discord", List.of("./discord/handlers/followhandler.js", "./discord/handlers/subscribehandler.js", "./discord/handlers/bitshandler.js", "./discord/handlers/cliphandler.js",
                                                                                                          "./discord/systems/greetingssystem.js", "./discord/handlers/streamlabshandler.js", "./discord/handlers/tipeeestreamhandler.js", "./discord/handlers/streamelementshandler.js",
                                                                                                           "./discord/core/commandcooldown.js", "./discord/commands/customcommands.js", "./discord/games/gambling.js", "./core/logging.js"),
@@ -50,7 +46,7 @@ public final class PanelUserHandler {
                                                                                     "loyalty", List.of("./handlers/channelpointshandler.js"),
                                                                                     "settings", List.of("./core/corecommands.js", "./discord/core/commandcooldown.js", "./core/commandcooldown.js"));
     /**
-     * Allowed commands with {@link Permission.READ_ONLY read only permission}
+     * Allowed commands with {@link Permission#READ_ONLY read only permission}
      */
     private static final List<String> READ_ONLY_COMMANDS = List.of("synconline silent", "reloadaudiopanelhooks");
     /**
@@ -227,6 +223,7 @@ public final class PanelUserHandler {
         if (base64Token == null || base64Token.isEmpty()) {
             return null;
         }
+
         String userpass = new String(Base64.getDecoder().decode(base64Token));
         int colon = userpass.indexOf(':');
         if (colon < 0) {
@@ -234,6 +231,7 @@ public final class PanelUserHandler {
         }
         String username = userpass.substring(0, colon);
         String password = userpass.substring(colon + 1);
+
         return checkLoginAndGetUser(username, password, requestUri);
     }
 
@@ -285,6 +283,7 @@ public final class PanelUserHandler {
         if (user == null || !user.isEnabled()) {
             return null;
         }
+
         if (requestUri != null) {
             if ((requestUri.contains("/setup/") || requestUri.contains("/oauth/")) && !user.isConfigUser()){
                 return null;
@@ -293,11 +292,19 @@ public final class PanelUserHandler {
                 return null;
             }
         }
+
         if (password.equals(user.getPassword())) {
             user.setLastLoginNOW();
-            user.save();
+
+            try {
+            user.update();
+            } catch (Exception ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+
             return user;
         }
+
         return null;
     }
 
@@ -313,6 +320,7 @@ public final class PanelUserHandler {
         if (user != null && user.isEnabled()) {
             return user;
         }
+
         return null;
     }
 
@@ -330,9 +338,11 @@ public final class PanelUserHandler {
         if (user == null) {
             return null;
         }
+
         if (!user.isEnabled()) {
             return null;
         }
+
         return user.getAuthToken();
     }
 
@@ -351,17 +361,24 @@ public final class PanelUserHandler {
         if (user == null) {
             return PanelMessage.UserNotFound;
         }
+
         if (!user.canBeEdited()){
             return PanelMessage.UserIsConfig;
         }
+
         if (!currentPassword.equals(user.getPassword())) {
             return PanelMessage.Error.setResponse("Invalid password!");
         }
 
         user.setPassword(newPassword);
-        if (!user.save()) {
+
+        try {
+            user.update();
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
         }
+
         return PanelMessage.Success.setResponse("Password changed successfully");
     }
 
@@ -373,8 +390,8 @@ public final class PanelUserHandler {
      * @see PanelUser#create(String, Permission, boolean) User Creation
      * @see PanelUser#LookupByUsername(String) exists
      */
-    public static PanelMessage createNewUser(String username, Boolean enabled) {
-        return createNewUser(username, PanelUserHandler.getFullAccessPermissions(), enabled);
+    public static PanelMessage createNewUser(String username, boolean enabled) {
+        return createNewUser(username, PanelUserHandler.getFullAccessPermissions(), enabled, true, true);
     }
 
     /**
@@ -382,12 +399,14 @@ public final class PanelUserHandler {
      * @param username The user's name
      * @param permission The user's {@link Permission#getDisplayName() permissions display name}
      * @param enabled {@code true} if the user should be enabled; {@code false} otherwise
+     * @param canManageUsers {@code true} to allow the user to manage other users; {@code false} to prohibit this
+     * @param canRestartBot {@code true} to allow the user to restart the bot via the panel; {@code false} to prohibit this
      * @return The fitting {@link PanelMessage panel message}
      * @see PanelUser#create(String, Permission, boolean) User Creation
      * @see PanelUser#LookupByUsername(String) exists
      */
-    public static PanelMessage createNewUser(String username, JSONArray jsoPermissions, Boolean enabled) {
-        return createNewUser(username, getPermissionsFromJSON(jsoPermissions), enabled);
+    public static PanelMessage createNewUser(String username, JSONArray jsoPermissions, boolean enabled, boolean canManageUsers, boolean canRestartBot) {
+        return createNewUser(username, getPermissionsFromJSON(jsoPermissions), enabled, canManageUsers, canRestartBot);
     }
 
     /**
@@ -395,16 +414,25 @@ public final class PanelUserHandler {
      * @param username The user's name
      * @param permission The user's {@link Permission permissions}
      * @param enabled {@code true} if the user should be enabled; {@code false} otherwise
+     * @param canManageUsers {@code true} to allow the user to manage other users; {@code false} to prohibit this
+     * @param canRestartBot {@code true} to allow the user to restart the bot via the panel; {@code false} to prohibit this
      * @return The fitting {@link PanelMessage panel message}
      * @see PanelUser#create(String, Permission, boolean) User Creation
      * @see PanelUser#LookupByUsername(String) exists
      */
-    public static PanelMessage createNewUser(String username, Map<String, Permission> permissions, Boolean enabled) {
-        PanelUser user = PanelUser.LookupByUsername(username);
-        if (user != null) {
+    public static PanelMessage createNewUser(String username, Map<String, Permission> permissions, boolean enabled, boolean canManageUsers, boolean canRestartBot) {
+        if (PanelUser.UserExists(username)) {
             return PanelMessage.UserAlreadyExists;
         }
-        String password = PanelUser.create(username, permissions, enabled);
+
+        String password;
+        try {
+            password = PanelUser.create(username, permissions, enabled, canManageUsers, canRestartBot);
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+            return PanelMessage.SaveError;
+        }
+
         return PanelMessage.Success.setResponse(password);
     }
 
@@ -422,12 +450,18 @@ public final class PanelUserHandler {
         if (user == null) {
             return PanelMessage.UserNotFound;
         }
+
         if (!user.canBeEdited()){
             return PanelMessage.UserIsConfig;
         }
-        if(!user.delete()) {
+
+        try {
+            user.delete();
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
         }
+
         return PanelMessage.Success.setResponse("User successfully deleted");
     }
 
@@ -436,12 +470,14 @@ public final class PanelUserHandler {
         if (jsoPermissions == null) {
             return permissions;
         }
+
         for (int i = 0; i < jsoPermissions.length(); i++) {
             JSONObject permissionObj = jsoPermissions.getJSONObject(i);
             String section = permissionObj.getString("section");
             Permission permission = Permission.getByName(permissionObj.getString("permission"));
             permissions.put(section, permission);
         }
+
         return permissions;
     }
 
@@ -453,11 +489,67 @@ public final class PanelUserHandler {
      * @param newUsername The user's new name; {@code null} to not change the username
      * @param permission The user's new {@link Permission permissions}; {@code null} to not change the {@link Permission permission}
      * @param enabled {@code true} to enable the user; {@code false} to disable the user
+     * @param canManageUsers {@code true} to allow the user to manage other users; {@code false} to prohibit this
+     * @param canRestartBot {@code true} to allow the user to restart the bot via the panel; {@code false} to prohibit this
      * @return The fitting {@link PanelMessage panel message}
      * @see PanelUser#LookupByUsername(String) exists
      */
-    public static PanelMessage editUser(String currentUsername, String newUsername, JSONArray jsoPermissions, boolean enabled) {
-        return editUser(currentUsername, newUsername, getPermissionsFromJSON(jsoPermissions), enabled);
+    public static PanelMessage editUser(String currentUsername, String newUsername, JSONArray jsoPermissions, boolean enabled, boolean canManageUsers, boolean canRestartBot) {
+        return editUser(currentUsername, newUsername, getPermissionsFromJSON(jsoPermissions), enabled, Boolean.valueOf(canManageUsers), Boolean.valueOf(canRestartBot));
+    }
+
+    /**
+     * Changes a {@link PanelUser panel user's} properties
+     * <br /><br />
+     * Only existing and {@link PanelUser#canBeEdited() editable} {@link PanelUser panel users} can be deleted
+     * @param currentUsername The user's name which should be edited
+     * @param newUsername The user's new name; {@code null} to not change the username
+     * @param permission The user's new {@link Permission permission}; {@code null} to not change the {@link Permission permissions}
+     * @param enabled {@code true} to enable the user; {@code false} to disable the user
+     * @param canManageUsers {@code true} to allow the user to manage other users; {@code false} to prohibit this
+     * @param canRestartBot {@code true} to allow the user to restart the bot via the panel; {@code false} to prohibit this
+     * @return The fitting {@link PanelMessage panel message}
+     * @see PanelUser#LookupByUsername(String) exists
+     */
+    public static PanelMessage editUser(String currentUsername, String newUsername, Map<String, Permission> permissions, boolean enabled, Boolean canManageUsers, Boolean canRestartBot) {
+        PanelUser user = PanelUser.LookupByUsername(currentUsername);
+        if (user == null) {
+            return PanelMessage.UserNotFound;
+        }
+
+        if (!user.canBeEdited()){
+            return PanelMessage.UserIsConfig;
+        }
+
+        if(newUsername != null && !currentUsername.equals(newUsername)){
+            if (PanelUser.LookupByUsername(newUsername) != null) {
+                return PanelMessage.UserAlreadyExists;
+            }
+            user.changeUsername(newUsername);
+        }
+
+        user.setEnabled(enabled);
+
+        if (permissions != null && !permissions.isEmpty()) {
+            user.setPermission(permissions);
+        }
+
+        if (canManageUsers != null) {
+            user.setManageUserPermission(canManageUsers.booleanValue());
+        }
+
+        if (canRestartBot != null) {
+            user.setRestartPermission(canRestartBot.booleanValue());
+        }
+
+        try {
+            user.update();
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+            return PanelMessage.SaveError;
+        }
+
+        return PanelMessage.Success.setResponse("User successfully edited");
     }
 
     /**
@@ -472,27 +564,7 @@ public final class PanelUserHandler {
      * @see PanelUser#LookupByUsername(String) exists
      */
     public static PanelMessage editUser(String currentUsername, String newUsername, Map<String, Permission> permissions, boolean enabled) {
-        PanelUser user = PanelUser.LookupByUsername(currentUsername);
-        if (user == null) {
-            return PanelMessage.UserNotFound;
-        }
-        if (!user.canBeEdited()){
-            return PanelMessage.UserIsConfig;
-        }
-        if(newUsername != null && !currentUsername.equals(newUsername)){
-            if (PanelUser.LookupByUsername(newUsername) != null) {
-                return PanelMessage.UserAlreadyExists;
-            }
-            user.changeUsername(newUsername);
-        }
-        if (permissions != null && !permissions.isEmpty()) {
-            user.setPermission(permissions);
-        }
-        user.setEnabled(enabled);
-        if (!user.save()) {
-            return PanelMessage.SaveError;
-        }
-        return PanelMessage.Success.setResponse("User successfully edited");
+        return editUser(currentUsername, newUsername, permissions, enabled, null, null);
     }
 
     /**
@@ -509,30 +581,25 @@ public final class PanelUserHandler {
         if (user == null) {
             return PanelMessage.UserNotFound;
         }
+
         if (!user.canBeEdited()){
             return PanelMessage.UserIsConfig;
         }
 
         String password = user.generateNewPassword();
-        if (!user.save()) {
+
+        try {
+            user.update();
+        } catch (Exception ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
         }
+
         return PanelMessage.Success.setResponse(password);
     }
 
     private static List<PanelUser> getAllUsers() {
-        DataStore datastore = PhantomBot.instance().getDataStore();
-        List<PanelUser> users = new ArrayList<>();
-        if (!datastore.FileExists(PANEL_USER_TABLE)) {
-            return users;
-        }
-
-        String[] keys = datastore.GetKeyList(PANEL_USER_TABLE, "");
-        for (String key : keys) {
-            users.add(PanelUser.LookupByUsername(key));
-        }
-
-        return users;
+        return PanelUser.GetAll();
     }
 
     /**
@@ -551,6 +618,7 @@ public final class PanelUserHandler {
                 .key("username").value(user.getUsername())
                 .key("isEnabled").value(user.isEnabled())
                 .key("canManageUsers").value(user.canManageUsers())
+                .key("canRestartBot").value(user.canRestartBot())
                 .key("permission").value(user.getPermissionsToJSON(true))
                 .key("creationDate").value(user.getCreationDate())
                 .key("lastLogin").value(user.getLastLogin())
@@ -589,9 +657,11 @@ public final class PanelUserHandler {
         if (user == null) {
             jsonObject.object().key(PanelMessage.UserNotFound.getJSONkey()).value(PanelMessage.UserNotFound.getMessage()).endObject();
         }
+
         jsonObject.object().key("username").value(user.getUsername())
                             .key("isEnabled").value(user.isEnabled())
                             .key("canManageUsers").value(user.canManageUsers())
+                            .key("canRestartBot").value(user.canRestartBot())
                             .key("permission").value(user.getPermissionsToJSON(true))
                             .key("hasSetPassword").value(user.hasSetPassword())
                             .key("userType").value(user.getUserType().toString())
@@ -659,10 +729,18 @@ public final class PanelUserHandler {
             return true;
         }
         script = script.toLowerCase();
-        if (script.equalsIgnoreCase("donationcache.java")) {
+        if (script.equalsIgnoreCase("donationscache.java")) {
             com.gmt2001.Console.err.println("Script access denied to script " + script + " for user " + user.getUsername());
             return false;
         }
+        if (script.equalsIgnoreCase("restartrunner")) {
+            if (user.canRestartBot()) {
+                return true;
+            }
+            com.gmt2001.Console.err.println("Script access denied to script " + script + " with args: \"" + Arrays.toString(args) + "\" for user " + user.getUsername());
+            return false;
+        }
+
         section = section.toLowerCase();
         if (section.equalsIgnoreCase("dashboard")) {
             return true;

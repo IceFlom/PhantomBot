@@ -484,11 +484,7 @@
      * @returns {Number}
      */
     function queryDBPermission(username) {
-        let id = PERMISSION.None;
-        if ($.inidb.exists('group', username.toLowerCase())) {
-            id = parseInt($.inidb.get('group', username.toLowerCase()));
-        }
-        return id;
+        return $.inidb.GetInteger('group', '', username.toLowerCase(), PERMISSION.None);
     }
 
     /**
@@ -936,35 +932,41 @@
      * @event ircChannelJoinUpdate
      */
     $.bind('ircChannelUsersUpdate', function (event) {
-        setTimeout(function () {
-            // Don't allow other events to add or remove users.
-            isUpdatingUsers = true;
 
-            let chatters = event.chatters(),
-                    newUsers = [],
-                    keys = [],
-                    values = [];
+        if (isUpdatingUsers) {
+            return; //Skip this update run
+        }
 
-            // Handle joins.
-            for (let i = 0; i < chatters.size(); i++) {
-                let username = $.jsString(chatters.get(i).toLowerCase());
-                $.restoreSubscriberStatus(username);
-                keys.push(username);
-                values.push('true');
+        // Don't allow other events to add or remove users.
+        isUpdatingUsers = true;
 
-                if (isTwitchBot(username)) {
-                    continue;
-                }
+        let chatters = event.chatters(),
+                newUsers = [],
+                keys = [],
+                values = [];
 
-                newUsers.push(username);
+        // Process new users list
+        for (let i = 0; i < newUsers.length; i++) {
+            let username = $.jsString(chatters.get(i).login().toLowerCase());
+            if (isTwitchBot(username)) {
+                continue;
             }
 
-            $.users = newUsers;
+            if (!isOwner(username) && !$.users.includes(username)) { //Ignore already known users and bots as well as the streamer
+                keys.push(username);
+                values.push('true');
+                restoreSubscriberStatus(username);
+            }
 
+            newUsers.push(username);
+        }
+
+        $.users = newUsers;
+        isUpdatingUsers = false;
+
+        if (keys.length !== 0) {
             $.inidb.SetBatchString('visited', '', keys, values);
-
-            isUpdatingUsers = false;
-        }, 0, 'core::permissions.js::ircChannelUsersUpdate');
+        }
     });
 
     /**
@@ -1268,11 +1270,14 @@
                 return;
             }
 
+            let onlinePoints = $.inidb.OptInteger('grouppoints', '', getGroupNameById(groupId)),
+                    offlinePoints = $.inidb.OptInteger('grouppointsoffline', '', getGroupNameById(groupId));
             if (!args[1]) {
+
                 $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup', getGroupNameById(groupId),
-                        ($.inidb.exists('grouppoints', getGroupNameById(groupId)) ? $.inidb.get('grouppoints', getGroupNameById(groupId)) : '(undefined)'),
+                        (onlinePoints.isPresent() ? onlinePoints.get() : '(undefined)'),
                         $.pointNameMultiple,
-                        ($.inidb.exists('grouppointsoffline', getGroupNameById(groupId)) ? $.inidb.get('grouppointsoffline', getGroupNameById(groupId)) : '(undefined)'),
+                        (offlinePoints.isPresent() ? offlinePoints.get() : '(undefined)'),
                         $.pointNameMultiple));
                 return;
             }
@@ -1286,11 +1291,11 @@
             if (!args[2]) {
                 if (channelStatus.equalsIgnoreCase('online')) {
                     $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup.online', getGroupNameById(groupId),
-                            ($.inidb.exists('grouppoints', getGroupNameById(groupId)) ? $.inidb.get('grouppoints', getGroupNameById(groupId)) : '(undefined)'),
+                            (onlinePoints.isPresent() ? onlinePoints.get() : '(undefined)'),
                             $.pointNameMultiple));
                 } else if (channelStatus.equalsIgnoreCase('offline')) {
                     $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup.offline', getGroupNameById(groupId),
-                            ($.inidb.exists('grouppointsoffline', getGroupNameById(groupId)) ? $.inidb.get('grouppointsoffline', getGroupNameById(groupId)) : '(undefined)'),
+                            (offlinePoints.isPresent() ? offlinePoints.get() : '(undefined)'),
                             $.pointNameMultiple));
                 }
                 return;

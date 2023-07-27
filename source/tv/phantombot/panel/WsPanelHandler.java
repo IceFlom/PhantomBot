@@ -17,6 +17,7 @@
 package tv.phantombot.panel;
 
 import com.gmt2001.Digest;
+import com.gmt2001.TestData;
 import com.gmt2001.httpwsserver.HTTPWSServer;
 import com.gmt2001.httpwsserver.WebSocketFrameHandler;
 import com.gmt2001.httpwsserver.WsFrameHandler;
@@ -63,8 +64,8 @@ import tv.phantombot.twitch.api.Helix;
 public class WsPanelHandler implements WsFrameHandler {
 
     @SuppressWarnings("MismatchedReadAndWriteOfArray")
-    private static final String[] BLOCKED_DB_QUERY_TABLES = new String[]{"commandtoken", PanelUserHandler.PANEL_USER_TABLE};
-    private static final String[] BLOCKED_DB_UPDATE_TABLES = new String[]{PanelUserHandler.PANEL_USER_TABLE};
+    private static final String[] BLOCKED_DB_QUERY_TABLES = new String[]{"commandtoken"};
+    private static final String[] BLOCKED_DB_UPDATE_TABLES = new String[]{};
     private final WsAuthenticationHandler authHandler;
 
     public WsPanelHandler(String panelAuthRO, String panelAuth) {
@@ -86,9 +87,7 @@ public class WsPanelHandler implements WsFrameHandler {
 
     @Override
     public void handleFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
-        if (frame instanceof TextWebSocketFrame) {
-            TextWebSocketFrame tframe = (TextWebSocketFrame) frame;
-
+        if (frame instanceof TextWebSocketFrame tframe) {
             JSONObject jso;
 
             try {
@@ -135,6 +134,8 @@ public class WsPanelHandler implements WsFrameHandler {
                 handleChannelPointsList(ctx, frame, jso);
             } else if (jso.has("panelUser")) {
                 handlePanelUser(ctx, frame, jso);
+            } else if (jso.has("channelpointslisttest")) {
+                handleChannelPointsListTest(ctx, frame, jso);
             }
         } catch (Exception ex) {
             com.gmt2001.Console.err.println("Exception processing /ws/panel frame: " + jso.toString(), !PhantomBot.getEnableDebugging());
@@ -315,7 +316,7 @@ public class WsPanelHandler implements WsFrameHandler {
         }
 
         PanelUser user = ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_AUTH_USER).get();
-        if (user != null && !PanelUserHandler.checkPanelUserScriptAccess(user, script, args, (jso.has("section") ? jso.getString("section") : ""))) {
+        if (user != null && !uniqueID.equalsIgnoreCase("restart-bot-check") && !PanelUserHandler.checkPanelUserScriptAccess(user, script, args, (jso.has("section") ? jso.getString("section") : ""))) {
             this.panelNotification(ctx, "permission", PanelUserHandler.PanelMessage.InsufficientPermissions.getMessage(), "Permissions error");
             return;
         }
@@ -393,6 +394,24 @@ public class WsPanelHandler implements WsFrameHandler {
         }).doOnError(com.gmt2001.Console.err::printStackTrace).subscribe();
     }
 
+    private void handleChannelPointsListTest(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
+        PanelUser user = ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_AUTH_USER).get();
+        if (user != null && !PanelUserHandler.checkPanelUserSectionAccess(user, (jso.has("section") ? jso.getString("section") : ""), false)) {
+            this.panelNotification(ctx, "permission", PanelUserHandler.PanelMessage.InsufficientPermissions.getMessage(), "Permissions error");
+            return;
+        }
+        String uniqueID = jso.has("channelpointslisttest") ? jso.getString("channelpointslisttest") : "";
+
+        JSONStringer jsonObject = new JSONStringer();
+        jsonObject.object().key("query_id").value(uniqueID);
+        jsonObject.key("results").object();
+        jsonObject.key("data").array();
+        TestData.Redeemables().forEach(jsonObject::value);
+        jsonObject.endArray();
+        jsonObject.endObject().endObject();
+        WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
+    }
+
     private void handlePanelUser(ChannelHandlerContext ctx, WebSocketFrame frame, JSONObject jso) {
         PanelUser user = ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_AUTH_USER).get();
 
@@ -412,15 +431,19 @@ public class WsPanelHandler implements WsFrameHandler {
         } else if (jso.has("add")) {
             String username = jso.getJSONObject("add").getString("username");
             JSONArray permission = new JSONArray(jso.getJSONObject("add").getString("permission"));
-            Boolean enabled = jso.getJSONObject("add").getBoolean("enabled");
-            PanelUserHandler.PanelMessage response = PanelUserHandler.createNewUser(username, permission, enabled);
+            boolean enabled = jso.getJSONObject("add").getBoolean("enabled");
+            boolean canManageUsers = jso.getJSONObject("add").getBoolean("canManageUsers");
+            boolean canRestartBot = jso.getJSONObject("add").getBoolean("canRestartBot");
+            PanelUserHandler.PanelMessage response = PanelUserHandler.createNewUser(username, permission, enabled, canManageUsers, canRestartBot);
             jsonObject.object().key(response.getJSONkey()).value(response.getMessage()).endObject();
         } else if (jso.has("edit")) {
             String currentUsername = jso.getJSONObject("edit").getString("currentUsername");
             String newUsername = jso.getJSONObject("edit").getString("newUsername");
             JSONArray permission = new JSONArray(jso.getJSONObject("edit").getString("permission"));
-            Boolean enabled = jso.getJSONObject("edit").getBoolean("enabled");
-            PanelUserHandler.PanelMessage response = PanelUserHandler.editUser(currentUsername, newUsername, permission, enabled);
+            boolean enabled = jso.getJSONObject("edit").getBoolean("enabled");
+            boolean canManageUsers = jso.getJSONObject("edit").getBoolean("canManageUsers");
+            boolean canRestartBot = jso.getJSONObject("edit").getBoolean("canRestartBot");
+            PanelUserHandler.PanelMessage response = PanelUserHandler.editUser(currentUsername, newUsername, permission, enabled, canManageUsers, canRestartBot);
             jsonObject.object().key(response.getJSONkey()).value(response.getMessage()).endObject();
         } else if (jso.has("resetPassword")) {
             String username = jso.getString("resetPassword");
@@ -544,7 +567,7 @@ public class WsPanelHandler implements WsFrameHandler {
                 return;
             }
             jsonObject.key("results").array();
-            if (!ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_IS_READ_ONLY).get()) {
+            if (!ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_IS_READ_ONLY).get() || ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_AUTH_USER).get() != null) {
                 LangFileUpdater.updateCustomLang(jso.getJSONObject("params").getString("content"), jso.getJSONObject("params").getString("lang-path"), jsonObject);
             } else {
                 jsonObject.object().key("errors").array().object()

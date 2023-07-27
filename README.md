@@ -2,7 +2,6 @@
 # <img alt="PhantomBot" src="https://phantombot.dev/common/images/brand.png" width="600px"/>
 
 ![Java CI](https://github.com/PhantomBot/PhantomBot/workflows/Java%20CI/badge.svg)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/e78b35af8f2442d7a8c5040c41164739)](https://www.codacy.com/gh/PhantomBot/PhantomBot/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PhantomBot/PhantomBot&amp;utm_campaign=Badge_Grade)
 [![GitHub license](https://img.shields.io/github/license/PhantomBot/PhantomBot)](https://github.com/PhantomBot/PhantomBot/blob/master/LICENSE)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/PhantomBot/PhantomBot?sort=semver)](https://github.com/PhantomBot/PhantomBot/releases/latest)
 [<img src="https://discordapp.com/api/guilds/107910097937682432/widget.png?style=shield">](https://discord.gg/YKvMd78)
@@ -26,7 +25,7 @@ Additional functionality is enabled through the use of third-party modules.
 PhantomBot requires the following software to be installed:
 
 ARM (Raspberry Pi) or x86 (32-bit) architectures
-* [Adoptium Temurin 11](https://adoptium.net/) or [OpenJDK 11](https://openjdk.java.net/)
+* [Adoptium Temurin 17](https://adoptium.net/) or [OpenJDK 17](https://openjdk.java.net/)
 
 x86_64 (64-bit) architectures
 * No pre-requisites
@@ -35,8 +34,8 @@ x86_64 (64-bit) architectures
 Please refer to platform-specific installation documentation.
 * [Windows](https://phantombot.dev/guides/#guide=content/setupbot/windows)
 * Linux:
-  * [Ubuntu 16.04](https://phantombot.dev/guides/#guide=content/setupbot/ubuntu)
-  * [CentOS 7](https://phantombot.dev/guides/#guide=content/setupbot/centos)
+  * [Ubuntu](https://phantombot.dev/guides/#guide=content/setupbot/ubuntu)
+  * [CentOS](https://phantombot.dev/guides/#guide=content/setupbot/centos)
 * [macOS](https://phantombot.dev/guides/#guide=content/setupbot/macos)
 
 ### Docker

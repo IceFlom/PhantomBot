@@ -518,7 +518,7 @@ $(function () {
      * @param {Boolean}      enabled
      * @param {Function}     callback
      */
-    socket.addPanelUser = function (callback_id, username, permission, enabled, callback) {
+    socket.addPanelUser = function (callback_id, username, permission, enabled, canRestartBot, canManageUsers, callback) {
         // Genetate a callback.
         generateCallBack(callback_id, [], false, true, callback);
 
@@ -528,7 +528,9 @@ $(function () {
             add: {
                 username: String(username),
                 permission: String(permission),
-                enabled: enabled
+                enabled: enabled,
+                canRestartBot: canRestartBot,
+                canManageUsers: canManageUsers
             }
         });
     };
@@ -561,7 +563,7 @@ $(function () {
      * @param {Boolean}      enabled
      * @param {Function}     callback
      */
-    socket.editPanelUser = function (callback_id, currentUsername, newUsername, permission, enabled, callback) {
+    socket.editPanelUser = function (callback_id, currentUsername, newUsername, permission, enabled, canRestartBot, canManageUsers, callback) {
         // Genetate a callback.
         generateCallBack(callback_id, [], false, true, callback);
 
@@ -572,7 +574,9 @@ $(function () {
                 currentUsername: String(currentUsername),
                 newUsername: String(newUsername),
                 permission: String(permission),
-                enabled: enabled
+                enabled: enabled,
+                canRestartBot: canRestartBot,
+                canManageUsers: canManageUsers
             }
         });
     };
@@ -775,6 +779,7 @@ $(function () {
                 if (message.authresult === 'false') {
                     helpers.logError('Failed to auth with the socket.', helpers.LOG_TYPE.FORCE);
                     toastr.error('Failed to auth with the socket.', '', {timeOut: 0});
+                    webSocket.close();
                 } else {
                     // This is to stop a reconnect loading the main page.
                     if (helpers.isAuth === true) {
@@ -787,8 +792,8 @@ $(function () {
                         id: 'initLoad.panelSettings',
                         query: 'panelSettings'
                     });
+                    helpers.log('Auth success', helpers.LOG_TYPE.DEBUG);
                 }
-                helpers.log('Auth success', helpers.LOG_TYPE.DEBUG);
                 return;
             }
 

@@ -84,6 +84,7 @@ public final class ConsoleEventHandler implements Listener {
      *
      * @param event
      */
+    @SuppressWarnings({"removal"})
     @Handler
     public void onConsoleInput(ConsoleInputEvent event) throws JSONException {
         // The message said in the console.
@@ -816,7 +817,7 @@ public final class ConsoleEventHandler implements Listener {
                 /**
                  * @consolecommand paneluser resetpermission username - Gives a panel user full access to all panel sections if the user exists
                  */
-                else if (argument[0].equalsIgnoreCase("resetpassword")) {
+                else if (argument[0].equalsIgnoreCase("resetpermission")) {
                     PanelUserHandler.PanelMessage response =PanelUserHandler.editUser(argument[1], null, PanelUserHandler.getFullAccessPermissions(), false);
                     com.gmt2001.Console.out.println("New password for user " + argument[1] + " is:");
                     com.gmt2001.Console.out.println(response.getMessage());
