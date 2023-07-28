@@ -108,12 +108,12 @@
             }
 
             // no subcommand given
-            var userTimestamp = $.getSetIniDbNumber('discordDailyCommandUsers', twitchName, 0),
+            var userTimestamp = parseInt($.getSetIniDbString('discordDailyCommandUsers', twitchName, 0)),
                 currentTime = new Date().getTime(),
                 timeGone = currentTime - userTimestamp,
                 hoursSinceLast = Math.trunc(timeGone / 1000 / 60 / 60);
             if (hoursSinceLast >= 24) {
-                $.setIniDbNumber('discordDailyCommandUsers', twitchName, currentTime);
+                $.setIniDbString('discordDailyCommandUsers', twitchName, currentTime);
                 $.inidb.incr('points', twitchName, payout);
                 $.discord.say(channel, $.discord.userPrefix(mention) + $.lang.get('discord.daily.success', $.getPointsString(payout)));
             } else {
