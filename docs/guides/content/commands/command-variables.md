@@ -34,12 +34,19 @@ Defined in script: _./javascript-source/core/transformers/alerts.js_
 **Labels:** twitch discord noevent alerts
 
 
+_NOTE: this tag uses the _config/gif-alerts_ folder_
+
 _NOTE: if an audio file exists next to the GIF/video file with the same fileName but an audio extension (eg. banana.gif and banana.mp3), then the audio file will automatically load and play at the provided volume_
 
 
 **Example:**
 ```text
 Caster: !addcom !banana (alert banana.gif)
+```
+
+**Example:**
+```text
+Caster: !addcom !bananatext (alert banana.gif, 5, 0.6, font-size:42px;color:#FF00FF, Ring Ring Ring Ring...Banana Phone!)
 ```
 
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
@@ -58,6 +65,9 @@ Defined in script: _./javascript-source/core/transformers/alerts.js_
 - `(playsound hook:str|volume:float)` - plays a sound hook on the alerts overlay, with audio volume set on a scale of 0.0-1.0
 
 **Labels:** twitch discord noevent alerts
+
+
+_NOTE: this tag uses the _config/audio-hooks_ folder_
 
 
 **Example:**
@@ -95,6 +105,24 @@ Defined in script: _./javascript-source/core/transformers/basic.js_
 Caster: !addcom !love (sender) loves (1).
 User: !love monkeys
 Bot: User loves monkeys.
+```
+
+**Example:**
+```text
+Caster: !addcom !hello Hello (1=sender)!
+User: !hello OtherUser
+Bot: Hello OtherUser!
+User: !hello
+Bot: Hello User!
+```
+
+**Example:**
+```text
+Caster: !addcom !hug (sender) hugs (1|themself)!
+User: !hug OtherUser
+Bot: User hugs OtherUser!
+User: !hug
+Bot: User hugs themself!
 ```
 
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
@@ -184,6 +212,13 @@ Defined in script: _./javascript-source/core/transformers/basic.js_
 Caster: !addcom !lucky Your lucky number is (#)
 User: !lucky
 Bot: Your lucky number is 7
+```
+
+**Example:**
+```text
+Caster: !addcom !d6 1d6 = [(# 1, 6)]
+User: !d6
+Bot: 1d6 = [5]
 ```
 
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
@@ -313,7 +348,7 @@ Defined in script: _./javascript-source/core/transformers/channelpoints.js_
 
 **Formulas:**
 
-- `(cpfulfillstatus)` - the fulfillment status of the redemption when it was received by PubSub
+- `(cpfulfillstatus)` - the fulfillment status of the redemption when it was received
 
 **Labels:** twitch channelpointsevent channelpoints
 
@@ -348,7 +383,7 @@ Defined in script: _./javascript-source/core/transformers/channelpoints.js_
 
 **Formulas:**
 
-- `(cpinput)` - the raw input supplied by the redeeming user, if set
+- `(cpinputraw)` - the raw input supplied by the redeeming user, if set
 
 **Labels:** twitch channelpointsevent channelpoints
 
@@ -961,7 +996,7 @@ Defined in script: _./javascript-source/core/transformers/customapi.js_
 
 **Formulas:**
 
-- `(customapi url:str)` - http GET url and output returned text (escaped by default)
+- `(customapi url:str)` - http GET url and output returned text
 
 **Labels:** twitch discord commandevent customapi
 
@@ -992,7 +1027,7 @@ Defined in script: _./javascript-source/core/transformers/customapi.js_
 
 **Formulas:**
 
-- `(customapijson url:str specs:str)` - httpGet url and extract json info according to specs (escaped by default)
+- `(customapijson url:str specs:str)` - httpGet url and extract json info according to specs
 
 **Labels:** twitch discord commandevent customapi
 
@@ -1034,6 +1069,28 @@ Defined in script: _./javascript-source/core/transformers/discord.js_
 **Example:**
 ```text
 Caster: !addcom !cleardiscord (cleardiscordactivity)
+```
+
+Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
+-------|-----------|----------
+No&nbsp;&nbsp; | No&nbsp;&nbsp; | No
+
+&nbsp;
+
+#### removerole
+
+Defined in script: _./javascript-source/core/transformers/discord.js_
+
+**Formulas:**
+
+- `(removerole username:str, role:str)` - removes the specified user from the specified Discord role
+
+**Labels:** discord noevent roles
+
+
+**Example:**
+```text
+Caster: !addcom !removerole (removerole (sender), Cool Kids)
 ```
 
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
@@ -1485,6 +1542,22 @@ Defined in script: _./javascript-source/core/transformers/misc.js_
 - `(keywordcount keyword:str)` - increase the keyword count for the given keyword and return new count
 
 **Labels:** twitch keywordevent misc
+
+Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
+-------|-----------|----------
+No&nbsp;&nbsp; | No&nbsp;&nbsp; | No
+
+&nbsp;
+
+#### nl
+
+Defined in script: _./javascript-source/core/transformers/misc.js_
+
+**Formulas:**
+
+- `(nl)` - inserts a LF (`\n`)
+
+**Labels:** twitch discord noevent misc
 
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
 -------|-----------|----------
@@ -1975,15 +2048,15 @@ Defined in script: _./javascript-source/core/transformers/time.js_
 
 **Formulas:**
 
-- `(gettimevar name:str)` - retrieves the specified timevar, set using !settimevar on Twitch, for use in a (countdown) or (countup) transformer
+- `(gettimelet name:str)` - retrieves the specified timevar, set using !settimelet on Twitch, for use in a (countdown) or (countup) transformer
 
 **Labels:** twitch discord noevent time
 
 
 **Example:**
 ```text
-Caster: !settimevar christmas December 25 2017 00:00:00 GMT-0500
-Caster: !addcom !count Time Left until Christmas: (countdown (gettimevar christmas))
+Caster: !settimelet christmas December 25 2017 00:00:00 GMT-0500
+Caster: !addcom !count Time Left until Christmas: (countdown (gettimelet christmas))
 User: !count
 Bot: Time Left until Christmas: 20 hours, 30 minutes and 55 seconds.
 ```
@@ -2002,8 +2075,30 @@ Defined in script: _./javascript-source/core/transformers/user.js_
 **Formulas:**
 
 - `(age)` - outputs the age of the sender's Twitch account; If the sender provides an argument, checks that Twitch account instead
+- `(age pattern:str)` - outputs the age of the sender's Twitch account using the specified pattern; If the sender provides an argument, checks that Twitch account instead
 
 **Labels:** twitch commandevent user
+
+
+_NOTE: _
+
+_Patterns (Example of 1 year, 2 months, 3 days, 12 hours):_
+
+_- `#H` - Number of Hours (Total, ie. 10308)_
+
+_- `#h` - Number of Hours (In day, ie. 12)_
+
+_- `#D` - Number of Days (Total, ie. 429)_
+
+_- `#d` - Number of Days (In month, ie. 3)_
+
+_- `#M` - Number of Months (Total, ie. 14)_
+
+_- `#m` - Number of Months (In year, ie. 2)_
+
+_- `#y` - Number of Years (ie. 1)_
+
+_- Any valid pattern for [DateTimeFormatter](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html#patterns)_
 
 
 **Example:**
@@ -2015,9 +2110,18 @@ User: !age User2
 Bot: @User, user2 has been on Twitch since December 25, 2010.
 ```
 
+**Example:**
+```text
+Caster: !addcom !age2 (touser) has been on Twitch for (age #y 'year(s), since ' MMMM dd', 'yyyy)!
+User: !age2
+Bot: User has been on Twitch for 1 year(s), since April 19, 2009!
+User: !age2 User2
+Bot: User2 has been on Twitch for 2 year(s), since June 5, 2008!
+```
+
 Raw?[^raw]&nbsp;&nbsp; | Cached?[^cached]&nbsp;&nbsp; | Cancels?[^cancels]
 -------|-----------|----------
-No&nbsp;&nbsp; | No&nbsp;&nbsp; | Yes
+No&nbsp;&nbsp; | No&nbsp;&nbsp; | No
 
 &nbsp;
 
@@ -2570,7 +2674,7 @@ Yes&nbsp;&nbsp; | No
 
 Defined in script: _./javascript-source/handlers/channelPointsHandler.js_
 
-#### Hook: pubSubChannelPoints
+#### Hook: eventSubChannelPointsCustomRewardRedemptionAdd
 
 Global&nbsp;&nbsp; | Local
 -------|-------

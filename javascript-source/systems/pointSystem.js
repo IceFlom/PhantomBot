@@ -24,104 +24,61 @@
  * Use the $ API
  */
 (function () {
-    var onlineGain = $.getSetIniDbNumber('pointSettings', 'onlineGain', 1),
+    let onlineGain = $.getSetIniDbNumber('pointSettings', 'onlineGain', 1),
             offlineGain = $.getSetIniDbNumber('pointSettings', 'offlineGain', 1),
             onlinePayoutInterval = $.getSetIniDbNumber('pointSettings', 'onlinePayoutInterval', 10),
             offlinePayoutInterval = $.getSetIniDbNumber('pointSettings', 'offlinePayoutInterval', 0),
             activeBonus = $.getSetIniDbNumber('pointSettings', 'activeBonus', 0),
-            lastPayout = 0,
             penalties = [],
             pointsBonus = false,
             pointsBonusAmount = 0,
             pointNameSingle = $.getSetIniDbString('pointSettings', 'pointNameSingle', 'point'),
             pointNameMultiple = $.getSetIniDbString('pointSettings', 'pointNameMultiple', 'points'),
             pointsMessage = $.getSetIniDbString('pointSettings', 'pointsMessage', '(userprefix) you currently have (pointsstring) and you have been in the chat for (time).'),
-            userCache = {},
-            _userCacheLock = new Packages.java.util.concurrent.locks.ReentrantLock();
+            payoutInterval,
+            currentPayoutIntervalTime = -1;
 
     /**
      * @function updateSettings
      */
     function updateSettings() {
-        var tempPointNameSingle,
-                tempPointNameMultiple;
+        let tempPointNameSingle = pointNameSingle.toLowerCase(),
+            tempPointNameMultiple = pointNameMultiple.toLowerCase();
 
         onlineGain = $.getIniDbNumber('pointSettings', 'onlineGain');
         offlineGain = $.getIniDbNumber('pointSettings', 'offlineGain');
         onlinePayoutInterval = $.getIniDbNumber('pointSettings', 'onlinePayoutInterval');
         offlinePayoutInterval = $.getIniDbNumber('pointSettings', 'offlinePayoutInterval');
         pointNameSingle = $.getIniDbString('pointSettings', 'pointNameSingle');
+        $.pointNameSingle = pointNameSingle;
         pointNameMultiple = $.getIniDbString('pointSettings', 'pointNameMultiple');
+        $.pointNameMultiple = pointNameMultiple;
         pointsMessage = $.getIniDbString('pointSettings', 'pointsMessage');
         activeBonus = $.getIniDbNumber('pointSettings', 'activeBonus');
 
-        if (!pointNameMultiple.equalsIgnoreCase('points') || !pointNameSingle.equalsIgnoreCase('point')) {
-            tempPointNameSingle = pointNameSingle;
-            tempPointNameMultiple = pointNameMultiple;
+        if (tempPointNameSingle !== 'point' && tempPointNameSingle !== pointNameSingle.toLowerCase()) {
+            $.unregisterChatCommand(tempPointNameSingle);
+            $.inidb.del('aliases', tempPointNameSingle);
         }
 
-        if (!pointNameMultiple.equalsIgnoreCase('points') || !pointNameSingle.equalsIgnoreCase('point')) {
-            registerNewPointsCommands(tempPointNameSingle, tempPointNameMultiple, true);
-        }
-    }
-
-    /**
-     * @function registerPointCommands
-     */
-    function registerNewPointsCommands(newName, newName2, newCommand) {
-        newName = newName.toLowerCase();
-        newName2 = newName2.toLowerCase();
-
-        if (newName && newCommand && !$.commandExists(newName)) {
-            $.registerChatCommand('./systems/pointSystem.js', newName, $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName, 'add', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'give', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'take', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'remove', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'set', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'all', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'takeall', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setname', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setgain', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setofflinegain', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setinterval', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'user', $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName, 'check', $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName, 'bonus', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'resetall', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setmessage', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName, 'setactivebonus', $.PERMISSION.Admin);
+        if (tempPointNameMultiple !== 'points' && tempPointNameMultiple !== pointNameMultiple.toLowerCase()) {
+            $.unregisterChatCommand(tempPointNameMultiple);
+            $.inidb.del('aliases', tempPointNameMultiple);
         }
 
-
-        if (newName2 && newCommand && !$.commandExists(newName2)) {
-            $.registerChatCommand('./systems/pointSystem.js', newName2, $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName2, 'add', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'give', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'take', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'remove', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'set', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'all', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'takeall', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setname', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setgain', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setofflinegain', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setinterval', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'user', $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName2, 'check', $.PERMISSION.Viewer);
-            $.registerChatSubcommand(newName2, 'bonus', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'resetall', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setmessage', $.PERMISSION.Admin);
-            $.registerChatSubcommand(newName2, 'setactivebonus', $.PERMISSION.Admin);
+        if (pointNameSingle.toLowerCase() !== 'point') {
+            $.registerChatCommand('./commands/customCommands.js', pointNameSingle.toLowerCase());
+            $.inidb.set('aliases', pointNameSingle.toLowerCase(), 'points');
+            $.registerChatAlias(pointNameSingle.toLowerCase());
         }
 
-        if (newName && newName !== 'points' && !newCommand) {
-            $.unregisterChatCommand(newName);
+        if (pointNameMultiple.toLowerCase() !== 'points') {
+            $.registerChatCommand('./commands/customCommands.js', pointNameMultiple.toLowerCase());
+            $.inidb.set('aliases', pointNameMultiple.toLowerCase(), 'points');
+            $.registerChatAlias(pointNameMultiple.toLowerCase());
         }
 
-        if (newName2 && newName2 !== 'points' && !newCommand) {
-            $.unregisterChatCommand(newName2);
-        }
+        setupPayoutRun();
     }
 
     /**
@@ -131,7 +88,7 @@
      * @returns {*}
      */
     function getUserPoints(username) {
-        return ($.inidb.exists('points', username.toLowerCase()) ? parseInt($.inidb.get('points', username.toLowerCase())) : 0);
+        return $.inidb.GetInteger('points', '', username.toLowerCase(), 0);
     }
 
     /**
@@ -147,31 +104,24 @@
         return points + ' ' + pointNameMultiple;
     }
 
-    function calcPointsGained(username, group, defaultgain, isonline) {
-        var table = 'grouppoints' + (isonline ? '' : 'offline');
+    function calcPointsGained(username, group, isOnline) {
+        let table = 'grouppoints' + (isOnline ? '' : 'offline'),
+                defaultGain = isOnline ? Math.max(onlineGain, 0) : Math.max(offlineGain, 0);
+
         username = $.jsString(username);
         group = $.jsString(group);
-        defaultgain = Math.max(defaultgain, 0);
-        var amount = -1;
 
-        if ($.inidb.exists(table, group)) {
-            var candidateAmount = parseInt($.inidb.get(table, group));
-            if (candidateAmount !== null && !isNaN(candidateAmount)) {
-                amount = candidateAmount;
-            }
-        }
+        let amount = $.inidb.GetInteger(table, '', group, -1);
 
-        if (group === 'Subscriber' && $.inidb.exists('subplan', username)) {
-            if ($.inidb.exists(table, 'Subscriber' + $.inidb.get('subplan', username))) {
-                var candidateAmount2 = parseInt($.inidb.get(table, 'Subscriber' + $.inidb.get('subplan', username)));
-                if (candidateAmount2 !== null && !isNaN(candidateAmount2)) {
-                    amount = candidateAmount2;
-                }
+        if (group === 'Subscriber') {
+            let plan = $.inidb.OptString('subplan', '', username);
+            if (plan.isPresent()) {
+                amount = $.inidb.GetInteger(table, '', ('Subscriber' + plan.get()), amount);
             }
         }
 
         if (amount < 0) {
-            amount = defaultgain;
+            return defaultGain;
         }
 
         return amount;
@@ -181,91 +131,71 @@
      * @function runPointsPayout
      */
     function runPointsPayout() {
-        var now = $.systemTime(),
-            normalPayoutUsers = [], // users that get the normal online payout, nothing custom.
-            isOnline = false,
-            username,
-            amount,
-            i;
-
         if (!$.bot.isModuleEnabled('./systems/pointSystem.js')) {
+            payoutInterval = clearInterval(payoutInterval);
             return;
         }
 
-        if ((isOnline = $.isOnline($.channelName))) {
-            if (onlinePayoutInterval > 0 && (lastPayout + (onlinePayoutInterval * 6e4)) <= now) {
-                amount = onlineGain;
-            } else {
-                return;
-            }
-        } else {
-            if (offlinePayoutInterval > 0 && (lastPayout + (offlinePayoutInterval * 6e4)) <= now) {
-                amount = offlineGain;
-            } else {
-                return;
-            }
-        }
+        let isOnline = $.isOnline($.channelName),
+                activeList,
+                active,
+                chatList = $.viewer.chatters(),
+                normalPayoutUsers = []; // users that get the normal online payout, nothing custom.
 
-
-        for (i in $.users) {
-            if ($.users[i] !== null) {
-                username = $.users[i].toLowerCase();
-                if (isOnline) {
-                    if ($.checkUserPermission(username, undefined, $.PERMISSION.Mod) && $.checkUserPermission(username, undefined, $.PERMISSION.Sub) || $.checkUserPermission(username, undefined, $.PERMISSION.Admin) && $.checkUserPermission(username, undefined, $.PERMISSION.Sub)) {
-                        amount = calcPointsGained(username, 'Subscriber', onlineGain, true);
-                    } else {
-                        amount = calcPointsGained(username, $.getUserGroupName(username), onlineGain, true);
-                    }
-                } else {
-                    if ($.checkUserPermission(username, undefined, $.PERMISSION.Mod) && $.checkUserPermission(username, undefined, $.PERMISSION.Sub) || $.checkUserPermission(username, undefined, $.PERMISSION.Admin) && $.checkUserPermission(username, undefined, $.PERMISSION.Sub)) {
-                        amount = calcPointsGained(username, 'Subscriber', offlineGain, false);
-                    } else {
-                        amount = calcPointsGained(username, $.getUserGroupName(username), offlineGain, false);
-                    }
-                }
-
-                _userCacheLock.lock();
-                try {
-                    if (userCache[username] !== undefined) {
-                        if (userCache[username] - lastPayout > 0) {
-                            delete userCache[username];
-                            amount += activeBonus;
-                        } else {
-                            delete userCache[username];
-                        }
-                    }
-                } finally {
-                    _userCacheLock.unlock();
-                }
-
-                if (getUserPenalty(username)) {
-                    for (i in penalties) {
-                        var time = penalties[i].time - now;
-                        if (time <= 0) {
-                            penalties.splice(i, 1);
-                        }
-                    }
-                }
-
-                if (pointsBonus) {
-                    amount = (amount + pointsBonusAmount);
-                }
-
-                if (!getUserPenalty(username)) {
-                    if (amount === onlineGain || amount === offlineGain) {
-                        normalPayoutUsers.push(username);
-                    } else {
-                        $.inidb.incr('points', username, amount);
-                    }
-                }
+        if (isOnline && activeBonus > 0) {
+            activeList = $.viewer.activeChatters();
+            active = [];
+            for (let i = 0; i < activeList.size(); i++) {
+                active.push($.jsString(activeList.get(i).login().toLowerCase()));
             }
         }
 
+        for (let i = 0; i < chatList.size(); i++) {
+            let username = $.jsString(chatList.get(i).login().toLowerCase()),
+                    amount = calcPointsGained(username, $.getUserGroupName(username), isOnline);
+
+            if (active !== undefined && active.includes(username)) {
+                amount += activeBonus;
+            }
+
+            if (pointsBonus && pointsBonusAmount > 0) {
+                amount += pointsBonusAmount;
+            }
+
+            if (!getUserPenalty(username)) {
+                if ((isOnline && onlineGain > 0 && amount === onlineGain) || (!isOnline && offlineGain > 0 && amount === offlineGain)) {
+                    normalPayoutUsers.push($.javaString(username));
+                } else if (amount > 0) {
+                    $.inidb.incr('points', username, amount);
+                }
+            }
+        }
 
         // Update points for all users with the same amount of online/offline gain.
-        $.inidb.IncreaseBatchString('points', '', normalPayoutUsers, (isOnline ? onlineGain : offlineGain));
+        if (normalPayoutUsers.length > 0) {
+            $.inidb.IncreaseBatchString('points', '', normalPayoutUsers, (isOnline ? onlineGain : offlineGain));
+        }
+    }
 
-        lastPayout = now;
+    /**
+     * @function setupPayoutRun
+     */
+    function setupPayoutRun() {
+        let minutes = $.isOnline($.channelName) ? onlinePayoutInterval : offlinePayoutInterval;
+        if (currentPayoutIntervalTime === minutes) {
+            return;
+        }
+
+        payoutInterval = clearInterval(payoutInterval);
+        currentPayoutIntervalTime = minutes;
+
+        if (minutes <= 0) {
+            return;
+        }
+
+        payoutInterval = setInterval(function () {
+            runPointsPayout();
+        }, minutes * 6e4, 'scripts::systems::pointSystem.js');
     }
 
     /**
@@ -279,8 +209,8 @@
             return;
         }
 
-        var newTime = (time * 6e4) + $.systemTime();
-        username = username.toLowerCase();
+        let newTime = (time * 6e4) + $.systemTime();
+        username = $.jsString(username.toLowerCase());
 
         penalties.push({
             user: username,
@@ -298,9 +228,14 @@
      * @param username
      */
     function getUserPenalty(username) {
-        for (var i in penalties) {
-            if (penalties[i].user.equalsIgnoreCase(username)) {
-                return true;
+        for (let i in penalties) {
+            if ($.equalsIgnoreCase(penalties[i].user, username)) {
+                if (penalties[i].time - $.systemTime() > 0) {
+                    return true;
+                }
+
+                penalties.splice(i, 1);
+                return false;
             }
         }
 
@@ -313,7 +248,7 @@
      * @param {Number} time
      */
     function setTempBonus(amount, time) {
-        var newTime = (time * 6e4);
+        let newTime = (time * 6e4);
         if (!amount || !time) {
             return;
         }
@@ -345,11 +280,9 @@
             return;
         }
 
-
-        for (var i in $.users) {
+        for (let i in $.users) {
             $.inidb.incr('points', $.users[i].toLowerCase(), amount);
         }
-
 
         $.say($.lang.get('pointsystem.add.all.success', getPointsString(amount)));
     }
@@ -365,7 +298,7 @@
         }
 
 
-        for (var i in $.users) {
+        for (let i in $.users) {
             if (getUserPoints($.users[i].toLowerCase()) > amount) {
                 $.inidb.decr('points', $.users[i].toLowerCase(), amount);
             } else {
@@ -381,7 +314,7 @@
      * @function getPointsMessage
      */
     function getPointsMessage(username, displayName) {
-        var s = pointsMessage;
+        let s = pointsMessage;
 
         if (s.match(/\(userprefix\)/)) {
             s = $.replace(s, '(userprefix)', $.whisperPrefix(username).trim());
@@ -414,34 +347,31 @@
         return s;
     }
 
-    /*
-     * @event ircChannelMessage
+    /**
+     * @event twitchOnline
      */
-    $.bind('ircChannelMessage', function (event) {
-        if (activeBonus > 0) {
-            _userCacheLock.lock();
-            try {
-                userCache[event.getSender()] = $.systemTime();
-            } finally {
-                _userCacheLock.unlock();
-            }
-        }
+    $.bind('twitchOnline', function () {
+        setupPayoutRun();
+    });
+
+    /**
+     * @event twitchOffline
+     */
+    $.bind('twitchOffline', function () {
+        setupPayoutRun();
     });
 
     /**
      * @event command
      */
     $.bind('command', function (event) {
-        var sender = event.getSender().toLowerCase(),
+        let sender = event.getSender().toLowerCase(),
                 username = $.username.resolve(sender, event.getTags()),
                 command = event.getCommand(),
                 args = event.getArgs(),
                 action = args[0],
                 actionArg1 = args[1],
-                actionArg2 = args[2],
-                temp,
-                user,
-                i;
+                actionArg2 = args[2];
 
         /**
          * @commandpath points - Announce points in chat when no parameters are given.
@@ -454,8 +384,8 @@
 
             // Replace everything that is not \w
             action = $.user.sanitize(action);
-            if ($.user.isKnown(action)) {
-                $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.user.success', $.username.resolve(action), getPointsString(getUserPoints(action))));
+            if ((actionArg1 === null || actionArg1 === undefined || actionArg1 === '') && $.user.isKnown(action)) {
+                $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.user.success', $.viewer.getByLogin(action).name(), getPointsString(getUserPoints(action))));
                 return;
             }
 
@@ -491,9 +421,10 @@
                 if ($.user.isKnown(actionArg1)) {
                     $.inidb.incr('points', actionArg1, actionArg2);
                     $.say($.lang.get('pointsystem.add.success',
-                            $.getPointsString(actionArg2), $.username.resolve(actionArg1), getPointsString(getUserPoints(actionArg1))));
+                            $.getPointsString(actionArg2), $.viewer.getByLogin(actionArg1).name(), getPointsString(getUserPoints(actionArg1))));
                 }
 
+                $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.usage.invalid', '!' + command));
                 return;
             }
 
@@ -528,7 +459,7 @@
 
                 $.inidb.decr('points', actionArg1, actionArg2);
                 $.say($.lang.get('pointsystem.take.success',
-                        $.getPointsString(actionArg2), $.username.resolve(actionArg1), getPointsString(getUserPoints(actionArg1))));
+                        $.getPointsString(actionArg2), $.viewer.getByLogin(actionArg1).name(), getPointsString(getUserPoints(actionArg1))));
                 return;
             }
 
@@ -558,7 +489,7 @@
 
                 $.inidb.set('points', actionArg1, actionArg2);
                 $.say($.lang.get('pointsystem.setbalance.success',
-                        pointNameSingle, $.username.resolve(actionArg1), getPointsString(getUserPoints(actionArg1))));
+                        pointNameSingle, $.viewer.getByLogin(actionArg1).name(), getPointsString(getUserPoints(actionArg1))));
                 return;
             }
 
@@ -599,38 +530,32 @@
                     return;
                 }
                 if (actionArg1.equalsIgnoreCase('single') && actionArg2) {
-                    temp = pointNameSingle;
                     if (actionArg2.equalsIgnoreCase($.inidb.get('pointSettings', 'pointNameSingle'))) {
                         $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.duplicate'));
                         return;
                     }
 
-                    pointNameSingle = actionArg2.toLowerCase();
-                    $.inidb.set('pointSettings', 'pointNameSingle', pointNameSingle);
-                    $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.single.success', temp, pointNameSingle));
+                    let temp = actionArg2.toLowerCase();
+                    $.inidb.set('pointSettings', 'pointNameSingle', temp);
+                    $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.single.success', pointNameSingle, temp));
                     updateSettings();
                     return;
                 }
                 if (actionArg1.equalsIgnoreCase('multiple') && actionArg2) {
-                    temp = pointNameMultiple;
                     if (actionArg2.equalsIgnoreCase($.inidb.get('pointSettings', 'pointNameMultiple'))) {
                         $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.duplicate'));
                         return;
                     }
 
-                    pointNameMultiple = actionArg2.toLowerCase();
-                    $.inidb.set('pointSettings', 'pointNameMultiple', pointNameMultiple);
-                    $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.multiple.success', temp, pointNameMultiple));
+                    let temp = actionArg2.toLowerCase();
+                    $.inidb.set('pointSettings', 'pointNameMultiple', temp);
+                    $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.multiple.success', pointNameMultiple, temp));
                     updateSettings();
                     return;
                 }
                 if (actionArg1.equalsIgnoreCase('delete')) {
                     $.inidb.set('pointSettings', 'pointNameSingle', 'point');
                     $.inidb.set('pointSettings', 'pointNameMultiple', 'points');
-                    $.unregisterChatCommand(pointNameSingle);
-                    $.unregisterChatCommand(pointNameMultiple);
-                    pointNameSingle = "point";
-                    pointNameMultiple = "points";
                     $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.name.delete'));
                     updateSettings();
                     return;
@@ -700,6 +625,7 @@
 
                 onlinePayoutInterval = actionArg1;
                 $.inidb.set('pointSettings', 'onlinePayoutInterval', onlinePayoutInterval);
+                setupPayoutRun();
                 $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.set.interval.success', pointNameSingle, onlinePayoutInterval));
                 return;
             }
@@ -721,6 +647,7 @@
 
                 offlinePayoutInterval = actionArg1;
                 $.inidb.set('pointSettings', 'offlinePayoutInterval', offlinePayoutInterval);
+                setupPayoutRun();
                 $.say($.whisperPrefix(sender) + $.lang.get("pointsystem.set.interval.offline.success", pointNameSingle, offlinePayoutInterval));
                 return;
             }
@@ -776,8 +703,6 @@
                 $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.active.bonus.set', getPointsString(activeBonus)));
                 return;
             }
-
-            $.say($.whisperPrefix(sender) + $.lang.get('pointsystem.usage.invalid', '!' + command));
         }
 
 
@@ -785,7 +710,7 @@
          * @commandpath makeitrain [amount] - Send a random amount of points to each user in the channel
          */
         if (command.equalsIgnoreCase('makeitrain')) {
-            var lastAmount = 0,
+            let lastAmount = 0,
                     amount = 0,
                     totalAmount = 0;
 
@@ -800,7 +725,7 @@
                 return;
             }
 
-            for (i in $.users) {
+            for (let i in $.users) {
                 do {
                     amount = $.randRange(1, action);
                 } while (amount === lastAmount);
@@ -842,7 +767,7 @@
 
             $.inidb.incr('points', action, parseInt(args[1]));
             $.inidb.decr('points', sender, parseInt(args[1]));
-            $.say($.lang.get('pointsystem.gift.success', $.username.resolve(sender), getPointsString(parseInt(args[1])), $.username.resolve(action)));
+            $.say($.lang.get('pointsystem.gift.success', $.viewer.getByLogin(sender).name(), getPointsString(parseInt(args[1])), $.viewer.getByLogin(action).name()));
         }
 
         /**
@@ -863,20 +788,14 @@
         }
     });
 
-    // Set the timer for the points payouts
-    var interval = setInterval(function () {
-        runPointsPayout();
-    }, 6e4, 'scripts::systems::pointSystem.js');
-
     /**
      * @event initReady
      */
     $.bind('initReady', function () {
         $.registerChatCommand('./systems/pointSystem.js', 'makeitrain', $.PERMISSION.Admin);
-        $.registerChatCommand('./systems/pointSystem.js', 'points', $.PERMISSION.Viewer);
         $.registerChatCommand('./systems/pointSystem.js', 'gift', $.PERMISSION.Viewer);
         $.registerChatCommand('./systems/pointSystem.js', 'penalty', $.PERMISSION.Mod);
-
+        $.registerChatCommand('./systems/pointSystem.js', 'points', $.PERMISSION.Viewer);
         $.registerChatSubcommand('points', 'add', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'give', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'take', $.PERMISSION.Admin);
@@ -888,14 +807,14 @@
         $.registerChatSubcommand('points', 'setgain', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'setofflinegain', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'setinterval', $.PERMISSION.Admin);
+        $.registerChatSubcommand('points', 'user', $.PERMISSION.Viewer);
+        $.registerChatSubcommand('points', 'check', $.PERMISSION.Viewer);
         $.registerChatSubcommand('points', 'bonus', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'resetall', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'setmessage', $.PERMISSION.Admin);
         $.registerChatSubcommand('points', 'setactivebonus', $.PERMISSION.Admin);
 
-        if (pointNameSingle !== 'point' || pointNameMultiple !== 'points') {
-            updateSettings();
-        }
+        updateSettings();
     });
 
     /** Export functions to API */

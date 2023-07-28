@@ -16,16 +16,46 @@
  */
 
 /* global Packages */
-/**
- * This module is to handle channel point redemption actions
- * Author: MzLiv
- */
 
 (function () {
-    var commands = JSON.parse($.getSetIniDbString('channelPointsSettings', 'commands', '[]')),
+    let commands = JSON.parse($.getSetIniDbString('channelPointsSettings', 'commands', '[]')),
             commandConfig = $.getSetIniDbString('channelPointsSettings', 'commandConfig', ''),
-            lock = new Packages.java.util.concurrent.locks.ReentrantLock,
+            lock = new Packages.java.util.concurrent.locks.ReentrantLock(),
             managed = [];
+
+    function subscribeEventSub() {
+        let subscriptions = [
+            Packages.com.gmt2001.twitch.eventsub.subscriptions.channel.channel_points.redemption.ChannelPointsCustomRewardRedemptionAdd
+        ];
+
+        for (let i in subscriptions) {
+            let newSubscription = new subscriptions[i]($.viewer.broadcaster().id());
+            try {
+                newSubscription.create().block();
+            } catch (ex) {
+                $.log.error(ex);
+            }
+        }
+    }
+
+    $.bind('twitchBroadcasterType', function(event) {
+        if (!event.wasAffiliateOrPartner() && event.isAffiliateOrPartner()) {
+            subscribeEventSub();
+        }
+    }, true);
+
+    /*
+     * @event eventSubWelcome
+     */
+    $.bind('eventSubWelcome', function (event) {
+        if (!event.isReconnect()) {
+            if (!$.twitchcache.isAffiliateOrPartner()) {
+                return;
+            }
+
+            subscribeEventSub();
+        }
+    }, true);
 
     /*
      * @function updateChannelPointsConfig
@@ -39,7 +69,7 @@
      * @event command
      */
     $.bind('command', function (event) {
-        var sender = event.getSender(),
+        let sender = event.getSender(),
                 command = event.getCommand(),
                 args = event.getArgs(),
                 action = args[0];
@@ -61,8 +91,8 @@
                      * @commandpath channelpoints list - Lists each Reward ID and Title that is currently linked to the "command" reward type
                      */
                 } else if (action === 'list') {
-                    var active = '';
-                    for (var i = 0; i < commands.length; i++) {
+                    let active = '';
+                    for (let i = 0; i < commands.length; i++) {
                         if (active.length > 0) {
                             active += ' === ';
                         }
@@ -78,8 +108,8 @@
                     if (args[2] === undefined || $.jsString(args[2]).length === 0) {
                         $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.get.usage'));
                     } else {
-                        var target = $.jsString(args[2]);
-                        var cmd = findRewardCommand(target);
+                        let target = $.jsString(args[2]);
+                        let cmd = findRewardCommand(target);
 
                         if (cmd === null) {
                             $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.get.404', target));
@@ -114,13 +144,13 @@
                         $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.add.usage2', $.botName));
                         $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.add.usage3'));
                     } else {
-                        var target = $.jsString(args[2]);
-                        var cmdid = findRewardCommandIndex(target);
+                        let target = $.jsString(args[2]);
+                        let cmdid = findRewardCommandIndex(target);
 
                         if (cmdid === null) {
                             $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.get.404', target));
                         } else {
-                            var cmd;
+                            let cmd;
                             lock.lock();
                             try {
                                 cmd = commands[cmdid];
@@ -141,13 +171,13 @@
                     if (args[2] === undefined || $.jsString(args[2]).length === 0) {
                         $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.remove.usage'));
                     } else {
-                        var target = $.jsString(args[2]);
-                        var cmdid = findRewardCommandIndex(target);
+                        let target = $.jsString(args[2]);
+                        let cmdid = findRewardCommandIndex(target);
 
                         if (cmdid === null) {
                             $.say($.whisperPrefix(sender) + $.lang.get('channelPointsHandler.command.get.404', target));
                         } else {
-                            var title = commands[cmdid].title;
+                            let title = commands[cmdid].title;
                             lock.lock();
                             try {
                                 commands.splice(cmdid, 1);
@@ -170,9 +200,9 @@
      * @event channelPointRedemptions
      * @usestransformers global twitch commandevent noevent channelpointsevent
      */
-    $.bind('pubSubChannelPoints', function (event) {
-        var rewardID = event.getRewardID(),
-                rewardTitle = event.getRewardTitle();
+    $.bind('eventSubChannelPointsCustomRewardRedemptionAdd', function (event) {
+        let rewardID = event.event().reward().id(),
+                rewardTitle = event.event().reward().title();
 
         Packages.com.gmt2001.Console.debug.println("Channel point event " + rewardTitle + " parsed to javascript." + " ID is: " + rewardID);
 
@@ -186,7 +216,7 @@
 
             lock.lock();
             try {
-                var data = {
+                let data = {
                     'id': rewardID,
                     'title': rewardTitle,
                     'command': commandConfig
@@ -202,12 +232,12 @@
             return;
         }
 
-        var cmd = findRewardCommand(rewardID);
+        let cmd = findRewardCommand(rewardID);
 
         if (cmd !== null) {
-            var cmdEvent = new Packages.tv.phantombot.event.command.CommandEvent($.botName, 'channelPoints_' + rewardTitle, '');
-            var tag = $.transformers.tags(cmdEvent, cmd.command, ['twitch', ['commandevent', 'noevent', 'channelpointsevent']],
-                    {customArgs: {redemption: event}});
+            let cmdEvent = new Packages.tv.phantombot.event.command.CommandEvent($.botName, 'channelPoints_' + rewardTitle, '');
+            let tag = $.transformers.tags(cmdEvent, cmd.command, ['twitch', ['commandevent', 'noevent', 'channelpointsevent']],
+                    {customArgs: {redemption: event.event()}});
             if (tag !== null) {
                 $.say(tag);
             }
@@ -216,7 +246,7 @@
 
     function findRewardCommandIndex(rewardID) {
         rewardID = $.jsString(rewardID);
-        for (var i = 0; i < commands.length; i++) {
+        for (let i = 0; i < commands.length; i++) {
             if (rewardID === commands[i].id) {
                 return i;
             }
@@ -226,7 +256,7 @@
     }
 
     function findRewardCommand(rewardID) {
-        var idx = findRewardCommandIndex(rewardID);
+        let idx = findRewardCommandIndex(rewardID);
 
         if (idx === -1) {
             return null;
@@ -236,20 +266,24 @@
     }
 
     function reloadManagedRedeemables() {
-        var jso = $.helix.getCustomReward(null, true);
+        if (!$.twitchcache.isAffiliateOrPartner()) {
+            return;
+        }
+
+        let jso = $.helix.getCustomReward(null, true);
 
         if (jso.getInt('_http') === 200 && jso.has('data')) {
-            var jsa = jso.getJSONArray('data');
+            let jsa = jso.getJSONArray('data');
+
+            let newManaged = [];
+
+            for (let i = 0; i < jsa.length(); i++) {
+                newManaged.push(jsa.getJSONObject(i).getString('id'));
+            }
 
             lock.lock();
             try {
-                if (jsa.length() === 0) {
-                    managed = [];
-                } else {
-                    for (var i = 0; i < jsa.length(); i++) {
-                        managed.push(jsa.getJSONObject(i).getString('id'));
-                    }
-                }
+                managed = newManaged;
             } finally {
                 lock.unlock();
             }
@@ -263,11 +297,15 @@
      * @param {string} redemptionId The id of the redemption event
      */
     function updateRedemptionStatusFulfilled(redeemableId, redemptionId) {
-        var rsp = $.helix.updateRedemptionStatus(Packages.java.util.Collections.singletonList(redemptionId), redeemableId,
+        if (!$.twitchcache.isAffiliateOrPartner()) {
+            return;
+        }
+
+        let rsp = $.helix.updateRedemptionStatus(Packages.java.util.Collections.singletonList(redemptionId), redeemableId,
                 Packages.tv.phantombot.twitch.api.Helix.CustomRewardRedemptionStatus.FULFILLED);
 
         if (rsp.getInt('_http') !== 200 || !rsp.has('data')) {
-            var error = 'Unknown Error';
+            let error = 'Unknown Error';
 
             if (rsp.getInt('_http') === 200) {
                 error = 'Got HTTP 200 but invalid response body';
@@ -289,13 +327,17 @@
      * @param {string} redemptionId The id of the redemption event
      */
     function updateRedemptionStatusCancelled(redeemableId, redemptionId) {
-        var rsp = $.helix.updateRedemptionStatus(Packages.java.util.Collections.singletonList(redemptionId), redeemableId,
+        if (!$.twitchcache.isAffiliateOrPartner()) {
+            return;
+        }
+
+        let rsp = $.helix.updateRedemptionStatus(Packages.java.util.Collections.singletonList(redemptionId), redeemableId,
                 Packages.tv.phantombot.twitch.api.Helix.CustomRewardRedemptionStatus.CANCELED);
 
 
 
         if (rsp.getInt('_http') !== 200 || !rsp.has('data')) {
-            var error = 'Unknown Error';
+            let error = 'Unknown Error';
 
             if (rsp.getInt('_http') === 200) {
                 error = 'Got HTTP 200 but invalid response body';
@@ -317,11 +359,15 @@
      * @param {boolean} isEnabled The new enabled state
      */
     function setRedeemableEnabled(redeemableId, isEnabled) {
-        var rsp = $.helix.updateCustomReward(redeemableId, null, null, isEnabled, null, null,
+        if (!$.twitchcache.isAffiliateOrPartner()) {
+            return;
+        }
+
+        let rsp = $.helix.updateCustomReward(redeemableId, null, null, isEnabled, null, null,
                 null, null, null, null, null, null, null, null, null);
 
         if (rsp.getInt('_http') !== 200 || !rsp.has('data')) {
-            var error = 'Unknown Error';
+            let error = 'Unknown Error';
 
             if (rsp.getInt('_http') === 200) {
                 error = 'Got HTTP 200 but invalid response body';
@@ -343,11 +389,15 @@
      * @param {boolean} isPaused The new paused state
      */
     function setRedeemablePaused(redeemableId, isPaused) {
-        var rsp = $.helix.updateCustomReward(redeemableId, null, null, null, isPaused, null,
+        if (!$.twitchcache.isAffiliateOrPartner()) {
+            return;
+        }
+
+        let rsp = $.helix.updateCustomReward(redeemableId, null, null, null, isPaused, null,
                 null, null, null, null, null, null, null, null, null);
 
         if (rsp.getInt('_http') !== 200 || !rsp.has('data')) {
-            var error = 'Unknown Error';
+            let error = 'Unknown Error';
 
             if (rsp.getInt('_http') === 200) {
                 error = 'Got HTTP 200 but invalid response body';
@@ -364,7 +414,7 @@
 
     $.bind('webPanelSocketUpdate', function (event) {
         if (event.getScript().equalsIgnoreCase('./handlers/ChannelPointsHandler.js')) {
-            var args = event.getArgs();
+            let args = event.getArgs();
             if (args.length > 0) {
                 switch ($.jsString(args[0])) {
                     case 'reward-reload':
@@ -379,19 +429,24 @@
                         $.panel.sendArray(event.getId(), managed);
                         break;
                     case 'redeemable-delete-managed':
-                        var rmid = $.jsString(args[1]);
-                        var rsp = $.helix.deleteCustomReward(args[1]);
+                        if (!$.twitchcache.isAffiliateOrPartner()) {
+                            $.panel.sendObject(event.getId(), {'success': false, 'error': 'Not an affiliate or partner'});
+                            return;
+                        }
+
+                        let rmid = $.jsString(args[1]);
+                        let rsp = $.helix.deleteCustomReward(args[1]);
                         if (rsp.getInt('_http') === 204) {
                             lock.lock();
                             try {
-                                var rmidx = managed.indexOf(rmid);
+                                let rmidx = managed.indexOf(rmid);
                                 managed.splice(rmidx, 1);
                             } finally {
                                 lock.unlock();
                             }
                             $.panel.sendObject(event.getId(), {'success': true});
                         } else {
-                            var error = 'Unknown Error';
+                            let error = 'Unknown Error';
 
                             if (rsp.getInt('_http') > 0) {
                                 error = 'HTTP ' + rsp.getInt('_http') + ': ' + $.jsString(rsp.getString('message'));
@@ -405,8 +460,13 @@
                         }
                         break;
                     case 'redeemable-add-managed':
+                        if (!$.twitchcache.isAffiliateOrPartner()) {
+                            $.panel.sendObject(event.getId(), {'success': false, 'error': 'Not an affiliate or partner'});
+                            return;
+                        }
+
                         //                                      title    cost
-                        var addrsp = $.helix.createCustomReward(args[1], parseInt(args[2]),
+                        let addrsp = $.helix.createCustomReward(args[1], parseInt(args[2]),
                                 //is_enabled                              background_color  is_user_input_required
                                 args[3].equals('true'), args[4].isBlank() ? null : args[4], args[5].equals('true'),
                                 //                         prompt
@@ -421,7 +481,7 @@
                                 args[13].equals('true'));
 
                         if (addrsp.getInt('_http') === 200 && addrsp.has('data')) {
-                            var newid = $.jsString(addrsp.getJSONArray('data').getJSONObject(0).getString('id'));
+                            let newid = $.jsString(addrsp.getJSONArray('data').getJSONObject(0).getString('id'));
                             lock.lock();
                             try {
                                 managed.push(newid);
@@ -430,7 +490,7 @@
                             }
                             $.panel.sendObject(event.getId(), {'success': true, 'id': newid});
                         } else {
-                            var error = 'Unknown Error';
+                            let error = 'Unknown Error';
 
                             if (addrsp.getInt('_http') === 200) {
                                 error = 'Got HTTP 200 but invalid response body';
@@ -447,8 +507,13 @@
                         }
                         break;
                     case 'redeemable-update-managed':
+                        if (!$.twitchcache.isAffiliateOrPartner()) {
+                            $.panel.sendObject(event.getId(), {'success': false, 'error': 'Not an affiliate or partner'});
+                            return;
+                        }
+
                         //                                         id                                 title
-                        var updatersp = $.helix.updateCustomReward(args[1], args[2] === null ? null : args[2],
+                        let updatersp = $.helix.updateCustomReward(args[1], args[2] === null ? null : args[2],
                                 //                        cost                                         is_enabled
                                 args[3] === null ? null : parseInt(args[3]), args[4] === null ? null : args[4].equals('true'),
                                 //                        is_paused                                                              background_color
@@ -467,7 +532,7 @@
                         if (updatersp.getInt('_http') === 200 && updatersp.has('data')) {
                             $.panel.sendObject(event.getId(), {'success': true});
                         } else {
-                            var error = 'Unknown Error';
+                            let error = 'Unknown Error';
 
                             if (updatersp.getInt('_http') === 200) {
                                 error = 'Got HTTP 200 but invalid response body';
@@ -500,8 +565,12 @@
         $.registerChatSubcommand('channelpoints', 'add', $.PERMISSION.Admin);
         $.registerChatSubcommand('channelpoints', 'edit', $.PERMISSION.Admin);
         $.registerChatSubcommand('channelpoints', 'remove', $.PERMISSION.Admin);
+    });
 
-        reloadManagedRedeemables();
+    $.bind('twitchBroadcasterType', function(event) {
+        if (!event.wasAffiliateOrPartner() && event.isAffiliateOrPartner()) {
+            reloadManagedRedeemables();
+        }
     });
 
     $.channelpoints = {

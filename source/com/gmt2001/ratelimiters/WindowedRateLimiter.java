@@ -17,6 +17,8 @@
 package com.gmt2001.ratelimiters;
 
 import com.gmt2001.ExecutorService;
+
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
@@ -28,13 +30,25 @@ import java.util.concurrent.TimeUnit;
  */
 public class WindowedRateLimiter {
 
-    private final long windowMS;
-    private final int limit;
-    private final Object mutex = new Object();
-    private Instant nextReset;
-    private int currentTokens;
+    protected final long windowMS;
+    protected final int limit;
+    protected final Object mutex = new Object();
+    protected Instant nextReset;
+    protected int currentTokens;
 
     /**
+     * Constructor
+     *
+     * @param windowMS The length of the window
+     * @param limit The maximum number of tokens available during the window
+     */
+    public WindowedRateLimiter(Duration window, int limit) {
+        this(window.toMillis(), limit);
+    }
+
+    /**
+     * Constructor
+     *
      * @param windowMS The length of the window, in milliseconds
      * @param limit The maximum number of tokens available during the window
      */
@@ -87,8 +101,12 @@ public class WindowedRateLimiter {
      */
     public void reset() {
         synchronized (this.mutex) {
-            if (this.currentTokens < this.limit && Instant.now().isAfter(this.nextReset)) {
-                this.currentTokens = this.limit;
+            if (this.currentTokens < this.limit() && Instant.now().isAfter(this.nextReset())) {
+                this.currentTokens = this.limit();
+            }
+
+            if (this.currentTokens > this.limit()) {
+                this.currentTokens = this.limit();
             }
         }
     }
@@ -101,8 +119,8 @@ public class WindowedRateLimiter {
     public boolean takeToken() {
         this.reset();
         synchronized (this.mutex) {
-            if (this.currentTokens == this.limit) {
-                this.nextReset = Instant.now().plusMillis(this.windowMS);
+            if (this.currentTokens >= this.limit()) {
+                this.nextReset = Instant.now().plusMillis(this.windowMS());
             }
 
             if (this.currentTokens > 0) {
@@ -125,7 +143,7 @@ public class WindowedRateLimiter {
         } else {
             ExecutorService.schedule(() -> {
                 this.waitAndTakeToken(command);
-            }, Instant.now().until(this.nextReset, ChronoUnit.MILLIS), TimeUnit.MILLISECONDS);
+            }, Instant.now().until(this.nextReset(), ChronoUnit.MILLIS), TimeUnit.MILLISECONDS);
         }
     }
 
@@ -141,7 +159,7 @@ public class WindowedRateLimiter {
         } else {
             ExecutorService.schedule(() -> {
                 this.waitAndRun(command);
-            }, Instant.now().until(this.nextReset, ChronoUnit.MILLIS), TimeUnit.MILLISECONDS);
+            }, Instant.now().until(this.nextReset(), ChronoUnit.MILLIS), TimeUnit.MILLISECONDS);
         }
     }
 }

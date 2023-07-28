@@ -25,12 +25,10 @@
  * Use the $ API
  */
 (function () {
-    var levelWithTime = $.getSetIniDbBoolean('timeSettings', 'timeLevel', false),
+    let levelWithTime = $.getSetIniDbBoolean('timeSettings', 'timeLevel', false),
             timeLevelWarning = $.getSetIniDbBoolean('timeSettings', 'timeLevelWarning', true),
             keepTimeWhenOffline = $.getSetIniDbBoolean('timeSettings', 'keepTimeWhenOffline', true),
-            hoursForLevelUp = $.getSetIniDbNumber('timeSettings', 'timePromoteHours', 50),
-            interval,
-            inter;
+            hoursForLevelUp = $.getSetIniDbNumber('timeSettings', 'timePromoteHours', 50);
 
     /**
      * @function updateTimeSettings
@@ -85,7 +83,7 @@
      *     getCurLocalTimeString("MMMM dd', 'yyyy hh:mm:ss zzz '('Z')'");
      */
     function getCurLocalTimeString(format) {
-        var zone = $.inidb.exists('settings', 'timezone') ? $.inidb.get('settings', 'timezone') : "GMT";
+        let zone = $.inidb.GetString('settings', '', 'timezone', 'GMT');
         try {
             return Packages.java.time.ZonedDateTime.now(getZoneId(zone)).format(Packages.java.time.format.DateTimeFormatter.ofPattern(format));
         } catch (ex) {
@@ -101,7 +99,7 @@
      * @return {String}
      */
     function getLocalTimeString(format, utc_secs) {
-        var zone = $.inidb.exists('settings', 'timezone') ? $.inidb.get('settings', 'timezone') : "GMT";
+        let zone = $.inidb.GetString('settings', '', 'timezone', 'GMT');
         try {
             return Packages.java.time.ZonedDateTime.ofInstant(Packages.java.time.Instant.ofEpochMilli(utc_secs), getZoneId(zone)).format(Packages.java.time.format.DateTimeFormatter.ofPattern(format));
         } catch (ex) {
@@ -132,7 +130,7 @@
      * @return {String}
      */
     function getLocalTime() {
-        var zone = $.inidb.exists('settings', 'timezone') ? $.inidb.get('settings', 'timezone') : "GMT";
+        let zone = $.inidb.GetString('settings', '', 'timezone', 'GMT');
         try {
             return Packages.java.time.ZonedDateTime.now(getZoneId(zone)).format(Packages.java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"));
         } catch (ex) {
@@ -148,7 +146,7 @@
      * @returns {string}
      */
     function dateToString(date, timeOnly) {
-        var year = date.getFullYear(),
+        let year = date.getFullYear(),
                 month = date.getMonth() + 1,
                 day = date.getDate(),
                 hours = date.getHours(),
@@ -169,9 +167,9 @@
      * @returns {string}
      */
     function getTimeString(time, hoursOnly) {
-        var floor = Math.floor,
-                months = (time / 2628000);
-        days = ((months % 1) * 30.42),
+        let floor = Math.floor,
+                months = (time / 2628000),
+                days = ((months % 1) * 30.42),
                 hours = ((days % 1) * 24),
                 minutes = ((hours % 1) * 60),
                 seconds = ((minutes % 1) * 60);
@@ -179,7 +177,7 @@
         if (hoursOnly) {
             return floor(time / 3600) + $.lang.get('common.hours3');
         } else {
-            var timeStringParts = [],
+            let timeStringParts = [],
                     timeString = '';
 
             // Append months if greater than one.
@@ -231,14 +229,14 @@
      * @returns {string}
      */
     function getCountString(time, countUp) {
-        var floor = Math.floor,
-                months = (time / 2628000);
-        days = ((months % 1) * 30.42),
+        let floor = Math.floor,
+                months = (time / 2628000),
+                days = ((months % 1) * 30.42),
                 hours = ((days % 1) * 24),
                 minutes = ((hours % 1) * 60),
                 seconds = ((minutes % 1) * 60);
 
-        var timeStringParts = [],
+        let timeStringParts = [],
                 timeString = '';
 
         // Append months if greater than one.
@@ -293,7 +291,7 @@
      * @returns {string}
      */
     function getTimeStringMinutes(time) {
-        var floor = Math.floor,
+        let floor = Math.floor,
                 cHours = time / 3600,
                 cMins = cHours % 1 * 60;
 
@@ -311,7 +309,7 @@
      * @returns {number}
      */
     function getUserTime(username) {
-        return ($.inidb.exists('time', username.toLowerCase()) ? $.inidb.get('time', username.toLowerCase()) : 0);
+        return $.inidb.GetInteger('time', '', username.toLowerCase(), 0);
     }
 
     /**
@@ -321,7 +319,7 @@
      * @returns {string}
      */
     function getUserTimeString(username) {
-        var floor = Math.floor,
+        let floor = Math.floor,
                 time = $.getUserTime(username.toLowerCase()),
                 cHours = time / 3600,
                 cMins = cHours % 1 * 60;
@@ -337,8 +335,7 @@
      * @event command
      */
     $.bind('command', function (event) {
-        var sender = event.getSender().toLowerCase(),
-                username = $.username.resolve(sender),
+        let sender = event.getSender().toLowerCase(),
                 command = event.getCommand(),
                 args = event.getArgs(),
                 action = args[0],
@@ -352,7 +349,7 @@
             if (!action) {
                 $.say($.whisperPrefix(sender) + $.lang.get("timesystem.get.self", $.resolveRank(sender), getUserTimeString(sender)));
             } else if (action && $.inidb.exists('time', action.toLowerCase())) {
-                $.say($.whisperPrefix(sender) + $.lang.get("timesystem.get.other", $.username.resolve(action), getUserTimeString(action)));
+                $.say($.whisperPrefix(sender) + $.lang.get("timesystem.get.other", $.viewer.getByLogin(action).name(), getUserTimeString(action)));
             } else {
                 subject = args[1];
                 timeArg = parseInt(args[2]);
@@ -376,9 +373,9 @@
 
                     if ($.user.isKnown(subject)) {
                         $.inidb.incr('time', subject, timeArg);
-                        $.say($.whisperPrefix(sender) + $.lang.get('timesystem.add.success', getTimeString(timeArg), $.username.resolve(subject), getUserTimeString(subject)));
+                        $.say($.whisperPrefix(sender) + $.lang.get('timesystem.add.success', getTimeString(timeArg), $.viewer.getByLogin(subject).name(), getUserTimeString(subject)));
                     } else {
-                        $.say($.whisperPrefix(sender) + $.lang.get('common.user.404', $.username.resolve(subject)));
+                        $.say($.whisperPrefix(sender) + $.lang.get('common.user.404', $.viewer.getByLogin(subject).name()));
                     }
                 }
 
@@ -402,7 +399,7 @@
                     }
 
                     $.inidb.decr('time', subject, timeArg);
-                    $.say($.whisperPrefix(sender) + $.lang.get('timesystem.take.success', $.getTimeString(timeArg), $.username.resolve(subject), getUserTimeString(subject)));
+                    $.say($.whisperPrefix(sender) + $.lang.get('timesystem.take.success', $.getTimeString(timeArg), $.viewer.getByLogin(subject).name(), getUserTimeString(subject)));
                 }
 
                 if (action.equalsIgnoreCase('set')) {
@@ -420,7 +417,7 @@
                     subject = $.user.sanitize(subject);
                     if ($.user.isKnown(subject)) {
                         $.inidb.set('time', subject, timeArg);
-                        $.say($.whisperPrefix(sender) + $.lang.get('timesystem.settime.success', $.username.resolve(subject), $.getUserTimeString(subject)));
+                        $.say($.whisperPrefix(sender) + $.lang.get('timesystem.settime.success', $.viewer.getByLogin(subject).name(), $.getUserTimeString(subject)));
                     } else {
                         $.say($.whisperPrefix(sender) + $.lang.get('common.user.404', subject));
                     }
@@ -478,17 +475,18 @@
          * @commandpath streamertime - Announce the caster's local time
          */
         if (command.equalsIgnoreCase('streamertime')) {
-            $.say($.whisperPrefix(sender) + $.lang.get('timesystem.streamertime', getCurLocalTimeString("MMMM dd', 'yyyy hh:mm:ss a zzz '('Z')'"), $.username.resolve($.ownerName)));
+            $.say($.whisperPrefix(sender) + $.lang.get('timesystem.streamertime', getCurLocalTimeString("MMMM dd', 'yyyy hh:mm:ss a zzz '('Z')'"), $.viewer.getByLogin($.ownerName).name()));
         }
 
         /**
          * @commandpath timezone [timezone name] - Show configured timezone or optionally set the timezone. See List: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
          */
         if (command.equalsIgnoreCase('timezone')) {
-            var tzData;
+            let tzData;
 
             if (!action) {
-                $.say($.whisperPrefix(sender) + $.lang.get('timesystem.set.timezone.usage', ($.inidb.exists('settings', 'timezone') ? $.inidb.get('settings', 'timezone') : "GMT")));
+                let zone = $.inidb.GetString('settings', '', 'timezone', 'GMT');
+                $.say($.whisperPrefix(sender) + $.lang.get('timesystem.set.timezone.usage', zone));
                 return;
             }
 
@@ -504,35 +502,33 @@
     });
 
     // Set an interval for increasing all current users logged time
-    interval = setInterval(function () {
-        var username,
-                i;
-
+    setInterval(function () {
         if ($.isOnline($.channelName) || keepTimeWhenOffline) {
             $.inidb.IncreaseBatchString('time', '', $.users, '60');
         }
     }, 6e4, 'scripts::systems::timeSystem.js#1');
 
     // Interval for auto level to regular
-    inter = setInterval(function () {
-        var username,
+    setInterval(function () {
+        let username,
             i;
 
         if (levelWithTime) {
             for (i in $.users) {
                 if ($.users[i] !== null) {
                     username = $.users[i].toLowerCase();
+                    let time = $.inidb.OptInteger('time', '', username);
                     // Only level viewers to regulars and ignore TwitchBots
                     if (!$.isTwitchBot(username)
                         && (!$.hasPermissionLevel(username) || $.isViewer(username)) //Assume users without permissions level are viewers, if they are too new the check will fail in the next condition
-                        && $.inidb.exists('time', username)
-                        && Math.floor(parseInt($.inidb.get('time', username)) / 3600) >= hoursForLevelUp) {
+                        && time.isPresent()
+                        && Math.floor(time.get() / 3600) >= hoursForLevelUp) {
                         if (!$.isMod(username)) { // Added a second check here to be 100% sure the user is not a mod.
                             $.setUserGroupById(username, $.PERMISSION.Regular);
                             if (timeLevelWarning) {
                                 $.say($.lang.get(
                                     'timesystem.autolevel.promoted',
-                                    $.username.resolve(username),
+                                    $.viewer.getByLogin(username).name(),
                                     $.getGroupNameById($.PERMISSION.Regular).toLowerCase(),
                                     hoursForLevelUp
                                 )); //No whisper mode needed here.

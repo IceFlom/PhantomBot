@@ -25,20 +25,20 @@
      * @returns {string}
      */
     function getCustomAPIValue(url) {
-        var res = $.customAPI.get(url);
-
-        $.consoleDebug(res.toString());
+        let res = $.customAPI.get(url);
 
         if (res.content !== null) {
+            $.consoleDebug(res.toString());
             return res.content;
         } else {
+            $.log.error(res.toString());
             throw res.toString();
         }
     }
 
     /*
      * @transformer customapi
-     * @formula (customapi url:str) http GET url and output returned text (escaped by default)
+     * @formula (customapi url:str) http GET url and output returned text
      * @labels twitch discord commandevent customapi
      * @notes the command tag (token) can be placed in the url for a secret token saved via !tokencom or the panel
      * @notes if any args, $1-$9, are used in the url, they are required to be provided by the user issuing the command or the tag will abort and return an error message instead
@@ -48,12 +48,11 @@
      * Bot: These jokes are un-bear-able
      */
     function customapi(args) {
-        var match;
-        if ((match = args.args.match(/^\s(.+)$/))) {
-            var cmd = args.event.getCommand();
-            var flag = false;
-            match[1] = match[1].replace(/\$([1-9])/g, function (m) {
-                var i = parseInt(m[1]);
+        if (args.args) {
+            let cmd = args.event.getCommand();
+            let flag = false;
+            args.args = args.args.replace(/\$([1-9])/g, function (m) {
+                let i = parseInt(m[1]);
                 if (!args.event.getArgs()[i - 1]) {
                     flag = true;
                     return m[0];
@@ -63,11 +62,10 @@
             if (flag) {
                 return {result: $.lang.get('customcommands.customapi.404', cmd)};
             }
-            var response;
+            let response;
             try {
-                response = getCustomAPIValue(encodeURI(match[1]));
+                response = getCustomAPIValue(args.args);
             } catch (ex) {
-                $.log.error('Failed to get data from API: ' + ex.message);
                 return {result: $.lang.get('customcommands.customapijson.err', cmd)};
             }
             return {
@@ -79,7 +77,7 @@
 
     /*
      * @transformer customapijson
-     * @formula (customapijson url:str specs:str) httpGet url and extract json info according to specs (escaped by default)
+     * @formula (customapijson url:str specs:str) httpGet url and extract json info according to specs
      * @labels twitch discord commandevent customapi
      * @notes the command tag (token) can be placed in the url for a secret token saved via !tokencom or the panel
      * @notes if any args, $1-$9, are used in the url, they are required to be provided by the user issuing the command or the tag will abort and return an error message instead
@@ -89,21 +87,21 @@
      * User: !weather 80314
      * Bot: Weather for Boulder, CO : Sunny Temps: 75 F 24 C
      */
-    var reCustomAPITextTag = new RegExp(/{([\w\W]+)}/);
-    var JSONObject = Packages.org.json.JSONObject;
+    let reCustomAPITextTag = new RegExp(/{([\w\W]+)}/);
+    let JSONObject = Packages.org.json.JSONObject;
     function customapijson(args, event) {
-        var match,
+        let match,
                 customJSONStringTag,
                 jsonCheckList,
                 jsonItems,
                 jsonObject,
                 response,
                 responsePart;
-        if ((match = args.args.match(/^ (\S+) (.+)$/))) {
-            var cmd = args.event.getCommand();
-            var flag = false;
+        if ((match = args.args.match(/^(\S+) (.+)$/))) {
+            let cmd = args.event.getCommand();
+            let flag = false;
             match[1] = match[1].replace(/\$([1-9])/g, function (m) {
-                var i = parseInt(m[1]);
+                let i = parseInt(m[1]);
                 if (!args.event.getArgs()[i - 1]) {
                     flag = true;
                     return m[0];
@@ -114,15 +112,14 @@
                 return {result: $.lang.get('customcommands.customapi.404', cmd)};
             }
 
-            var result = '';
+            let result = '';
             try {
-                response = getCustomAPIValue(encodeURI(match[1]));
+                response = getCustomAPIValue(match[1]);
             } catch (ex) {
-                $.log.error('Failed to get data from API: ' + ex.message);
                 return {result: $.lang.get('customcommands.customapijson.err', cmd)};
             }
             jsonItems = match[2].split(' ');
-            for (var j = 0; j < jsonItems.length; j++) {
+            for (let j = 0; j < jsonItems.length; j++) {
                 if (jsonItems[j].startsWith('{') && jsonItems[j].endsWith('}')) {
                     result += " " + jsonItems[j].match(reCustomAPITextTag)[1];
                 } else if (jsonItems[j].startsWith('{') && !jsonItems[j].endsWith('}')) {
@@ -138,7 +135,7 @@
                         try {
                             responsePart = new JSONObject(response).get(jsonCheckList[0]);
                         } catch (ex) {
-                            $.log.error('Failed to get data from API: ' + ex.message);
+                            $.log.error('Failed to get data from API: ' + ex);
                             $.log.error(response.toString());
                             return {result: $.lang.get('customcommands.customapijson.err', cmd)};
                         }
@@ -149,7 +146,7 @@
                                 try {
                                     jsonObject = new JSONObject(response).get(jsonCheckList[i]);
                                 } catch (ex) {
-                                    $.log.error('Failed to get data from API: ' + ex.message);
+                                    $.log.error('Failed to get data from API: ' + ex);
                                     $.log.error('response:' + response.toString());
                                     return {result: $.lang.get('customcommands.customapijson.err', cmd)};
                                 }
@@ -157,7 +154,7 @@
                                 try {
                                     jsonObject = jsonObject.get(jsonCheckList[i]);
                                 } catch (ex) {
-                                    $.log.error('Failed to get data from API: ' + ex.message);
+                                    $.log.error('Failed to get data from API: ' + ex);
                                     $.log.error('jsonCheckList[' + i + ']: ' + response.toString());
                                     return {result: $.lang.get('customcommands.customapijson.err', cmd)};
                                 }
@@ -165,7 +162,7 @@
                                 try {
                                     jsonObject = jsonObject.get(jsonCheckList[i]);
                                 } catch (ex) {
-                                    $.log.error('Failed to get data from API: ' + ex.message);
+                                    $.log.error('Failed to get data from API: ' + ex);
                                     $.log.error('jsonCheckList[' + i + ']: ' + jsonCheckList[i]);
                                     return {result: $.lang.get('customcommands.customapijson.err', cmd)};
                                 }
@@ -174,7 +171,7 @@
                         try {
                             responsePart = jsonObject.get(jsonCheckList[i]);
                         } catch (ex) {
-                            $.log.error('Failed to get data from API: ' + ex.message);
+                            $.log.error('Failed to get data from API: ' + ex);
                             $.log.error('jsonCheckList[' + i + ']: ' + jsonCheckList[i]);
                             return {result: $.lang.get('customcommands.customapijson.err', cmd)};
                         }
@@ -190,7 +187,7 @@
         }
     }
 
-    var transformers = [
+    let transformers = [
         new $.transformers.transformer('customapi', ['twitch', 'discord', 'commandevent', 'customapi'], customapi),
         new $.transformers.transformer('customapijson', ['twitch', 'discord', 'commandevent', 'customapi'], customapijson)
     ];

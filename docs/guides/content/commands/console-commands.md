@@ -78,22 +78,6 @@ backupdb - Creates a backup of the current database.
 
 &nbsp;
 
-### fixfollowedtable
-
-Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
-
-fixfollowedtable - Grabs the last 10,000 followers from the Twitch API.
-
-&nbsp;
-
-### fixfollowedtable-force
-
-Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
-
-fixfollowedtable-force - Grabs all followers from the Twitch API.
-
-&nbsp;
-
 ### jointest
 
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
@@ -163,6 +147,14 @@ giftsubtest (userName) (tier) (months) - Sends a fake gift subscriber events.
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
 
 massanonsubgifttest (amount) (tier) - Test a mass anonymous gift subscription.
+
+&nbsp;
+
+### masssubgifttest
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+masssubgifttest (amount) (tier) - Test a mass sub gift subscription.
 
 &nbsp;
 
@@ -246,14 +238,6 @@ debuglog - Prints all debug lines to a file.
 
 &nbsp;
 
-### save
-
-Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
-
-save - Forces the database to save.
-
-&nbsp;
-
 ### exit
 
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
@@ -307,3 +291,51 @@ ytsetup - Sets up YouTube API Key
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
 
 dumpheap - Creates a heap dump
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser add username - Creates a new panel user with full access to all panel sections if the user does not exist and prints the randomly generated password
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser delete username - Deletes a panel user if the user exists
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser enable username - Enables a panel user if the user exists
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser enable username - Disables a panel user if the user exists
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser resetpassword username - Resets a panel users password if the user exists and prints the new and randomly generated password
+
+&nbsp;
+
+### paneluser
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+paneluser resetpermission username - Gives a panel user full access to all panel sections if the user exists

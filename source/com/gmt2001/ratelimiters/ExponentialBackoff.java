@@ -39,22 +39,42 @@ public class ExponentialBackoff {
     private boolean isBackingOff = false;
 
     /**
+     * Constructor
+     *
+     * @param minInterval Minimum backoff interval
+     * @param maxInterval Maximum backoff interval
+     */
+    public ExponentialBackoff(Duration minInterval, Duration maxInterval) {
+        this(minInterval.toMillis(), maxInterval.toMillis());
+    }
+
+    /**
+     * Constructor
+     *
+     * @param minInterval Minimum backoff interval
+     * @param maxInterval Maximum backoff interval
+     * @param resetInterval Time since last backoff until an auto-reset occurs; {@code null} to disable
+     */
+    public ExponentialBackoff(Duration minInterval, Duration maxInterval, Duration resetInterval) {
+        this(minInterval.toMillis(), maxInterval.toMillis(), (resetInterval == null ? -1 : resetInterval.toMillis()));
+    }
+
+    /**
+     * Constructor
      *
      * @param minIntervalMS Minimum backoff interval, in MS
      * @param maxIntervalMS Maximum backoff interval, in MS
      */
     public ExponentialBackoff(long minIntervalMS, long maxIntervalMS) {
-        this.minIntervalMS = minIntervalMS;
-        this.maxIntervalMS = maxIntervalMS;
-        this.resetIntervalMS = -1;
-        this.lastIntervalMS = this.minIntervalMS;
+        this(minIntervalMS, maxIntervalMS, -1);
     }
 
     /**
+     * Constructor
      *
      * @param minIntervalMS Minimum backoff interval, in MS
      * @param maxIntervalMS Maximum backoff interval, in MS
-     * @param resetIntervalMS Time since last backoff until an auto-reset occurs
+     * @param resetIntervalMS Time since last backoff until an auto-reset occurs; {@code -1} to disable
      */
     public ExponentialBackoff(long minIntervalMS, long maxIntervalMS, long resetIntervalMS) {
         this.minIntervalMS = minIntervalMS;
@@ -64,11 +84,26 @@ public class ExponentialBackoff {
     }
 
     /**
+     * Blocks with Thread.sleep until the next interval, if not already backing off
+     */
+    public void BackoffOnce() {
+        synchronized (this) {
+            if (this.GetIsBackingOff()) {
+                return;
+            } else {
+                this.setIsBackingOff(true);
+            }
+        }
+
+        this.Backoff();
+    }
+
+    /**
      * Blocks with Thread.sleep until the next interval
      */
     public void Backoff() {
         try {
-            com.gmt2001.Console.debug.println("Backoff() called by: " + com.gmt2001.Console.debug.findCaller("com.gmt2001.ExponentialBackoff"));
+            com.gmt2001.Console.debug.println("Backoff() called by: " + com.gmt2001.Console.debug.findCaller(ExponentialBackoff.class.getName()));
             this.setIsBackingOff(true);
             com.gmt2001.Console.debug.println("Locked backoff...");
             this.determineNextInterval();
@@ -91,12 +126,28 @@ public class ExponentialBackoff {
     }
 
     /**
+     * Calls the specified Runnable once the next interval expires, if not already backing off
+     *
+     * @param command The Runnable to callback
+     */
+    public void BackoffOnceAsync(Runnable command) {
+        synchronized (this) {
+            if (this.GetIsBackingOff()) {
+                return;
+            } else {
+                this.setIsBackingOff(true);
+            }
+        }
+        this.BackoffAsync(command);
+    }
+
+    /**
      * Calls the specified Runnable once the next interval expires
      *
      * @param command The Runnable to callback
      */
     public void BackoffAsync(Runnable command) {
-        com.gmt2001.Console.debug.println("BackoffAsync() called by: " + com.gmt2001.Console.debug.findCaller("com.gmt2001.ExponentialBackoff"));
+        com.gmt2001.Console.debug.println("BackoffAsync() called by: " + com.gmt2001.Console.debug.findCaller(ExponentialBackoff.class.getName()));
         this.setIsBackingOff(true);
         com.gmt2001.Console.debug.println("Locked backoff...");
         this.determineNextInterval();
@@ -153,8 +204,17 @@ public class ExponentialBackoff {
      *
      * @return true if a backoff is executing; false otherwise
      */
-    public synchronized boolean GetIsBackingOff() {
+    public boolean GetIsBackingOff() {
         return this.isBackingOff;
+    }
+
+    /**
+     * Returns the last timestamp when a backoff was completed
+     *
+     * @return The timestamp
+     */
+    public Instant GetLastBackoff() {
+        return this.lastBackoff;
     }
 
     /**

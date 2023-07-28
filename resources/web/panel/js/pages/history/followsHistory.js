@@ -54,7 +54,7 @@ $(function () {
         return follows;
     }
 
-    socket.getDBTableValuesByOrder('get_all_follows_by_date', 'followedDate', FOLLOW_STEP, followingOffset, 'DESC', true, function (results) {
+    socket.getDBTableValuesByOrder('get_all_follows_by_date', 'followedDate', FOLLOW_STEP, followingOffset, 'DESC', false, function (results) {
 
         let follows = prepareDataForTable(results);
 
@@ -104,7 +104,7 @@ $(function () {
         if (followingOffset === dataCount) {
             toastr.success('Loading more users into the follows table.');
             // Get the next 100 users.
-            socket.getDBTableValuesByOrder('get_all_follows_by_date', 'followedDate', FOLLOW_STEP, followingOffset, 'DESC', true, function (results) {
+            socket.getDBTableValuesByOrder('get_all_follows_by_date', 'followedDate', FOLLOW_STEP, followingOffset, 'DESC', false, function (results) {
                 follows = prepareDataForTable(results);
 
                 // Add the rows.

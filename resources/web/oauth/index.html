@@ -30,11 +30,17 @@
         <link rel="stylesheet" href="/common/css/skin-purple.dark.min.css" />
         <link rel="stylesheet" href="/common/css/pace.min.css" />
         <style>
+            body {
+                font-size: 22px;
+            }
+            button {
+                font-size: 22px !important;
+            }
             .twitchbtn {
                 display:inline-block;
                 height:48px;
                 line-height:46px;
-                font-size:14px;
+                font-size:22px;
                 border:1px solid transparent;
                 border-radius:24px;
                 padding:0 30px;
@@ -103,7 +109,7 @@
                                 This page will setup the bot to automatically refresh the Bot's OAuth tokens. Please follow all instructions below to set this up properly.
                             </div>
                             <br />
-                            <div>
+                            <div id="authmodediv">
                                 How will you be performing the OAuths?<br />
                                 <input id="authmodeboth" type="radio" checked="checked" name="authmode" value="both"> <label for="authmodeboth">I will authorize both the Bot and the Broadcaster</label>
                                 <br /><br />
@@ -177,7 +183,7 @@
                                 <br />
                                 <br />
                                 <div>
-                                    Clicking <span id="connectone">one of </span>the <div class="text-bold" style="display: inline;">Connect with Twitch</div> button<span id="connectplural">s</span> below will have you be redirected to Twitch.TV to authorize the bot to make requests on your behalf.
+                                    Clicking <span id="connectone">one of </span>the <div class="text-bold" style="display: inline;">Connect with Twitch</div> button<span id="connectplural">s</span> at the bottom of this page will have you be redirected to Twitch.TV to authorize the bot to make requests on your behalf.
                                     <br />
                                     <div style="padding-left: 25px;">
                                         <ul>
@@ -244,115 +250,7 @@
         <script>
                     'use strict';
                     $(function () {
-                        var scopesBot = {
-                            "chat:edit": {
-                                "desc": "Send live Stream Chat and Rooms messages.",
-                                "tooltip": "Used to send responses in chat."
-                            },
-                            "chat:read": {
-                                "desc": "View live Stream Chat and Rooms messages.",
-                                "tooltip": "Used to login to chat and read messages."
-                            },
-                            "moderator:manage:announcements": {
-                                "desc": "Send announcements in channels where you have the moderator role.",
-                                "tooltip": "Used to send announcements."
-                            },
-                            "moderator:manage:banned_users": {
-                                "desc": "Ban and unban users.",
-                                "tooltip": "Used to ban, timeout, and unban users."
-                            },
-                            "moderator:manage:chat_messages": {
-                                "desc": "Delete chat messages in channels where you have the moderator role.",
-                                "tooltip": "Used to delete individual messages or clear the entire chat."
-                            },
-                            "moderator:manage:chat_settings": {
-                                "desc": "Manage a broadcaster's chat room settings.",
-                                "tooltip": "Used to enable/disable emote-only, follower-only, slow, subscriber-only, and unique (r9k) chat modes."
-                            },
-                            "user:manage:whispers": {
-                                "desc": "Read whispers that you send and receive, and send whispers on your behalf.",
-                                "tooltip": "Used to send whispers from the bot."
-                            },
-                            "whispers:read": {
-                                "desc": "View your whisper messages.",
-                                "tooltip": "Used to receive whispers to the bot."
-                            }
-                        };
-
-                        var scopesBroadcaster = {
-                            "bits:read": {
-                                "desc": "Read access to bits cheers in your channel.",
-                                "tooltip": "Used by EventSub to subscribe to bits notifications."
-                            },
-                            "channel:manage:broadcast": {
-                                "desc": "Manage a channel's broadcast configuration, including updating channel configuration and managing stream markers and stream tags.",
-                                "tooltip": "Used to change the title/game."
-                            },
-                            "channel:edit:commercial": {
-                                "desc": "Run commercials on a channel.",
-                                "tooltip": "Used to run commercials."
-                            },
-                            "channel:manage:raids": {
-                                "desc": "Manage a channel raiding another channel.",
-                                "tooltip": "Used to start or cancel raids."
-                            },
-                            "channel:manage:redemptions": {
-                                "desc": "Manage Channel Points custom rewards and their redemptions on a channel.",
-                                "tooltip": "Used to create and manage custom Channel Points rewards."
-                            },
-                            "channel:moderate": {
-                                "desc": "Perform moderation actions in a channel.",
-                                "tooltip": "Used to watch for moderation actions in PubSub."
-                            },
-                            "channel:read:hype_train": {
-                                "desc": "Fetch information about current/past hype trains.",
-                                "tooltip": "Used to watch for hype train notifications in EventSub."
-                            },
-                            "channel:read:polls": {
-                                "desc": "Fetch information about current/past polls.",
-                                "tooltip": "Used to watch for Twitch poll notifications in EventSub."
-                            },
-                            "channel:read:predictions": {
-                                "desc": "Fetch information about current/past predictions.",
-                                "tooltip": "Used to watch for Twitch prediction notifications in EventSub."
-                            },
-                            "channel:read:redemptions": {
-                                "desc": "View your channel points custom reward redemptions.",
-                                "tooltip": "Used to get a list of Channel Points rewards and watch for redemption of custom Channel Points rewards in PubSub."
-                            },
-                            "channel:read:subscriptions": {
-                                "desc": "View a list of all subscribers to a channel and check if a user is subscribed to a channel.",
-                                "tooltip": "Used to watch for new subscribers that haven't shared with chat."
-                            },
-                            "moderation:read": {
-                                "desc": "Read the list of channel moderators.",
-                                "tooltip": "Used to watch for moderator add/remove events in EventSub."
-                            },
-                            "moderator:manage:announcements": {
-                                "desc": "Send announcements in channels where you have the moderator role.",
-                                "tooltip": "Used to send announcements."
-                            },
-                            "moderator:manage:banned_users": {
-                                "desc": "Ban and unban users.",
-                                "tooltip": "Used to ban, timeout, and unban users."
-                            },
-                            "moderator:manage:chat_messages": {
-                                "desc": "Delete chat messages in channels where you have the moderator role.",
-                                "tooltip": "Used to delete individual messages or clear the entire chat."
-                            },
-                            "moderator:manage:chat_settings": {
-                                "desc": "Manage a broadcaster's chat room settings.",
-                                "tooltip": "Used to enable/disable emote-only, follower-only, slow, subscriber-only, and unique (r9k) chat modes."
-                            },
-                            "moderator:manage:shield_mode": {
-                                "desc": "Manage a broadcaster's Shield Mode status.",
-                                "tooltip": "Used to enable/disable shield mode."
-                            },
-                            "moderator:manage:shoutouts": {
-                                "desc": "Manage a broadcaster's shoutouts.",
-                                "tooltip": "Used to send shoutouts."
-                            }
-                        };
+                        let scopes = {"broadcaster": {}, "bot": {}};
 
                         function addScopeItem(type, scope, description) {
                             $('#scopes-' + type).append(
@@ -369,19 +267,10 @@
                                         'data-toggle': 'tooltip',
                                         'title': description.tooltip
                                     }))
-                                    );
+                                );
                         }
 
-                        var x;
-                        for (x in scopesBot) {
-                            addScopeItem('bot', x, scopesBot[x]);
-                        }
-
-                        for (x in scopesBroadcaster) {
-                            addScopeItem('broadcaster', x, scopesBroadcaster[x]);
-                        }
-
-                        var queryString = window.location.search, // Query string that starts with ?
+                        let queryString = window.location.search, // Query string that starts with ?
                                 queryParts = queryString.slice(1).split(/#|&/), // Split at each &, which is a new query.
                                 queryMap = new Map(), // Create a new map for save our keys and values.
                                 baseAPIUri = 'https://id.twitch.tv/oauth2/authorize',
@@ -395,8 +284,56 @@
                             broadcaster = "/broadcaster";
                         }
 
-                        for (var i = 0; i < queryParts.length; i++) {
-                            var key = queryParts[i].substring(0, queryParts[i].indexOf('=')),
+                        $.ajax({
+                            cache: false,
+                            dataType: 'json',
+                            url: '/oauth' + broadcaster + '/scopes.json',
+                            method: 'GET',
+                            success: function (data) {
+                                scopes = data;
+
+                                for (let x in scopes.bot) {
+                                    addScopeItem('bot', x, scopes.bot[x]);
+                                }
+
+                                for (let x in scopes.broadcaster) {
+                                    addScopeItem('broadcaster', x, scopes.broadcaster[x]);
+                                }
+                            },
+                            error: function (jq, status, err) {
+                                let msg = '';
+                                if (status !== undefined) {
+                                    if (msg.length > 0) {
+                                        msg += ' ';
+                                    }
+                                    msg += jq.status;
+                                }
+                                if (jq.statusText !== undefined) {
+                                    if (msg.length > 0) {
+                                        msg += ' ';
+                                    }
+                                    msg += jq.statusText;
+                                }
+                                if (jq.responseText !== undefined) {
+                                    if (msg.length > 0) {
+                                        msg += ' ';
+                                    }
+                                    msg += jq.responseText;
+                                }
+                                if (err !== undefined) {
+                                    if (msg.length > 0) {
+                                        msg += ' ';
+                                    }
+                                    msg += err;
+                                }
+                                $('#error-box').removeClass('hide');
+                                $('#success-error-br').removeClass('hide');
+                                $('#error-box').html('Failed to get scopes: ' + msg + '!!');
+                            }
+                        });
+
+                        for (let i = 0; i < queryParts.length; i++) {
+                            let key = queryParts[i].substring(0, queryParts[i].indexOf('=')),
                                     value = queryParts[i].slice(queryParts[i].indexOf('=') + 1);
 
                             if (key.length > 0 && value.length > 0) {
@@ -438,10 +375,35 @@
                                         $('#connect').removeClass('hide');
                                     }
                                 },
-                                error: function (err) {
+                                error: function (jq, status, err) {
+                                    let msg = '';
+                                    if (status !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.status;
+                                    }
+                                    if (jq.statusText !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.statusText;
+                                    }
+                                    if (jq.responseText !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.responseText;
+                                    }
+                                    if (err !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += err;
+                                    }
                                     $('#error-box').removeClass('hide');
                                     $('#success-error-br').removeClass('hide');
-                                    $('#error-box').html('Failed to save Client ID and Client Secret: ' + err.statusText + ' ' + err.responseText + '!!');
+                                    $('#error-box').html('Failed to save Client ID and Client Secret: ' + msg + '!!');
                                 }
                             });
                         });
@@ -462,10 +424,35 @@
                                     $('#success-box').html('Generated a new broadcaster token');
                                     $('#broadcastertoken').val(data);
                                 },
-                                error: function (err) {
+                                error: function (jq, status, err) {
+                                    let msg = '';
+                                    if (status !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.status;
+                                    }
+                                    if (jq.statusText !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.statusText;
+                                    }
+                                    if (jq.responseText !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += jq.responseText;
+                                    }
+                                    if (err !== undefined) {
+                                        if (msg.length > 0) {
+                                            msg += ' ';
+                                        }
+                                        msg += err;
+                                    }
                                     $('#error-box').removeClass('hide');
                                     $('#success-error-br').removeClass('hide');
-                                    $('#error-box').html('Failed to generate a broadcaster password: ' + err.statusText + ' ' + err.responseText + '!!');
+                                    $('#error-box').html('Failed to generate a broadcaster password: ' + msg + '!!');
                                 }
                             });
                         });
@@ -479,7 +466,7 @@
                                 if (queryMap.get('state') === state) {
                                     $('#info-box').removeClass('hide');
                                     $('#success-error-br').removeClass('hide');
-                                    $('#info-box').html('Please wait, authorizing the ' + window.sessionStorage.getItem('state-type') + ' token...');
+                                    $('#info-box').html('Please wait, authorizing the ' + window.sessionStorage.getItem('statetype') + ' token...');
                                     $.ajax({
                                         cache: false,
                                         dataType: 'text',
@@ -508,11 +495,36 @@
                                             }
                                             window.sessionStorage.removeItem('statetype');
                                         },
-                                        error: function (err) {
+                                        error: function (jq, status, err) {
+                                            let msg = '';
+                                            if (status !== undefined) {
+                                                if (msg.length > 0) {
+                                                    msg += ' ';
+                                                }
+                                                msg += jq.status;
+                                            }
+                                            if (jq.statusText !== undefined) {
+                                                if (msg.length > 0) {
+                                                    msg += ' ';
+                                                }
+                                                msg += jq.statusText;
+                                            }
+                                            if (jq.responseText !== undefined) {
+                                                if (msg.length > 0) {
+                                                    msg += ' ';
+                                                }
+                                                msg += jq.responseText;
+                                            }
+                                            if (err !== undefined) {
+                                                if (msg.length > 0) {
+                                                    msg += ' ';
+                                                }
+                                                msg += err;
+                                            }
                                             $('#info-box').addClass('hide');
                                             $('#error-box').removeClass('hide');
                                             $('#success-error-br').removeClass('hide');
-                                            $('#error-box').html('Failed to authorize ' + window.sessionStorage.getItem('statetype') + ': ' + err.statusText + ' ' + err.responseText + '!!');
+                                            $('#error-box').html('Failed to authorize ' + window.sessionStorage.getItem('statetype') + ': ' + msg + '!!');
                                             window.sessionStorage.removeItem('statetype');
                                         }
                                     });
@@ -521,13 +533,21 @@
                                     window.sessionStorage.removeItem('state');
                                 }
                             }
+
+                            if (queryMap.has('error') || queryMap.has('error_description')) {
+                                $('#info-box').addClass('hide');
+                                $('#error-box').removeClass('hide');
+                                $('#success-error-br').removeClass('hide');
+                                $('#error-box').html('Failed to authorize ' + window.sessionStorage.getItem('statetype') + ': ' + queryMap.get('error') + ' ' + decodeURIComponent(queryMap.get('error_description')).replaceAll('+', ' ') + '!!');
+                                window.sessionStorage.removeItem('statetype');
+                            }
                         }
                         // Generates the state.
                         function generateState(type) {
-                            var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+                            let possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
                                     state = '';
 
-                            for (var i = 0; i < 40; i++) {
+                            for (let i = 0; i < 40; i++) {
                                 state += possible.charAt(Math.floor(Math.random() * possible.length));
                             }
 
@@ -540,30 +560,30 @@
 
                         // Connect with Twitch button bot.
                         $('#connect-bot').on('click', function () {
-                            var scopes = '';
-                            for (var x in scopesBot) {
-                                if (scopes.length > 0) {
-                                    scopes = scopes + '+';
+                            let scope = '';
+                            for (let x in scopes.bot) {
+                                if (scope.length > 0) {
+                                    scope = scope + '+';
                                 }
 
-                                scopes = scopes + x;
+                                scope = scope + x;
                             }
 
-                            window.location = baseAPIUri + '?response_type=code&client_id=' + clientID + '&redirect_uri=' + redirectURI + '&force_verify=true&scope=' + scopes + '&state=' + generateState('bot');
+                            window.location = baseAPIUri + '?response_type=code&client_id=' + clientID + '&redirect_uri=' + redirectURI + '&force_verify=true&scope=' + scope + '&state=' + generateState('bot');
                         });
 
                         // Connect with Twitch button caster.
                         $('#connect-caster').on('click', function () {
-                            var scopes = '';
-                            for (var x in scopesBroadcaster) {
-                                if (scopes.length > 0) {
-                                    scopes = scopes + '+';
+                            let scope = '';
+                            for (let x in scopes.broadcaster) {
+                                if (scope.length > 0) {
+                                    scope = scope + '+';
                                 }
 
-                                scopes = scopes + x;
+                                scope = scope + x;
                             }
 
-                            window.location = baseAPIUri + '?response_type=code&client_id=' + clientID + '&redirect_uri=' + redirectURI + '&force_verify=true&scope=' + scopes + '&state=' + generateState('broadcaster');
+                            window.location = baseAPIUri + '?response_type=code&client_id=' + clientID + '&redirect_uri=' + redirectURI + '&force_verify=true&scope=' + scope + '&state=' + generateState('broadcaster');
                         });
 
                         $('input[type=radio][name=authmode]').change(function () {
@@ -607,6 +627,7 @@
                         });
 
                         if (redirectURI.includes("/broadcaster")) {
+                            $('#authmodediv').addClass('hide');
                             $('#instructions').addClass('hide');
                             $('#connectone').addClass('hide');
                             $('#connectplural').addClass('hide');
@@ -618,12 +639,19 @@
                         $('[data-toggle="tooltip"]').tooltip();
                     });
         </script>
+        <script src="/common/js/session.js"></script>
         <script>
-            if (!window.location.pathname.endsWith("/")) {
+            function doFix() {
+                window.sessionStorage.setItem("/oauth#fix", (Date.now() + 10000));
                 let newURL = window.location.toString();
                 newURL = newURL.substring(0, newURL.indexOf(window.location.pathname)) + window.location.pathname + '/' + newURL.substring(newURL.indexOf(window.location.pathname) + window.location.pathname.length);
                 document.body.innerHTML = 'Fixing the URL, click <a href="' + newURL + '" target="_self">here</a> if you didn\'t redirect automatically...';
                 window.location.replace(newURL);
+            }
+            if (!window.location.pathname.endsWith("/") && !window.location.pathname.endsWith("/broadcaster")) {
+                if (window.sessionStorage.getItem("/oauth#fix") === null || parseInt(window.sessionStorage.getItem("/oauth#fix")) < Date.now()) {
+                    doFix();
+                }
             }
         </script>
     </body>

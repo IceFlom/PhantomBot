@@ -28,13 +28,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- *
  * @author gmt2001
+ * @deprecated Please use {@link HttpClient} instead
  */
-@Deprecated
+@Deprecated(since = "3.6.0.0", forRemoval = true)
 public final class HttpRequest {
 
-    @Deprecated
     public enum RequestType {
 
         GET, POST, PATCH, PUT, DELETE
@@ -43,22 +42,18 @@ public final class HttpRequest {
     private HttpRequest() {
     }
 
-    @Deprecated
     public static HttpResponse getData(RequestType type, String url, String post, Map<String, String> headers) {
         return getData(type, url, post, headers, false);
     }
 
-    @Deprecated
     public static HttpResponse getData(RequestType type, String url, String post, Map<String, String> headers, boolean isJson) {
         return getData(type, URIUtil.create(url), post, headers, isJson);
     }
 
-    @Deprecated
     public static HttpResponse getData(RequestType type, URI uri, String post, Map<String, String> headers) {
         return getData(type, uri, post, headers, false);
     }
 
-    @Deprecated
     @SuppressWarnings("UseSpecificCatch")
     public static HttpResponse getData(RequestType type, URI uri, String post, Map<String, String> headers, boolean isJson) {
         Thread.setDefaultUncaughtExceptionHandler(com.gmt2001.UncaughtExceptionHandler.instance());
@@ -82,7 +77,12 @@ public final class HttpRequest {
 
             HttpClientResponse hcr = HttpClient.request(HttpMethod.valueOf(type.name()), uri, h, post);
 
-            if (hcr.responseCode().code() < 400) {
+            if (!hcr.isSuccess() && hcr.hasException()) {
+                r.success = false;
+                r.exception = hcr.exception().getClass().getSimpleName() + ": " + hcr.exception().getMessage();
+                r.rawException = hcr.exception();
+                r.httpCode = 0;
+            } else if (hcr.responseCode().code() < 400) {
                 r.content = hcr.responseBody();
                 r.httpCode = hcr.responseCode().code();
                 r.success = true;
@@ -114,7 +114,6 @@ public final class HttpRequest {
      * @param exception
      * @param exceptionMessage
      */
-    @Deprecated
     public static void generateJSONObject(JSONObject obj, boolean isSuccess,
             String requestType, String data, String url, int responseCode,
             String exception, String exceptionMessage) throws JSONException {

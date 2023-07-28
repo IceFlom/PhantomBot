@@ -92,6 +92,14 @@ the timeout, in seconds, after `channel` goes offline before it can be online. d
 
 &nbsp;
 
+#### pullallfollowers
+
+Data Type: _Boolean_
+
+if `true`, pull all followers into the cache on startup; otherwise, only the first 50k. default `false`
+
+&nbsp;
+
 #### usebroadcasterforchatcommands
 
 Data Type: _Boolean_
@@ -105,7 +113,27 @@ if `true`, certain redirected chat commands are sent as the broadcaster. default
 
 Data Type: _String_
 
-the type of db to use. valid values: `sqlite3store`, `mysqlstore`, `h2store`. default `sqlite3store`
+the type of db to use. valid values: `sqlitestore2`, `mysqlstore2`, `mariadbstore2`, `h2store2`, a custom type as specified in the javadoc for datastore2#init(). default `h2store2`
+
+_NOTE: A restart is required for this property to take effect_
+
+&nbsp;
+
+#### h2dbfile
+
+Data Type: _String_
+
+the name of the h2 database file. default `phantombot.h2`
+
+_NOTE: A restart is required for this property to take effect_
+
+&nbsp;
+
+#### sqlitedbfile
+
+Data Type: _String_
+
+the name of the h2 database file. default `phantombot.db`
 
 _NOTE: A restart is required for this property to take effect_
 
@@ -161,6 +189,26 @@ _NOTE: A restart is required for this property to take effect_
 
 &nbsp;
 
+#### mysqlssl
+
+Data Type: _String_
+
+indicates if ssl should be used for the mysql connection
+
+_NOTE: A restart is required for this property to take effect_
+
+&nbsp;
+
+#### mysqlallowpublickeyretrieval
+
+Data Type: _Boolean_
+
+indicates if retrieval of the public key from the mysql server is allowed for authentication (needed for newer authentication methods like 'caching_sha2_password')
+
+_NOTE: A restart is required for this property to take effect_
+
+&nbsp;
+
 #### backupdbauto
 
 Data Type: _Boolean_
@@ -182,16 +230,6 @@ the number of days before a db backup is deleted. default `5`
 Data Type: _Int_
 
 the number of hours between db backups, if enabled. default `24`
-
-_NOTE: A restart is required for this property to take effect_
-
-&nbsp;
-
-#### datastoreconfig
-
-Data Type: _String_
-
-if set, h2store: overrides the db file name; sqlitestore: links to a file containing config overrides
 
 _NOTE: A restart is required for this property to take effect_
 
@@ -228,16 +266,6 @@ a command that can be used to restart the bot, if it is running as a service
 Data Type: _String_
 
 the timezone for timestamps in the log. must be a valid iana time zone database name. default `gmt`
-
-&nbsp;
-
-#### rhino_es6
-
-Data Type: _Boolean_
-
-if `true`, enables newer features from ecmascript 6 in rhino. default `true`
-
-_NOTE: A restart is required for this property to take effect_
 
 &nbsp;
 
@@ -297,8 +325,6 @@ Data Type: _String_
 
 the user id for retrieving donations from streamelements
 
-_NOTE: A restart is required for this property to take effect_
-
 &nbsp;
 
 #### streamelementsjwt
@@ -306,8 +332,6 @@ _NOTE: A restart is required for this property to take effect_
 Data Type: _String_
 
 the jwt token for retrieving donations from streamelements
-
-_NOTE: A restart is required for this property to take effect_
 
 &nbsp;
 
@@ -317,8 +341,6 @@ Data Type: _Int_
 
 the maximum number of donations to pull from streamelements when updating. default `5`
 
-_NOTE: A restart is required for this property to take effect_
-
 &nbsp;
 
 ### TipeeeStream
@@ -327,8 +349,6 @@ _NOTE: A restart is required for this property to take effect_
 Data Type: _String_
 
 the access token for retrieving donations from tipeeestream
-
-_NOTE: A restart is required for this property to take effect_
 
 &nbsp;
 
@@ -352,23 +372,19 @@ _NOTE: A restart is required for this property to take effect_
 &nbsp;
 
 ### StreamLabs
-#### twitchalertskey
+#### streamlabskey
 
 Data Type: _String_
 
 the access token for retrieving donations from streamlabs
 
-_NOTE: A restart is required for this property to take effect_
-
 &nbsp;
 
-#### twitchalertslimit
+#### streamlabslimit
 
 Data Type: _Int_
 
 the maximum number of donations to pull from streamlabs when updating. default `5`
-
-_NOTE: A restart is required for this property to take effect_
 
 &nbsp;
 
@@ -502,6 +518,14 @@ if `true`, debugging info for twitch helix api requests are sent to the debug lo
 
 &nbsp;
 
+#### gameslistupdaterdebug
+
+Data Type: _Boolean_
+
+if `true` and `debugon` is also enabled, enables debug output for gameslistupdater. default `false`
+
+&nbsp;
+
 #### wsdebug
 
 Data Type: _Boolean_
@@ -535,6 +559,14 @@ _NOTE: A restart is required for this property to take effect_
 Data Type: _Boolean_
 
 if `true`, prints debug messages for active wspinger instances. default `false`
+
+&nbsp;
+
+#### eventsubdebug
+
+Data Type: _Boolean_
+
+if `true`, prints debug messages for eventsub. default `false`
 
 &nbsp;
 
@@ -573,16 +605,24 @@ _NOTE: A restart is required for this property to take effect_
 &nbsp;
 
 ### Uncategorized
-#### eventsubcallbackurl
+#### commandprefix
 
-Data Type: _String_
+Data Type: _Char_
 
-the url which will receive eventsub notifications
+No definition
 
 &nbsp;
 
-#### useeventsub
+#### datastoreconfig
 
-Data Type: _Boolean_
+Data Type: _String_
 
-if `true`, enables the eventsub module. default `false`
+No definition
+
+&nbsp;
+
+#### discordcommandprefix
+
+Data Type: _Char_
+
+No definition

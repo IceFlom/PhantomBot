@@ -20,6 +20,11 @@ var canScroll = true;
 
 // Function that querys all of the data we need.
 $(function () {
+    $('.event-log').closest('form').resizable({
+        handles: "s",
+        alsoResize: ".event-log",
+        minHeight: "150"
+    });
     // Query our panel settings first.
     socket.getDBValues('panel_get_settings', {
         tables: ['panelData', 'panelData', 'modules'],
@@ -136,7 +141,14 @@ $(function () {
                 // Set stream title.
                 $('#stream-title').val(e.title);
                 // Set stream game.
-                $('#stream-game').val(e.game);
+                if ($('#stream-game').find('option[value="' + e.game + '"]').length) {
+                    $('#stream-game').val(e.game).trigger('change');
+                } else {
+                    // Create a DOM Option and pre-select by default
+                    let newOption = new Option(e.game, e.game, true, true);
+                    // Append it to the select
+                    $('#stream-game').append(newOption).trigger('change');
+                }
                 // Set uptime.
                 if (e.isLive) {
                     $('#dashboard-uptime').html(e.uptime);
@@ -165,85 +177,65 @@ $(function () {
                         placeholder: 'Select a Command to Run'
                     }).tooltip('disable');
 
-                    // Don't load chat or the player in debug mode.
-                    // Twitch prints a bunch of errors in the iframe, so it gets confusing.
-                    if (helpers.DEBUG_STATE === helpers.DEBUG_STATES.DEBUG) {
+                    socket.getDBValues('dashboard_get_panel_toggles', {
+                        tables: ['panelData', 'panelData'],
+                        keys: ['hasChat', 'hasPlayer']
+                    }, true, function (e) {
+                        e.hasChat = (e.hasChat === 'true' || e.hasChat === null);
+                        e.hasPlayer = (e.hasPlayer === 'true' || e.hasPlayer === null);
+
+                        // Handle adding the chat.
+                        if (e.hasChat && helpers.canEmbedTwitch()) {
+                            $('#twitch-chat-iframe').html($('<iframe/>', {
+                                'frameborder': '0',
+                                'scrolling': 'no',
+                                'style': 'width: 100%; height: 450px; margin-bottom: -5px;',
+                                'src': 'https://www.twitch.tv/embed/' + getChannelName() + '/chat' + (helpers.isDark ? '?darkpopout&' : '?') + 'parent=' + location.hostname
+                            }));
+                        } else if (e.hasChat && helpers.currentPanelUserData.userType === 'CONFIG') {
+                            $('#twitch-chat-iframe').html(helpers.CANT_EMBED_TWITCH_TEXT);
+                            $('#twitch-chat-iframe').addClass('box-body');
+                        } else {
+                            $('#twitch-chat-box').addClass('off');
+                        }
+
+                        // Handle adding the player.
+                        if (e.hasPlayer && helpers.canEmbedTwitch()) {
+                            // Add the player.
+                            $('#twitch-player-iframe').html($('<iframe/>', {
+                                'frameborder': '0',
+                                'scrolling': 'no',
+                                'style': 'width: 100%; height: 450px; margin-bottom: -5px;',
+                                'src': 'https://player.twitch.tv/?channel=' + getChannelName() + '&muted=true&autoplay=false' + '&parent=' + location.hostname
+                            }));
+                        } else if (e.hasPlayer && helpers.currentPanelUserData.userType === 'CONFIG') {
+                            $('#twitch-player-iframe').html(helpers.CANT_EMBED_TWITCH_TEXT);
+                            $('#twitch-player-iframe').addClass('box-body');
+                        } else {
+                            $('#twitch-player-box').addClass('off');
+                        }
+
+                        // Handle box sizes.
+                        $('#twitch-chat-box').prop('class', (!e.hasPlayer ? 'col-md-12' : 'col-md-6'));
+                        $('#twitch-player-box').prop('class', (!e.hasChat ? 'col-md-12' : 'col-md-6'));
+
+                        // Handle toggles.
+                        $('#toggle-chat').prop('checked', e.hasChat);
+                        $('#toggle-player').prop('checked', e.hasPlayer);
+
                         // This will be called once the css and everything is loaded.
                         $(document).ready(function () {
                             // Done loading, show main page.
                             $.showPage();
                             // Scroll to bottom of event log.
                             $('.event-log').scrollTop((helpers.isReverseSortEvents ? ($('.event-log').scrollTop() - $('.recent-events').height()) : $('.recent-events').height()));
-                            // Disable chat and the player.
-                            $('#twitch-chat-box').addClass('off');
-                            $('#twitch-player-box').addClass('off');
                             // Set viewers.
                             helpers.handlePanelSetInfo($('#dashboard-viewers').data('number', helpers.parseNumber(tempData.viewers)), 'dashboard-viewers', helpers.fixNumber(tempData.viewers));
                             // Set followers.
                             helpers.handlePanelSetInfo($('#dashboard-followers').data('number', helpers.parseNumber(tempData.followers)), 'dashboard-followers', helpers.fixNumber(tempData.followers));
                             helpers.handlePanelSetInfo($('#dashboard-subs').data('number', helpers.parseNumber(tempData.subs)), 'dashboard-subs', helpers.fixNumber(tempData.subs));
                         });
-                    } else {
-                        socket.getDBValues('dashboard_get_panel_toggles', {
-                            tables: ['panelData', 'panelData'],
-                            keys: ['hasChat', 'hasPlayer']
-                        }, true, function (e) {
-                            e.hasChat = (e.hasChat === 'true' || e.hasChat === null);
-                            e.hasPlayer = (e.hasPlayer === 'true' || e.hasPlayer === null);
-
-                            // Handle adding the chat.
-                            if (e.hasChat && location.protocol.toLowerCase().startsWith('https') && !(location.port > 0 && location.port !== 443)) {
-                                $('#twitch-chat-iframe').html($('<iframe/>', {
-                                    'frameborder': '0',
-                                    'scrolling': 'no',
-                                    'style': 'width: 100%; height: 450px; margin-bottom: -5px;',
-                                    'src': 'https://www.twitch.tv/embed/' + getChannelName() + '/chat' + (helpers.isDark ? '?darkpopout&' : '?') + 'parent=' + location.hostname
-                                }));
-                            } else if (e.hasChat) {
-                                $('#twitch-chat-iframe').html('Due to changes by Twitch, the chat panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
-                                $('#twitch-chat-iframe').addClass('box-body');
-                            } else {
-                                $('#twitch-chat-box').addClass('off');
-                            }
-
-                            // Handle adding the player.
-                            if (e.hasPlayer && location.protocol.toLowerCase().startsWith('https') && !(location.port > 0 && location.port !== 443)) {
-                                // Add the player.
-                                $('#twitch-player-iframe').html($('<iframe/>', {
-                                    'frameborder': '0',
-                                    'scrolling': 'no',
-                                    'style': 'width: 100%; height: 450px; margin-bottom: -5px;',
-                                    'src': 'https://player.twitch.tv/?channel=' + getChannelName() + '&muted=true&autoplay=false' + '&parent=' + location.hostname
-                                }));
-                            } else if (e.hasPlayer) {
-                                $('#twitch-player-iframe').html('Due to changes by Twitch, the live feed panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
-                                $('#twitch-player-iframe').addClass('box-body');
-                            } else {
-                                $('#twitch-player-box').addClass('off');
-                            }
-
-                            // Handle box sizes.
-                            $('#twitch-chat-box').prop('class', (!e.hasPlayer ? 'col-md-12' : 'col-md-6'));
-                            $('#twitch-player-box').prop('class', (!e.hasChat ? 'col-md-12' : 'col-md-6'));
-
-                            // Handle toggles.
-                            $('#toggle-chat').prop('checked', e.hasChat);
-                            $('#toggle-player').prop('checked', e.hasPlayer);
-
-                            // This will be called once the css and everything is loaded.
-                            $(document).ready(function () {
-                                // Done loading, show main page.
-                                $.showPage();
-                                // Scroll to bottom of event log.
-                                $('.event-log').scrollTop((helpers.isReverseSortEvents ? ($('.event-log').scrollTop() - $('.recent-events').height()) : $('.recent-events').height()));
-                                // Set viewers.
-                                helpers.handlePanelSetInfo($('#dashboard-viewers').data('number', helpers.parseNumber(tempData.viewers)), 'dashboard-viewers', helpers.fixNumber(tempData.viewers));
-                                // Set followers.
-                                helpers.handlePanelSetInfo($('#dashboard-followers').data('number', helpers.parseNumber(tempData.followers)), 'dashboard-followers', helpers.fixNumber(tempData.followers));
-                                helpers.handlePanelSetInfo($('#dashboard-subs').data('number', helpers.parseNumber(tempData.subs)), 'dashboard-subs', helpers.fixNumber(tempData.subs));
-                            });
-                        });
-                    }
+                    });
                 });
             });
         });
@@ -253,47 +245,42 @@ $(function () {
 
 // Function that handlers the loading of events.
 $(function () {
-    // handle auto complete.
-    var gameSearch = '';
-    var games = [];
-    $('#stream-game').easyAutocomplete({
-        'url': function (game) {
-            gameSearch = game;
-            return window.location;
-        },
-        'ajaxSettings': {
-            'dataType': 'text',
-            'dataFilter': async() => {
-                var isDone = false;
-                socket.doRemote('games', 'games', {
-                    'search': gameSearch
-                }, function (e) {
-                    if (e.length > 0 && !e[0].errors) {
-                        games = e;
-                    } else {
-                        games = [];
-                    }
-                    isDone = true;
-                });
+    let games = {};
+    let isDoneGames = false;
+    function getGames(params) {
+        isDoneGames = false;
+        socket.doRemote('games', 'games', {
+            'search': params.data.q
+        }, function (e) {
+            if (e.results && e.results.length > 0 && !e.results[0].errors) {
+                games = e;
+            } else {
+                games = false;
+            }
+            isDoneGames = true;
+        });
+    }
 
-                var checkIfGamesDoneAsync = async () => {
-                    return isDone;
-                };
+    async function checkIfGamesDoneAsync() {
+        return isDoneGames;
+    }
 
-                await helpers.promisePoll(() => checkIfGamesDoneAsync(), {pollIntervalMs: 250});
+    $('#stream-game').select2({
+        ajax: {
+            transport: async function(params, success, failure) {
+                getGames(params);
 
-                return games;
+                await helpers.promisePoll(() => checkIfGamesDoneAsync(), {pollIntervalMs: 100});
+
+                if (games === false) {
+                    failure('500');
+                } else {
+                    success(games);
+                }
             }
         },
-        'listLocation': function (data) {
-            return games;
-        },
-        'requestDelay': 300,
-        'list': {
-            'match': {
-                'enabled': true
-            }
-        }
+        tags: true,
+        width: '100%'
     });
 
     // Input check for strings.
@@ -304,6 +291,10 @@ $(function () {
     // Handle the hidding of the dashboard panels.
     $('#dashboard-subs, #dashboard-followers, #dashboard-viewers').on('click', function (e) {
         helpers.handlePanelToggleInfo($(this), e.target.id);
+    });
+
+    $(function () {
+        $('#dashboard-title').text(getChannelName() + " | Dashboard");
     });
 
     $(window).resize(function () {
@@ -401,7 +392,7 @@ $(function () {
 
         // Update the toggle.
         socket.updateDBValue('panel_chat_toggle', 'panelData', 'hasPlayer', checked, function () {
-            if (checked && location.protocol.toLowerCase().startsWith('https') && !(location.port > 0 && location.port !== 443)) {
+            if (checked && helpers.canEmbedTwitch()) {
                 $('#twitch-player-iframe').html($('<iframe/>', {
                     'frameborder': '0',
                     'scrolling': 'no',
@@ -416,7 +407,7 @@ $(function () {
                     $('#twitch-player-box').prop('class', 'col-md-12');
                 }
             } else if (checked) {
-                $('#twitch-player-iframe').html('Due to changes by Twitch, the live feed panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
+                $('#twitch-player-iframe').html(helpers.CANT_EMBED_TWITCH_TEXT);
                 $('#twitch-player-iframe').addClass('box-body');
                 // Handle the box size.
                 if ($('#twitch-chat-iframe').html().length > 0) {
@@ -439,7 +430,7 @@ $(function () {
 
         // Update the toggle.
         socket.updateDBValue('panel_chat_toggle', 'panelData', 'hasChat', checked, function () {
-            if (checked && location.protocol.toLowerCase().startsWith('https') && !(location.port > 0 && location.port !== 443)) {
+            if (checked && helpers.canEmbedTwitch()) {
                 $('#twitch-chat-iframe').html($('<iframe/>', {
                     'frameborder': '0',
                     'scrolling': 'no',
@@ -455,7 +446,7 @@ $(function () {
                     $('#twitch-chat-box').prop('class', 'col-md-12');
                 }
             } else if (checked) {
-                $('#twitch-chat-iframe').html('Due to changes by Twitch, the chat panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
+                $('#twitch-chat-iframe').html(helpers.CANT_EMBED_TWITCH_TEXT);
                 $('#twitch-chat-iframe').addClass('box-body');
                 // Handle the box size.
                 if ($('#twitch-player-iframe').html().length > 0) {

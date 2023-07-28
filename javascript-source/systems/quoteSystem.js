@@ -102,7 +102,7 @@
      * @returns {Array}
      */
     function getQuote(quoteId) {
-        var quote;
+        let quote;
 
         if (!quoteId) {
             quoteId = $.rand($.inidb.GetKeyList('quotes', '').length);
@@ -118,8 +118,9 @@
             quoteId = ids.length > 0 ? $.randElement(ids) : $.rand(quotes.length);
         }
 
-        if ($.inidb.exists('quotes', quoteId)) {
-            quote = JSON.parse($.inidb.get('quotes', quoteId));
+        quote = $.inidb.OptString('quotes', '', quoteId);
+        if (quote.isPresent()) {
+            quote = JSON.parse(quote.get());
             quote.push(quoteId);
             return quote;
         }
@@ -201,7 +202,7 @@
                 }
 
                 quote = args.splice(0).join(' ');
-                $.say($.lang.get('quotesystem.add.success', $.username.resolve(sender), saveQuote(String($.username.resolve(sender)), quote)));
+                $.say($.lang.get('quotesystem.add.success', $.viewer.getByLogin(sender).name(), saveQuote(String($.viewer.getByLogin(sender).name()), quote)));
                 $.log.event(sender + ' added a quote "' + quote + '".');
                 return;
             }
@@ -210,7 +211,7 @@
                 return;
             }
 
-            var useTwitchNames = ($.inidb.exists('settings', 'quoteTwitchNamesToggle')) ? $.inidb.GetBoolean('settings', '', 'quoteTwitchNamesToggle') : true;
+            var useTwitchNames = $.inidb.GetBoolean('settings', '', 'quoteTwitchNamesToggle', true);
             var target = useTwitchNames ? args[0].toLowerCase() : args[0].substring(0, 1).toUpperCase() + args[0].substring(1).toLowerCase();
             if (useTwitchNames && !$.user.isKnown(target)) {
                 $.say($.whisperPrefix(sender) + $.lang.get('common.user.404', target));
@@ -218,7 +219,7 @@
             }
 
             quote = args.splice(1).join(' ');
-            var username = useTwitchNames ? $.username.resolve(target) : target;
+            var username = useTwitchNames ? $.viewer.getByLogin(target).name() : target;
             $.say($.lang.get('quotesystem.add.success', username, saveQuote(String(username), quote)));
             $.log.event(sender + ' added a quote "' + quote + '".');
             return;
@@ -236,7 +237,7 @@
             }
 
             quote = args.splice(0).join(' ');
-            saveQuote(String($.username.resolve(sender)), quote);
+            saveQuote(String($.viewer.getByLogin(sender).name()), quote);
             return;
         }
 
@@ -281,11 +282,11 @@
         if (command.equalsIgnoreCase('quote')) {
             quote = getQuote(args[0]);
             if (quote.length > 0) {
-                quoteStr = ($.inidb.exists('settings', 'quoteMessage') ? $.inidb.get('settings', 'quoteMessage') : $.lang.get('quotesystem.get.success'));
+                quoteStr = $.inidb.GetString('settings', '', 'quoteMessage', $.lang.get('quotesystem.get.success'));
                 quoteStr = quoteStr.replace('(id)', (quote.length === 5 ? quote[4].toString() : quote[3].toString()))
                                     .replace('(quote)', quote[1])
                                     .replace('(userrank)', $.resolveRank(quote[0]))
-                                    .replace('(user)', $.username.resolve(quote[0]))
+                                    .replace('(user)', $.viewer.getByLogin(quote[0]).name())
                                     .replace('(game)', (quote.length === 5 ? quote[3] : "Some Game"))
                                     .replace('(date)', $.getLocalTimeString($.getSetIniDbString('settings', 'quoteDateFormat', 'dd-MM-yyyy'), parseInt(quote[2])));
                 $.say(quoteStr);

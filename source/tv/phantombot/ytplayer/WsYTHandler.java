@@ -55,6 +55,7 @@ import tv.phantombot.event.ytplayer.YTPlayerSongRequestEvent;
 import tv.phantombot.event.ytplayer.YTPlayerStateEvent;
 import tv.phantombot.event.ytplayer.YTPlayerStealSongEvent;
 import tv.phantombot.event.ytplayer.YTPlayerVolumeEvent;
+import tv.phantombot.panel.PanelUser.PanelUser;
 
 /**
  *
@@ -115,13 +116,14 @@ public class WsYTHandler implements WsFrameHandler {
             }
         });
 
-        if (frame instanceof TextWebSocketFrame) {
+        if (frame instanceof TextWebSocketFrame tframe) {
+            PanelUser user = ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_AUTH_USER).get();
             if (clientConnected && !ctx.channel().attr(ATTR_IS_PLAYER).get() && !ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_IS_READ_ONLY).get()) {
                 JSONStringer jso = new JSONStringer();
                 WebSocketFrameHandler.sendWsFrame(ctx, frame, WebSocketFrameHandler.prepareTextWebSocketResponse(jso.object().key("secondconnection").value(true).endObject().toString()));
                 ctx.close();
                 return;
-            } else if (!clientConnected && ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_IS_READ_ONLY).get()) {
+            } else if (!clientConnected && ctx.channel().attr(WsSharedRWTokenAuthenticationHandler.ATTR_IS_READ_ONLY).get() && (user == null || !user.isConfigUser())) {
                 return;
             } else if (!clientConnected) {
                 boolean hasYTKey = !PhantomBot.instance().isYouTubeKeyEmpty();
@@ -138,8 +140,6 @@ public class WsYTHandler implements WsFrameHandler {
                 ctx.channel().attr(ATTR_IS_PLAYER).set(Boolean.TRUE);
                 EventBus.instance().postAsync(new YTPlayerConnectEvent());
             }
-
-            TextWebSocketFrame tframe = (TextWebSocketFrame) frame;
 
             JSONObject jso;
 

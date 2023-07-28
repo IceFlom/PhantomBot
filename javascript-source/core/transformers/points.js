@@ -16,8 +16,6 @@
  */
 
 (function () {
-    var cmd, match, temp;
-
     /*
      * @transformer addpoints
      * @formula (addpoints amount:int) add points to the sender
@@ -25,11 +23,11 @@
      * @labels twitch commandevent points
      */
     function addpoints(args) {
-        var pargs = $.parseArgs(args.args, ' ');
+        let pargs = $.parseArgs(args.args, ' ');
 
         if (pargs !== null && !isNaN(pargs[0])) {
-            var user = args.event.getSender();
-            var amount = parseInt(pargs[0]);
+            let user = args.event.getSender();
+            let amount = parseInt(pargs[0]);
 
             if (pargs.length > 1) {
                 user = pargs[1].toLowerCase();
@@ -54,10 +52,10 @@
      * @labels twitch commandevent points
      */
     function addpointstoall(args) {
-        var pargs = $.parseArgs(args.args);
+        let pargs = $.parseArgs(args.args);
 
         if (pargs !== null && !isNaN(pargs[0])) {
-            var amount = parseInt(pargs[0]);
+            let amount = parseInt(pargs[0]);
 
             $.giveAll(amount, args.event.getSender());
         }
@@ -75,21 +73,15 @@
      * @cached
      */
     function pay(args) {
-        if ((match = args.args.match(/^(?:\s(.*))?$/))) {
-            cmd = match[1] || '';
-            if (cmd.length === 0) {
-                cmd = args.event.getCommand();
-            }
-            if ($.inidb.exists('paycom', cmd)) {
-                temp = $.inidb.get('paycom', cmd);
-            } else {
-                temp = 0;
-            }
-            return {
-                result: $.getPoints($.jsString(temp)),
-                cache: true
-            };
+        let cmd = args.args || '';
+        if (args.args.length === 0) {
+            cmd = args.event.getCommand();
         }
+
+        return {
+            result: $.getPointsString($.inidb.GetInteger('paycom', '', cmd, 0)),
+            cache: true
+        };
     }
 
     /*
@@ -102,7 +94,7 @@
      * Bot: User current points name is set to: points
      */
     function pointname(args) {
-        var pointName = $.pointNameMultiple;
+        let pointName = $.pointNameMultiple;
         if (args.args !== '' && !isNaN(args.args.trim())) {
             if (parseInt(args.args.trim()) === 1) {
                 pointName = $.pointNameSingle;
@@ -123,17 +115,14 @@
      * @cached
      */
     function points(args) {
-        if ((match = args.args.match(/^(?:\s(.*))?$/))) {
-            var user;
-            user = (match[1] || '').replace(/^@/, '');
-            if (user.length === 0) {
-                user = args.event.getSender();
-            }
-            return {
-                result: $.getUserPoints(user),
-                cache: true
-            };
+        let user = (args.args || '').replace(/^@/, '');
+        if (user.length === 0) {
+            user = args.event.getSender();
         }
+        return {
+            result: $.getUserPoints(user),
+            cache: true
+        };
     }
 
     /*
@@ -147,21 +136,15 @@
      * @cached
      */
     function price(args) {
-        if ((match = args.args.match(/^(?:\s(.*))?$/))) {
-            cmd = match[1] || '';
-            if (cmd.length === 0) {
-                cmd = args.event.getCommand();
-            }
-            if ($.inidb.exists('pricecom', cmd)) {
-                temp = $.inidb.get('pricecom', cmd);
-            } else {
-                temp = 0;
-            }
-            return {
-                result: $.getPointsString(temp),
-                cache: true
-            };
+        let cmd = args.args || '';
+        if (cmd.length === 0) {
+            cmd = args.event.getCommand();
         }
+
+        return {
+            result: $.getPointsString($.inidb.GetInteger('pricecom', '', cmd, 0)),
+            cache: true
+        };
     }
 
     /*
@@ -171,11 +154,11 @@
      * @labels twitch commandevent points
      */
     function takepoints(args) {
-        var pargs = $.parseArgs(args.args, ' ');
+        let pargs = $.parseArgs(args.args, ' ');
 
         if (pargs !== null && !isNaN(pargs[0])) {
-            var user = args.event.getSender();
-            var amount = parseInt(pargs[0]);
+            let user = args.event.getSender();
+            let amount = parseInt(pargs[0]);
 
             if (pargs.length > 1) {
                 user = pargs[1].toLowerCase();
@@ -204,10 +187,10 @@
      * @labels twitch commandevent points
      */
     function takepointsfromall(args) {
-        var pargs = $.parseArgs(args.args);
+        let pargs = $.parseArgs(args.args);
 
         if (pargs !== null && !isNaN(pargs[0])) {
-            var amount = parseInt(pargs[0]);
+            let amount = parseInt(pargs[0]);
 
             $.takeAll(amount, args.event.getSender());
         }
@@ -224,12 +207,12 @@
      * @labels twitch commandevent points
      */
     function transferpoints(args) {
-        var pargs = $.parseArgs(args.args, ' ');
+        let pargs = $.parseArgs(args.args, ' ');
 
         if (pargs !== null && !isNaN(pargs[0]) && pargs.length > 1) {
-            var fromuser = args.event.getSender();
-            var touser = pargs[1].toLowerCase();
-            var amount = parseInt(pargs[0]);
+            let fromuser = args.event.getSender();
+            let touser = pargs[1].toLowerCase();
+            let amount = parseInt(pargs[0]);
 
             if (pargs.length > 2) {
                 fromuser = pargs[2].toLowerCase();
@@ -255,7 +238,7 @@
         };
     }
 
-    var transformers = [
+    let transformers = [
         new $.transformers.transformer('addpoints', ['twitch', 'commandevent', 'points'], addpoints),
         new $.transformers.transformer('addpointstoall', ['twitch', 'commandevent', 'points'], addpointstoall),
         new $.transformers.transformer('pay', ['twitch', 'commandevent', 'points'], pay),

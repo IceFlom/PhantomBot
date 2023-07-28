@@ -18,8 +18,8 @@
 /* global Packages */
 
 (function () {
-    var respond = getSetIniDbBoolean('settings', 'response_@chat', true),
-            action = getSetIniDbBoolean('settings', 'response_action', false),
+    var respond = $.getSetIniDbBoolean('settings', 'response_@chat', true),
+            action = $.getSetIniDbBoolean('settings', 'response_action', false),
             secureRandom = new Packages.java.security.SecureRandom(),
             reg = new RegExp(/^@\w+,\s?$/),
             timeout = 0,
@@ -29,8 +29,8 @@
      * @function reloadMisc
      */
     function reloadMisc() {
-        respond = getIniDbBoolean('settings', 'response_@chat');
-        action = getIniDbBoolean('settings', 'response_action');
+        respond = $.getIniDbBoolean('settings', 'response_@chat');
+        action = $.getIniDbBoolean('settings', 'response_action');
     }
 
     /**
@@ -110,46 +110,6 @@
     }
 
     /**
-     * @function strlen
-     * @export $
-     * @param {string} str
-     * @returns {Number}
-     */
-    function strlen(str) {
-        if (str === null) {
-            return 0;
-        }
-
-        if ((typeof str.length) instanceof Packages.java.lang.String) {
-            if ((typeof str.length).equalsIgnoreCase('number')) {
-                return str.length;
-            } else {
-                return str.length;
-            }
-        } else {
-            if ((typeof str.length) === 'number') {
-                return str.length;
-            } else {
-                return str.length;
-            }
-        }
-    }
-
-    function equalsIgnoreCase(str1, str2) {
-        try {
-            return str1.equalsIgnoreCase(str2);
-        } catch (e) {
-            try {
-                return str1.toLowerCase() === str2.toLowerCase();
-            } catch (e) {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * @function say
      * @export $
      * @param {string} message
@@ -192,34 +152,16 @@
     function sayWithTimeout(message, run) {
         _lock.lock();
         try {
-            if (((timeout + 10000) > systemTime()) || !run) {
+            if (((timeout + 10000) > $.systemTime()) || !run) {
                 return;
             }
 
-            timeout = systemTime();
+            timeout = $.systemTime();
         } finally {
             _lock.unlock();
         }
 
         say(message);
-    }
-
-    /**
-     * @function systemTime
-     * @export $
-     * @returns {Number}
-     */
-    function systemTime() {
-        return parseInt(java.lang.System.currentTimeMillis());
-    }
-
-    /**
-     * @function systemTimeNano
-     * @export $
-     * @returns {Number}
-     */
-    function systemTimeNano() {
-        return parseInt(java.lang.System.nanoTime());
     }
 
     /**
@@ -415,177 +357,6 @@
     }
 
     /**
-     * @function getIniDbBoolean
-     * @export $
-     * @param {string} fileName
-     * @param {string|Number} key
-     * @param {boolean} [defaultValue]
-     * @returns {boolean}
-     */
-    function getIniDbBoolean(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return $.inidb.GetBoolean(fileName, '', key);
-        } else {
-            return (defaultValue);
-        }
-    }
-
-    /**
-     * @function getSetIniDbBoolean
-     * @export $
-     * @param {string} fileName
-     * @param {string|Number} key
-     * @param {boolean} [defaultValue]
-     * @returns {boolean}
-     */
-    function getSetIniDbBoolean(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return $.inidb.GetBoolean(fileName, '', key);
-        } else {
-            $.inidb.set(fileName, key, defaultValue.toString());
-            return (defaultValue);
-        }
-    }
-
-
-    /**
-     * @function setIniDbBoolean
-     * @export $
-     * @param {string} fileName
-     * @param {string|Number} key
-     * @param {boolean} state
-     */
-    function setIniDbBoolean(fileName, key, state) {
-        $.inidb.set(fileName, key, state.toString());
-    }
-
-    /**
-     * @function getIniDbString
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {string}
-     */
-    function getIniDbString(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return ($.inidb.get(fileName, key) + '');
-        } else {
-            return (defaultValue);
-        }
-    }
-
-    /**
-     * @function getSetIniDbString
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {string}
-     */
-    function getSetIniDbString(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return ($.inidb.get(fileName, key) + '');
-        } else {
-            $.inidb.set(fileName, key, defaultValue);
-            return (defaultValue);
-        }
-    }
-
-    /**
-     * @function setIniDbString
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {string}
-     */
-    function setIniDbString(fileName, key, value) {
-        $.inidb.set(fileName, key, value);
-    }
-
-    /**
-     * @function getIniDbNumber
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function getIniDbNumber(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return parseInt($.inidb.get(fileName, key));
-        } else {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * @function getSetIniDbNumber
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function getSetIniDbNumber(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return parseInt($.inidb.get(fileName, key));
-        } else {
-            $.inidb.set(fileName, key, defaultValue.toString());
-            return defaultValue;
-        }
-    }
-
-    /**
-     * @function setIniDbNumber
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function setIniDbNumber(fileName, key, value) {
-        $.inidb.set(fileName, key, value.toString());
-    }
-
-    /**
-     * @function getIniDbFloat
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function getIniDbFloat(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return parseFloat($.inidb.get(fileName, key));
-        } else {
-            return defaultValue;
-        }
-    }
-
-    /**
-     * @function getSetIniDbFloat
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function getSetIniDbFloat(fileName, key, defaultValue) {
-        if ($.inidb.exists(fileName, key) === true) {
-            return parseFloat($.inidb.get(fileName, key));
-        } else {
-            $.inidb.set(fileName, key, defaultValue.toString());
-            return defaultValue;
-        }
-    }
-
-    /**
-     * @function setIniDbFloat
-     * @export $
-     * @param {string}
-     * @param {string}
-     * @param {number}
-     */
-    function setIniDbFloat(fileName, key, value) {
-        $.inidb.set(fileName, key, value.toString());
-    }
-
-    /**
      * @function paginateArray
      * @export $
      * @param {Array}   Input array of data to paginate
@@ -644,207 +415,59 @@
     }
 
     /**
-     * @function paginateArrayDiscord
-     * @export $
-     * @param {Array}   Input array of data to paginate
-     * @param {String}  Key in the $.lang system
-     * @param {String}  Seperator to use between items
-     * @param {String}  Value of sender for $.whisperPrefix
-     * @param {Number}  Page to display, 0 for ALL
-     * @return {Number} Total number of pages.
-     *
-     */
-    function paginateArrayDiscord(array, langKey, sep, channel, sender, display_page) {
-        var idx,
-                output = '',
-                maxlen,
-                hasNoLang = langKey.startsWith('NULL'),
-                pageCount = 0;
-
-        if (display_page === undefined) {
-            display_page = 0;
-        }
-
-        maxlen = 1400 - (hasNoLang ? langKey.length : $.lang.get(langKey).length);
-        langKey = langKey.replace('NULL', '');
-        for (idx in array) {
-            output += array[idx];
-            if (output.length >= maxlen) {
-                pageCount++;
-                if (output.length > 0) {
-                    if (display_page === 0 || display_page === pageCount) {
-                        $.discord.say(channel, $.discord.userPrefix(sender) + ' ' + (hasNoLang ? (langKey + output) : $.lang.get(langKey, output)));
-                    }
-                }
-                output = '';
-            } else {
-                if (idx < array.length - 1) {
-                    output += sep;
-                }
-            }
-        }
-        pageCount++;
-        if (output.length > 0) {
-            if (display_page === 0 || display_page === pageCount) {
-                $.discord.say(channel, $.discord.userPrefix(sender) + ' ' + (hasNoLang ? (langKey + output) : $.lang.get(langKey, output)));
-            }
-        }
-        return pageCount;
-    }
-
-    /**
-     * Taken from: https://jsperf.com/replace-vs-split-join-vs-replaceall/95s
-     *
-     * Implementation of string.replaceAll
-     *
-     * @function replace
-     * @export $
-     * @param {string}
-     */
-    function replace(str, from, to) {
-        var idx, parts = [], l = from.length, prev = 0;
-        for (; ~(idx = str.indexOf(from, prev)); ) {
-            parts.push(str.slice(prev, idx), to);
-            prev = idx + l;
-        }
-        parts.push(str.slice(prev));
-        return parts.join('');
-    }
-
-    /**
-     * Taken from: https://github.com/tc39/proposal-string-matchall
-     *
-     * Implementation of string.matchAll
-     *
-     * @function matchAll
-     * @export $
-     * @param {type} str
-     * @param {type} regex
-     * @returns {Array}
-     */
-    function matchAll(str, regex) {
-        regex.lastIndex = 0;
-        var matches = [];
-        str.replace(regex, function () {
-            var match = Array.prototype.slice.call(arguments, 0, -2);
-            match.input = arguments[arguments.length - 1];
-            match.index = arguments[arguments.length - 2];
-            matches.push(match);
-        });
-
-        return matches;
-    }
-
-    function match(str, regex) {
-        if (str === undefined || str === null) {
-            return ''.match(regex);
-        }
-
-        regex.lastIndex = 0;
-        return str.match(regex);
-    }
-
-    function test(str, regex) {
-        regex.lastIndex = 0;
-        try {
-            return regex.test(str);
-        } catch (e) {
-            if (e.message.indexOf('Cannot find function test') >= 0) {
-                return $.javaString(str).contains(regex);
-            } else {
-                throw e;
-            }
-        }
-    }
-
-    function regexExec(str, regex) {
-        regex.lastIndex = 0;
-        return regex.exec(str);
-    }
-
-    /**
      * @function userPrefix
      * @export $
      * @param {username}
      */
     function userPrefix(username, comma) {
         if (!comma) {
-            return '@' + $.username.resolve(username) + ' ';
+            return '@' + $.viewer.getByLogin(username).name() + ' ';
         }
-        return '@' + $.username.resolve(username) + ', ';
-    }
-
-    function javaString(str) {
-        if (str === null || str === undefined) {
-            return null;
-        }
-        try {
-            return new Packages.java.lang.String(str);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    function jsString(str) {
-        if (str === null || str === undefined) {
-            return null;
-        }
-
-        try {
-            return String(str + '');
-        } catch (e) {
-            return null;
-        }
-    }
-
-    /**
-     * Parses an argument string into an array
-     * @param {string} str input string
-     * @param {char} sep separator character. Can be escaped in the input string using backslash (\). Default comma (,)
-     * @param {int} limit maximum amount of arguments to produce. -1 for unlimited. After the limit is reached, the remainder of the string is returned as the last argument. Default -1
-     * @param {boolean} limitNoEscape If true and limit is > 0, the last argument is treated as a string literal, not parsing the escape characters. Default false
-     * @returns {Array} if no arguments were found in str, returns null; else the array of arguments, each converted to a jsString and trimmed
-     */
-    function parseArgs(str, sep, limit, limitNoEscape) {
-        if (str === undefined || str === null) {
-            throw 'Invalid str (undefined, null)';
-        }
-
-        if (sep === undefined || sep === null || $.jsString(sep).length !== 1) {
-            sep = ',';
-        }
-
-        if (limit !== undefined && limit !== null && (isNaN(limit) || (limit <= 0 && limit !== -1))) {
-            throw 'Invalid limit (NaN or <= 0)';
-        } else if (limit === undefined || limit === null) {
-            limit = -1;
-        }
-
-        if (limitNoEscape === undefined || limitNoEscape === null) {
-            limitNoEscape = false;
-        }
-
-        var retl = Packages.tv.phantombot.event.command.CommandEvent.parseArgs(str, sep, limit, limitNoEscape);
-
-        var ret = [];
-
-        for (var i = 0; i < retl.size(); i++) {
-            ret.push($.jsString(retl.get(i)).trim());
-        }
-
-        if (ret.length === 0) {
-            return null;
-        }
-
-        return ret;
+        return '@' + $.viewer.getByLogin(username).name() + ', ';
     }
 
     function usernameResolveIgnoreEx(user) {
         try {
-            return $.username.resolve(user);
+            return $.viewer.getByLogin(user).name();
         } catch (ex) {
             return user;
         }
+    }
+
+    /**
+     * Returns a keys value from an arguments array which has a syntax of [key1=value1, key2=value2, key3=value3]
+     * @param {String[]} array
+     * @param {String} key
+     * @param {*} defaultValue
+     * @returns the value; the defaultValue if no array element with the key is not present; null if neither key is present nor a default value is provided
+     */
+    function getArgFromArray(array, key, defaultValue) {
+        for (let i = 0; i < array.length; i++) {
+            let pair = $.jsString(array[i]).split('=');
+            if (pair[0].equalsIgnoreCase(key)) {
+                return pair[1];
+            }
+        }
+
+        return defaultValue === undefined ? null : defaultValue;
+    }
+
+    /**
+     * Converts any possible boolean represented as a string ('1', '0', 'true', 'false') to a proper boolean
+     * @param {String} string
+     * @return the boolean; null if it's not a valid boolean represented as a string
+     */
+    function stringToBoolean(string) {
+        if (string === undefined || string === null) {
+            return null;
+        }
+        if ($.equalsIgnoreCase(string, 'true') || string === '1') {
+            return true;
+        }
+        if ($.equalsIgnoreCase(string, 'false') || string === '0') {
+            return false;
+        }
+        return null;
     }
 
     /** Export functions to API */
@@ -855,18 +478,6 @@
     };
 
     $.arrayShuffle = arrayShuffle;
-    $.getIniDbBoolean = getIniDbBoolean;
-    $.getIniDbString = getIniDbString;
-    $.getIniDbNumber = getIniDbNumber;
-    $.getIniDbFloat = getIniDbFloat;
-    $.getSetIniDbBoolean = getSetIniDbBoolean;
-    $.getSetIniDbString = getSetIniDbString;
-    $.getSetIniDbNumber = getSetIniDbNumber;
-    $.getSetIniDbFloat = getSetIniDbFloat;
-    $.setIniDbBoolean = setIniDbBoolean;
-    $.setIniDbString = setIniDbString;
-    $.setIniDbNumber = setIniDbNumber;
-    $.setIniDbFloat = setIniDbFloat;
     $.getOrdinal = getOrdinal;
     $.getPercentage = getPercentage;
     $.outOfRange = outOfRange;
@@ -875,35 +486,16 @@
     $.randInterval = randInterval;
     $.randRange = randRange;
     $.say = say;
-    $.strlen = strlen;
-    $.systemTime = systemTime;
     $.trueRand = trueRand;
     $.trueRandElement = trueRandElement;
     $.trueRandRange = trueRandRange;
     $.paginateArray = paginateArray;
-    $.replace = replace;
-    $.matchAll = matchAll;
-    $.match = match;
-    $.test = test;
-    $.regexExec = regexExec;
     $.userPrefix = userPrefix;
     $.reloadMisc = reloadMisc;
     $.hasKey = hasKey;
-    $.systemTimeNano = systemTimeNano;
     $.getMessageWrites = getMessageWrites;
     $.sayWithTimeout = sayWithTimeout;
-    $.paginateArrayDiscord = paginateArrayDiscord;
-    $.equalsIgnoreCase = equalsIgnoreCase;
-    $.javaString = javaString;
-    $.jsString = jsString;
-    /**
-     * Parses an argument string into an array
-     * @param {string} str input string
-     * @param {char} sep separator character. Can be escaped in the input string using backslash (\). Default comma (,)
-     * @param {int} limit maximum amount of arguments to produce. -1 for unlimited. After the limit is reached, the remainder of the string is returned as the last argument. Default -1
-     * @param {boolean} limitNoEscape If true and limit is > 0, the last argument is treated as a string literal, not parsing the escape characters. Default false
-     * @returns {Array} if no arguments were found in str, returns null; else the array of arguments, each converted to a jsString and trimmed
-     */
-    $.parseArgs = parseArgs;
     $.usernameResolveIgnoreEx = usernameResolveIgnoreEx;
+    $.getArgFromArray = getArgFromArray;
+    $.stringToBoolean = stringToBoolean;
 })();

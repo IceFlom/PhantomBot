@@ -12,7 +12,7 @@
 
     var topAmount = $.getSetIniDbNumber('charcount_settings', 'topamount', 5),
         dbSaveMinutes = $.getSetIniDbNumber('charcount_settings', 'dbsaveminutes', 1),
-        countingSince = $.getSetIniDbNumber('charcount_settings', 'countingsince', new Date().getTime()),
+        countingSince = $.getSetIniDbString('charcount_settings', 'countingsince', new Date().getTime()),
         countCommands = $.getSetIniDbBoolean('charcount_settings', 'countcommands', true),
         charCountTable = 'charcount',
         charCountRecords = [],
@@ -105,7 +105,7 @@
         if (username.equalsIgnoreCase('all')) {
             userCache = {};
             countingSince = new Date().getTime();
-            $.setIniDbNumber('charcount_settings', 'countingsince', countingSince);
+            $.setIniDbString('charcount_settings', 'countingsince', countingSince);
             $.inidb.RemoveFile(charCountTable);
             $.say($.lang.get('charactercount.reset.all'));
         } else {
@@ -145,7 +145,7 @@
      * @returns {string}
      */
     function getFormattedDate(timestamp) {
-        var date = new Date(timestamp);
+        var date = new Date(parseInt(timestamp));
         return ("0" + date.getDate()).slice(-2) + "."
             + ("0" + (date.getMonth() + 1)).slice(-2) + "."
             + date.getFullYear();
@@ -241,11 +241,13 @@
      * @event initReady
      */
     $.bind('initReady', function() {
-        $.registerChatCommand('./ice/characterCount.js', 'toptext', 7);
-        $.registerChatSubcommand('toptext', 'set', 1);
-        $.registerChatSubcommand('toptext', 'reset', 1);
-        $.registerChatSubcommand('toptext', 'countcommands', 1);
-        $.registerChatCommand('./ice/characterCount.js', 'text', 7);
+        if ($.bot.isModuleEnabled('./ice/characterCount.js')) {
+            $.registerChatCommand('./ice/characterCount.js', 'toptext', 7);
+            $.registerChatSubcommand('toptext', 'set', 1);
+            $.registerChatSubcommand('toptext', 'reset', 1);
+            $.registerChatSubcommand('toptext', 'countcommands', 1);
+            $.registerChatCommand('./ice/characterCount.js', 'text', 7);
+        }
     });
     loadCharcountTable();
     $.reloadCharacterCount = reloadCharacterCount;

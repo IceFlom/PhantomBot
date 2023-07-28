@@ -28,7 +28,7 @@ import tv.phantombot.event.irc.IrcPongEvent;
  *
  * @author gmt2001
  */
-public class TMIPingPongSupplierPredicate implements PingPongSupplierPredicate {
+public final class TMIPingPongSupplierPredicate implements PingPongSupplierPredicate {
 
     @Override
     public WebSocketFrame get() {
@@ -40,8 +40,8 @@ public class TMIPingPongSupplierPredicate implements PingPongSupplierPredicate {
 
     @Override
     public boolean test(WebSocketFrame t) {
-        if (t instanceof TextWebSocketFrame) {
-            boolean result = ((TextWebSocketFrame) t).text().lines().anyMatch(message -> message.startsWith("PONG"));
+        if (t instanceof TextWebSocketFrame tframe) {
+            boolean result = tframe.text().lines().anyMatch(message -> message.startsWith("PONG"));
 
             if (result) {
                 EventBus.instance().postAsync(new IrcPongEvent(null));

@@ -78,6 +78,8 @@ public class HttpServerPageHandler extends SimpleChannelInboundHandler<FullHttpR
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
         if (!req.decoderResult().isSuccess()) {
+            com.gmt2001.Console.debug.println("400 DECODER");
+            com.gmt2001.Console.err.printStackTrace(req.decoderResult().cause());
             sendHttpResponse(ctx, req, prepareHttpResponse(HttpResponseStatus.BAD_REQUEST));
             return;
         }
@@ -109,7 +111,10 @@ public class HttpServerPageHandler extends SimpleChannelInboundHandler<FullHttpR
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        com.gmt2001.Console.debug.printOrLogStackTrace(cause);
+        if (!cause.getMessage().contains("certificate_unknown") && !cause.getMessage().contains("bad_certificate")
+                && !cause.getMessage().contains("connection was aborted")) {
+            com.gmt2001.Console.debug.printOrLogStackTrace(cause);
+        }
         ctx.close();
     }
 
@@ -447,7 +452,7 @@ public class HttpServerPageHandler extends SimpleChannelInboundHandler<FullHttpR
 
         headers.getAll("Cookie").stream().forEach(hcookie -> Arrays.asList(hcookie.split("; ")).stream().forEach(scookie -> {
             String[] cookie = scookie.split("=", 2);
-            cookies.put(cookie[0], cookie[1]);
+            cookies.put(cookie[0], cookie.length == 2 ? cookie[1] : null);
         }));
 
         return cookies;
@@ -464,7 +469,7 @@ public class HttpServerPageHandler extends SimpleChannelInboundHandler<FullHttpR
 
         Stream.of(req.content().toString(Charset.defaultCharset()).split("&")).forEach(ppost -> {
             String[] spost = ppost.split("=", 2);
-            post.put(spost[0], URLDecoder.decode(spost[1], Charset.defaultCharset()));
+            post.put(spost[0], spost.length == 2 ? URLDecoder.decode(spost[1], Charset.defaultCharset()) : null);
         });
 
         return post;

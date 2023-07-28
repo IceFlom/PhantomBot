@@ -360,9 +360,13 @@
                     for (var i = 0; i < importedList.length; i++) {
                         var item = $.jsString(importedList[i]);
                         if (item.includes('&list')) {
+                            $.log.error("importPlaylistFile::skipped [" + item + "]: playlist links not allowed");
                             playlistFailCount++;
                             continue;
                         } else if (spaceMacther.test(item) || item.trim().length === 0) { // match for spaces or an empty line.
+                            if (item.trim().length > 0) {
+                                $.log.error("importPlaylistFile::skipped [" + item + "]: can not contain spaces");
+                            }
                             failCount++;
                             continue;
                         }
@@ -471,11 +475,9 @@
                 }
             }
 
+            connectedPlayerClient.pushPlayList();
             if (this.loadPlaylistKeys() > 0) {
-                connectedPlayerClient.pushPlayList();
                 this.nextVideo();
-            } else {
-                connectedPlayerClient.pushPlayList();
             }
 
             return this.getplaylistLength();
@@ -488,16 +490,23 @@
          */
         this.deleteVideoByID = function(videoId) {
             var keyList = $.inidb.GetKeyList(playListDbId, ''),
-                i;
+                i,
+                isCurrent = false;
 
             for (i = 0; i < keyList.length; i++) {
                 if ($.inidb.get(playListDbId, keyList[i]).equals(videoId)) {
+                    if ($.inidb.get(playListDbId, keyList[i]) == currentVideo.getVideoId()) {
+                        isCurrent = true;
+                    }
                     $.inidb.del(playListDbId, keyList[i]);
                     break;
                 }
             }
             this.loadPlaylistKeys();
             connectedPlayerClient.pushPlayList();
+            if (isCurrent && this.loadPlaylistKeys() > 0) {
+                this.nextVideo();
+            }
         };
 
         /**
@@ -1189,7 +1198,7 @@
                         refund = parseInt(refund / 2);
                         if (refund > 0) {
                             $.inidb.incr('points', refundUser, parseInt(refund));
-                            $.say($.lang.get('ytplayer.command.stealsong.refund', $.username.resolve(refundUser), refund, (refund == 1 ? $.pointNameSingle : $.pointNameMultiple)));
+                            $.say($.lang.get('ytplayer.command.stealsong.refund', $.viewer.getByLogin(refundUser).name(), refund, (refund == 1 ? $.pointNameSingle : $.pointNameMultiple)));
                         }
                     }
                 }
@@ -1717,14 +1726,18 @@
             }
 
             /**
-             * @commandpath playlist delete - Delete the current song from the current playlist
+             * @commandpath playlist delete (videoId) - Delete the current song from the current playlist, or the specified video by YouTube Video ID
              */
             if (action.equalsIgnoreCase('delete')) {
                 if (!connectedPlayerClient) {
                     $.say($.whisperPrefix(sender) + $.lang.get('ytplayer.client.404'));
                     return;
                 }
-                currentPlaylist.deleteCurrentVideo();
+                if (actionArgs.length > 0) {
+                    currentPlaylist.deleteVideoByID(actionArgs[0]);
+                } else {
+                    currentPlaylist.deleteCurrentVideo();
+                }
                 return;
             }
 
@@ -1839,14 +1852,14 @@
                     return;
                 }
                 refundUser = currentPlaylist.getCurrentVideo().getOwner().toLowerCase();
-                responseString = $.lang.get('ytplayer.command.stealsong.this.success', $.username.resolve(sender));
+                responseString = $.lang.get('ytplayer.command.stealsong.this.success', $.viewer.getByLogin(sender).name());
             } else if ($.inidb.FileExists(playlistDbPrefix + args[0].toLowerCase())) {
                 if (currentPlaylist.addToPlaylist(currentPlaylist.getCurrentVideo(), args[0].toLowerCase()) == -2) {
                     $.say($.lang.get('ytplayer.command.stealsong.duplicate'));
                     return;
                 }
                 refundUser = currentPlaylist.getCurrentVideo().getOwner().toLowerCase();
-                responseString = $.lang.get('ytplayer.command.stealsong.other.success', $.username.resolve(sender), args[0]);
+                responseString = $.lang.get('ytplayer.command.stealsong.other.success', $.viewer.getByLogin(sender).name(), args[0]);
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('ytplayer.playlist.404', args[0]));
                 return;
@@ -1864,7 +1877,7 @@
                             refund = parseInt(refund / 2);
                             if (refund > 0) {
                                 $.inidb.incr('points', refundUser, parseInt(refund))
-                                responseString = responseString + ' ' + $.lang.get('ytplayer.command.stealsong.refund', $.username.resolve(refundUser), refund, (refund == 1 ? $.pointNameSingle : $.pointNameMultiple));
+                                responseString = responseString + ' ' + $.lang.get('ytplayer.command.stealsong.refund', $.viewer.getByLogin(refundUser).name(), refund, (refund == 1 ? $.pointNameSingle : $.pointNameMultiple));
                             }
                         }
                     }

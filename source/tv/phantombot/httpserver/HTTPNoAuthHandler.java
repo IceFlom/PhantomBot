@@ -16,22 +16,10 @@
  */
 package tv.phantombot.httpserver;
 
-import com.gmt2001.PathValidator;
-import com.gmt2001.Reflect;
-import com.gmt2001.httpwsserver.HTTPWSServer;
-import com.gmt2001.httpwsserver.HttpRequestHandler;
-import com.gmt2001.httpwsserver.HttpServerPageHandler;
-import com.gmt2001.httpwsserver.auth.HttpAuthenticationHandler;
-import com.gmt2001.httpwsserver.auth.HttpNoAuthenticationHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,6 +27,22 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+
+import com.gmt2001.PathValidator;
+import com.gmt2001.Reflect;
+import com.gmt2001.httpwsserver.HTTPWSServer;
+import com.gmt2001.httpwsserver.HttpRequestHandler;
+import com.gmt2001.httpwsserver.HttpServerPageHandler;
+import com.gmt2001.httpwsserver.auth.HttpAuthenticationHandler;
+import com.gmt2001.httpwsserver.auth.HttpNoAuthenticationHandler;
+
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.QueryStringDecoder;
 
 /**
  *
@@ -62,24 +66,31 @@ public class HTTPNoAuthHandler implements HttpRequestHandler {
 
     @Override
     public void handleRequest(ChannelHandlerContext ctx, FullHttpRequest req) {
+        QueryStringDecoder qsd = new QueryStringDecoder(req.uri());
+
         if (req.uri().startsWith("/presence")) {
             FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.OK, "PBok".getBytes(), null);
             String origin = req.headers().get(HttpHeaderNames.ORIGIN);
             if (origin != null && !origin.isBlank()) {
                 res.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
             }
-            com.gmt2001.Console.debug.println("200");
+            com.gmt2001.Console.debug.println("200 " + req.method().asciiName() + ": " + qsd.path());
             HttpServerPageHandler.sendHttpResponse(ctx, req, res);
             return;
         }
 
         if (req.uri().startsWith("/sslcheck")) {
-            FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.OK, (HTTPWSServer.instance().isSsl() ? "true" : "false").getBytes(), null);
+            boolean isSsl = HTTPWSServer.instance().isSsl();
+            if (req.headers().contains(HTTPWSServer.HEADER_X_FORWARDED_HOST) || req.headers().contains(HTTPWSServer.HEADER_CF_RAY)) {
+                isSsl = true;
+            }
+
+            FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.OK, (isSsl ? "true" : "false").getBytes(), null);
             String origin = req.headers().get(HttpHeaderNames.ORIGIN);
             if (origin != null && !origin.isBlank()) {
                 res.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
             }
-            com.gmt2001.Console.debug.println("200");
+            com.gmt2001.Console.debug.println("200 " + req.method().asciiName() + ": " + qsd.path());
             HttpServerPageHandler.sendHttpResponse(ctx, req, res);
             return;
         }
@@ -87,19 +98,9 @@ public class HTTPNoAuthHandler implements HttpRequestHandler {
         if (req.headers().contains("password") || req.headers().contains("webauth") || new QueryStringDecoder(req.uri()).parameters().containsKey("webauth")) {
             FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.SEE_OTHER);
 
-            String host = req.headers().get(HttpHeaderNames.HOST);
+            res.headers().set(HttpHeaderNames.LOCATION, "/dbquery");
 
-            if (host == null) {
-                host = "";
-            } else if (HTTPWSServer.instance().isSsl()) {
-                host = "https://" + host;
-            } else {
-                host = "http://" + host;
-            }
-
-            res.headers().set(HttpHeaderNames.LOCATION, host + "/dbquery");
-
-            com.gmt2001.Console.debug.println("303");
+            com.gmt2001.Console.debug.println("303 " + req.method().asciiName() + ": " + qsd.path());
             HttpServerPageHandler.sendHttpResponse(ctx, req, res);
             return;
         }
@@ -115,7 +116,7 @@ public class HTTPNoAuthHandler implements HttpRequestHandler {
 
                 user = post.getOrDefault("user", "");
                 pass = post.getOrDefault("pass", "");
-                kickback = post.getOrDefault("kickback", "");
+                kickback = URLDecoder.decode(post.getOrDefault("kickback", ""), StandardCharsets.UTF_8);
             }
 
             FullHttpResponse res = HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.SEE_OTHER);
@@ -128,34 +129,22 @@ public class HTTPNoAuthHandler implements HttpRequestHandler {
                         + (HTTPWSServer.instance().isSsl() ? "; Secure" + sameSite : "") + "; HttpOnly; Path=/");
             }
 
-            String host = req.headers().get(HttpHeaderNames.HOST);
-
-            if (host == null) {
-                host = "";
-            } else if (HTTPWSServer.instance().isSsl()) {
-                host = "https://" + host;
-            } else {
-                host = "http://" + host;
-            }
-
             if (kickback.isBlank()) {
                 kickback = "/panel";
             }
 
-            res.headers().set(HttpHeaderNames.LOCATION, host + kickback);
-            com.gmt2001.Console.debug.println("303");
+            res.headers().set(HttpHeaderNames.LOCATION, kickback);
+            com.gmt2001.Console.debug.println("303 " + req.method().asciiName() + ": " + qsd.path());
 
             HttpServerPageHandler.sendHttpResponse(ctx, req, res);
             return;
         }
 
         if (!req.method().equals(HttpMethod.GET) && !req.method().equals(HttpMethod.HEAD)) {
-            com.gmt2001.Console.debug.println("405");
+            com.gmt2001.Console.debug.println("405 " + req.method().asciiName() + ": " + qsd.path());
             HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.METHOD_NOT_ALLOWED));
             return;
         }
-
-        QueryStringDecoder qsd = new QueryStringDecoder(req.uri());
 
         try {
             String start = "./web/";
@@ -199,7 +188,7 @@ public class HTTPNoAuthHandler implements HttpRequestHandler {
                 }
             }
         } catch (IOException ex) {
-            com.gmt2001.Console.debug.println("500");
+            com.gmt2001.Console.debug.println("500 " + req.method().asciiName() + ": " + qsd.path());
             com.gmt2001.Console.debug.printStackTrace(ex);
             HttpServerPageHandler.sendHttpResponse(ctx, req, HttpServerPageHandler.prepareHttpResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR));
         }

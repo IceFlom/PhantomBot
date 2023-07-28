@@ -22,7 +22,7 @@
  *
  */
 (function () {
-    var entries = [],
+    let entries = [],
             entered = {},
             keyword = '',
             entryFee = 0,
@@ -35,7 +35,7 @@
             sendMessages = $.getSetIniDbBoolean('raffleSettings', 'raffleMSGToggle', false),
             openDraw = $.getSetIniDbBoolean('raffleSettings', 'raffleOpenDraw', false),
             whisperWinner = $.getSetIniDbBoolean('raffleSettings', 'raffleWhisperWinner', false),
-            allowRepick = $.getSetIniDbBoolean('raffleSettings', 'noRepickSame', true),
+            noRepickSame = $.getSetIniDbBoolean('raffleSettings', 'noRepickSame', true),
             raffleMessage = $.getSetIniDbString('raffleSettings', 'raffleMessage', 'A raffle is still opened! Type (keyword) to enter. (entries) users have entered so far.'),
             messageInterval = $.getSetIniDbNumber('raffleSettings', 'raffleMessageInterval', 0),
             subscriberBonus = $.getSetIniDbNumber('raffleSettings', 'subscriberBonusRaffle', 1),
@@ -54,7 +54,7 @@
     function reloadRaffle() {
         sendMessages = $.getIniDbBoolean('raffleSettings', 'raffleMSGToggle');
         openDraw = $.getIniDbBoolean('raffleSettings', 'raffleOpenDraw');
-        allowRepick = $.getIniDbBoolean('raffleSettings', 'noRepickSame');
+        noRepickSame = $.getIniDbBoolean('raffleSettings', 'noRepickSame');
         whisperWinner = $.getIniDbBoolean('raffleSettings', 'raffleWhisperWinner');
         raffleMessage = $.getIniDbString('raffleSettings', 'raffleMessage');
         messageInterval = $.getIniDbNumber('raffleSettings', 'raffleMessageInterval');
@@ -70,14 +70,14 @@
      * @param {arguments} arguments
      */
     function open(username, arguments) {
-        var args,
+        let args,
                 i = 1,
                 tempKeyword,
                 tempFollowMessage = '',
                 tempUsePoints,
                 tempFollowers = false,
                 tempSubscribers = false,
-                tempEntryFee;
+                tempEntryFee = 0;
 
         /* Check if there's a raffle already opened */
         if (status) {
@@ -86,14 +86,12 @@
         }
 
         /* Check if the caster wants to use time or points for the raffle */
-        if (arguments.match('-usetime')) {
-            tempUsePoints = false;
-            arguments = arguments.replace('-usetime ', '');
-        } else if (arguments.match('-usepoints')) {
+        arguments = arguments.replace('-usetime ', '');
+        if (arguments.match('-usepoints')) {
             arguments = arguments.replace('-usepoints', '');
             tempUsePoints = true;
         } else {
-            tempUsePoints = null;
+            tempUsePoints = false;
         }
 
         /* Check if the caster wants the raffle to be for followers only or not */
@@ -126,7 +124,7 @@
             tempKeyword = args[i].toLowerCase();
             i++;
 
-            if (keyword.startsWith('!')) {
+            if (tempKeyword.startsWith('!')) {
                 tempKeyword = ('!' + tempKeyword.match(/(!+)(.+)/)[2]);
             }
 
@@ -160,7 +158,7 @@
         }
 
         /* Say in chat that the raffle is now opened. */
-        if (!usePoints && usePoints !== null) {
+        if (!usePoints && entryFee !== 0) {
             $.say($.lang.get('rafflesystem.open.time', keyword, Math.floor(entryFee / 60), followMessage, timerMessage));
         } else if (usePoints && entryFee !== 0) {
             $.say($.lang.get('rafflesystem.open.points', keyword, $.getPointsString(entryFee) + followMessage, timerMessage));
@@ -187,34 +185,38 @@
     }
 
     function reopen() {
-        if (!$.inidb.FileExists('raffleState') || !$.inidb.HasKey('raffleState', '', 'entries') || !$.inidb.HasKey('raffleState', '', 'entered')
-                || !$.inidb.HasKey('raffleState', '', 'keyword') || !$.inidb.HasKey('raffleState', '', 'entryFee') || !$.inidb.HasKey('raffleState', '', 'timerTime')
-                || !$.inidb.HasKey('raffleState', '', 'startTime') || !$.inidb.HasKey('raffleState', '', 'isFollowersOnly') || !$.inidb.HasKey('raffleState', '', 'isSubscribersOnly')
-                || !$.inidb.HasKey('raffleState', '', 'usePoints') || !$.inidb.HasKey('raffleState', '', 'isActive')) {
+        if (!$.inidb.FileExists('raffleState')) {
             return;
         }
 
-        entries = JSON.parse($.inidb.get('raffleState', 'entries'));
-        entered = JSON.parse($.inidb.get('raffleState', 'entered'));
-        keyword = $.inidb.get('raffleState', 'keyword');
-        entryFee = parseInt($.inidb.get('raffleState', 'entryFee'));
-        timerTime = parseInt($.inidb.get('raffleState', 'timerTime'));
-        startTime = parseInt($.inidb.get('raffleState', 'startTime'));
-        followers = $.inidb.GetBoolean('raffleState', '', 'isFollowersOnly');
-        subscribers = $.inidb.GetBoolean('raffleState', '', 'isSubscribersOnly');
-        usePoints = $.inidb.GetBoolean('raffleState', '', 'usePoints');
-        status = $.inidb.GetBoolean('raffleState', '', 'isActive');
-        lastWinners = [];
-        if ($.inidb.HasKey('raffleresults', '', 'winner')) { //Consider raffles saved before winner was a key
-            var temp = $.inidb.get('raffleresults', 'winner');
-            if (temp !== undefined && !temp.equalsIgnoreCase('undefined')) {
-                lastWinners = JSON.parse(temp); //lastWinners found
-            }
+        entries = $.getIniDbArray('raffleState', 'entries', []);
+        entered = $.getIniDbArray('raffleState', 'entered', {});
+
+        let tempKeyword = $.inidb.OptString('raffleState', '', 'keyword'),
+                tempEntryFee = $.inidb.OptInteger('raffleState', '', 'entryFee'),
+                tempTimerTime = $.inidb.OptInteger('raffleState', '', 'timerTime'),
+                tempStartTime = $.inidb.OptInteger('raffleState', '', 'startTime'),
+                tempFollowers = $.inidb.OptBoolean('raffleState', '', 'isFollowersOnly'),
+                tempSubscribers = $.inidb.OptBoolean('raffleState', '', 'isSubscribersOnly'),
+                tempUsePoints = $.inidb.OptBoolean('raffleState', '', 'usePoints');
+                
+
+        if (entries.length === 0 || entered.length === 0 || !tempKeyword.isPresent() || !tempEntryFee.isPresent() || !tempTimerTime.isPresent() || !tempStartTime.isPresent()
+            || !tempFollowers.isPresent() || !tempSubscribers.isPresent() || !tempUsePoints.isPresent()) {
+            return;
         }
 
-        if ($.inidb.HasKey('raffleState', '', 'hasDrawn')) { //Consider raffles saved before hasDrawn was implemented
-            hasDrawn = $.inidb.GetBoolean('raffleState', '', 'hasDrawn');
-        }
+        keyword = tempKeyword.get();
+        entryFee = tempEntryFee.get();
+        timerTime = tempTimerTime.get();
+        startTime = tempStartTime.get();
+        followers = tempFollowers.get();
+        subscribers = tempSubscribers.get();
+        usePoints = tempUsePoints.get();
+
+        status = $.getIniDbBoolean('raffleState', 'isActive', false);
+        lastWinners = $.getIniDbArray('raffleresults', 'winner', []);
+        hasDrawn = $.getIniDbBoolean('raffleState', 'hasDrawn', false);
 
         if (status === true) {
             if (keyword.startsWith('!') && $.commandExists(keyword.substring(1))) {
@@ -228,7 +230,7 @@
             }
 
             if (timerTime > 0) {
-                var timeleft = timerTime - (($.systemTime() - startTime) / 6e4);
+                let timeleft = timerTime - (($.systemTime() - startTime) / 6e4);
                 timeout = setTimeout(function () {
                     close();
                 }, timeleft * 6e4);
@@ -252,8 +254,8 @@
     function saveState() {
         _entriesLock.lock();
         try {
-            $.inidb.set('raffleState', 'entries', JSON.stringify(entries));
-            $.inidb.set('raffleState', 'entered', JSON.stringify(entered));
+            $.setIniDbArray('raffleState', 'entries', entries);
+            $.setIniDbArray('raffleState', 'entered', entered);
         } finally {
             _entriesLock.unlock();
         }
@@ -282,7 +284,7 @@
      */
     function close(username) {
         /* Clear the timer if there is one active. */
-        clearInterval(timeout);
+        clearTimeout(timeout);
         clearInterval(interval);
         clearInterval(saveStateInterval);
 
@@ -318,19 +320,17 @@
             lastWinners = [];
         }
 
-        var newWinners = [];
+        let newWinners = [];
 
         _entriesLock.lock();
         try {
             if (amount >= entries.Length) {
                 newWinners = entries;
             } else {
-                while (newWinners.length < amount) {
-                    var candidate;
-                    do {
-                        candidate = $.randElement(entries);
-                    } while (newWinners.includes(candidate));
-
+                let remainingEntries = JSON.parse(JSON.stringify(entries));
+                while (newWinners.length < amount && remainingEntries.length > 0) {
+                    let candidate = $.randElement(remainingEntries);
+                    remainingEntries.splice(remainingEntries.indexOf(candidate), 1);
                     newWinners.push(candidate);
                 }
             }
@@ -344,7 +344,7 @@
 
         /* whisper the winner if the toggle is on */
         if (whisperWinner) {
-            for (var i = 0; i < newWinners.length; i++) {
+            for (let i = 0; i < newWinners.length; i++) {
                 if ($.user.isFollower(newWinners[i].toLowerCase())) {
                     $.say($.whisperPrefix(newWinners[i], true) + $.lang.get('rafflesystem.whisper.winner', $.channelName));
                 }
@@ -354,26 +354,23 @@
         /* Remove the user from the array if we are not allowed to have multiple repicks. */
         _entriesLock.lock();
         try {
-            if (allowRepick) {
-                for (var j in entries) {
-                    for (var k in newWinners) {
-                        var e = entries[j];
-                        if (e.equalsIgnoreCase(newWinners[k])) {
-                            entries.splice(j, 1);
-                            $.inidb.del('raffleList', newWinners[k]);
-                            $.inidb.decr('raffleresults', 'raffleEntries', 1);
-                        }
-                    }
+            if (noRepickSame) {
+                for (let k in newWinners) {
+                    entries.splice(entries.indexOf(newWinners[k]), 1);
+                    $.inidb.del('raffleList', newWinners[k]);
+                    $.inidb.decr('raffleresults', 'raffleEntries', 1);
                 }
             }
         } finally {
             _entriesLock.unlock();
         }
 
+        hasDrawn = true;
+
         if (!openDraw) {
             close(undefined);
         }
-        hasDrawn = true;
+
         saveState();
     }
 
@@ -391,15 +388,15 @@
         }
 
         if (winners.length === 1) {
-            var followMsg = ($.user.isFollower(winners[0].toLowerCase()) ? $.lang.get('rafflesystem.isfollowing') : $.lang.get('rafflesystem.isnotfollowing'));
-            $.say($.lang.get('rafflesystem.winner.single', $.username.resolve(winners[0]), followMsg));
+            let followMsg = ($.user.isFollower(winners[0].toLowerCase()) ? $.lang.get('rafflesystem.isfollowing') : $.lang.get('rafflesystem.isnotfollowing'));
+            $.say($.lang.get('rafflesystem.winner.single', $.viewer.getByLogin(winners[0]).name(), followMsg));
             return;
         }
 
-        var msg = $.lang.get('rafflesystem.winner.multiple', winners.join(', '));
+        let msg = $.lang.get('rafflesystem.winner.multiple', winners.join(', '));
 
         if (msg.length >= 500) { // I doubt anybody will draw more winners than we can fit in 2 messages
-            var i = msg.substring(0, 500).lastIndexOf(",");
+            let i = msg.substring(0, 500).lastIndexOf(",");
             $.say(msg.substring(0, i));
             $.say(msg.substring(i + 1, msg.length));
         } else {
@@ -416,7 +413,7 @@
      */
     function awardWinners(amount, prize) {
 
-        for (var i = (lastWinners.length - amount); i < lastWinners.length; i++) {
+        for (let i = (lastWinners.length - amount); i < lastWinners.length; i++) {
             $.inidb.incr('points', lastWinners[i], prize);
         }
 
@@ -484,20 +481,20 @@
         }
 
         /* Push the user into the array */
+        let entryAmount = 1;
+        if (subscriberBonus > 0 && $.checkUserPermission(username, tags, $.PERMISSION.Sub)) {
+            entryAmount += subscriberBonus;
+        } else if (regularBonus > 0 && $.checkUserPermission(username, tags, $.PERMISSION.Regular)) {
+            entryAmount += regularBonus;
+        }
+
         _entriesLock.lock();
         try {
-            entered[username] = true;
-            entries.push(username);
-            var i;
-            if (subscriberBonus > 0 && $.checkUserPermission(username, tags, $.PERMISSION.Sub)) {
-                for (i = 0; i < subscriberBonus; i++) {
-                    entries.push(username);
-                }
-            } else if (regularBonus > 0 && $.checkUserPermission(username, tags, $.PERMISSION.Regular)) {
-                for (i = 0; i < regularBonus; i++) {
-                    entries.push(username);
-                }
+            for (let i = 0; i < entryAmount; i++) {
+                entries.push(username);
             }
+
+            entered[username] = true;
         } finally {
             _entriesLock.unlock();
         }
@@ -513,7 +510,7 @@
      */
     function clear() {
         /* Clear the timer if there is one active. */
-        clearInterval(timeout);
+        clearTimeout(timeout);
         clearInterval(interval);
         clearInterval(saveStateInterval);
         keyword = '';
@@ -551,7 +548,7 @@
      * @param {object} event
      */
     $.bind('command', function (event) {
-        var sender = event.getSender(),
+        let sender = event.getSender(),
                 command = event.getCommand(),
                 arguments = event.getArguments(),
                 args = event.getArgs(),
@@ -586,7 +583,7 @@
              * @commandpath raffle draw [amount (default = 1)] [prize points (default = 0)] - Picks winner(s) for the raffle and optionally awards them with points, and closes the raffle if it is still open
              */
             if (action.equalsIgnoreCase('draw')) {
-                var amount = 1;
+                let amount = 1;
                 if (args[1] !== undefined && (isNaN(parseInt(args[1])) || parseInt(args[1] === 0))) {
                     $.say($.whisperPrefix(sender) + $.lang.get('rafflesystem.err.draw.usage'));
                     return;
@@ -635,10 +632,10 @@
             }
 
             /**
-             * @commandpath raffle subscriberbonus [1-10] - Sets the bonus luck for subscribers.
+             * @commandpath raffle subscriberbonus [0-10] - Sets the bonus luck for subscribers.
              */
             if (action.equalsIgnoreCase('subscriberbonus')) {
-                if (subAction === undefined || isNaN(parseInt(subAction)) || parseInt(subAction) < 1) {
+                if (subAction === undefined || isNaN(parseInt(subAction)) || parseInt(subAction) < 0 || parseInt(subAction) > 10) {
                     $.say($.whisperPrefix(sender) + $.lang.get('rafflesystem.subbonus.usage'));
                     return;
                 }
@@ -650,10 +647,10 @@
             }
 
             /**
-             * @commandpath raffle regularbonus [1-10] - Sets the bonus luck for regulars.
+             * @commandpath raffle regularbonus [0-10] - Sets the bonus luck for regulars.
              */
             if (action.equalsIgnoreCase('regularbonus')) {
-                if (subAction === undefined || isNaN(parseInt(subAction)) || parseInt(subAction) < 1) {
+                if (subAction === undefined || isNaN(parseInt(subAction)) || parseInt(subAction) < 0 || parseInt(subAction) > 10) {
                     $.say($.whisperPrefix(sender) + $.lang.get('rafflesystem.regbonus.usage'));
                     return;
                 }
@@ -697,9 +694,9 @@
              * @commandpath raffle togglerepicks - Toggles if the same winner can be repicked more than one.
              */
             if (action.equalsIgnoreCase('togglerepicks')) {
-                allowRepick = !allowRepick;
-                $.inidb.set('raffleSettings', 'noRepickSame', allowRepick);
-                $.say($.whisperPrefix(sender) + (allowRepick ? $.lang.get('rafflesystem.raffle.repick.toggle1') : $.lang.get('rafflesystem.raffle.repick.toggle2')));
+                noRepickSame = !noRepickSame;
+                $.inidb.set('raffleSettings', 'noRepickSame', noRepickSame);
+                $.say($.whisperPrefix(sender) + (noRepickSame ? $.lang.get('rafflesystem.raffle.repick.toggle1') : $.lang.get('rafflesystem.raffle.repick.toggle2')));
                 return;
             }
 

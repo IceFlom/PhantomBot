@@ -26,23 +26,21 @@
  * Use the $ API
  */
 (function () {
-    var userGroups = [],
+    let userGroups = [],
             modeOUsers = new Packages.java.util.concurrent.CopyOnWriteArrayList(),
             subUsers = new Packages.java.util.concurrent.CopyOnWriteArrayList(),
             vipUsers = new Packages.java.util.concurrent.CopyOnWriteArrayList(),
-            users = [],
             moderatorsCache = new Packages.java.util.concurrent.CopyOnWriteArrayList(),
             botList = new Packages.java.util.concurrent.CopyOnWriteArrayList(),
             lastJoinPart = $.systemTime(),
             isUpdatingUsers = false,
-            _isSwappedSubscriberVIP = $.inidb.GetBoolean('settings', '', 'isSwappedSubscriberVIP'),
-            _usersLock = new Packages.java.util.concurrent.locks.ReentrantLock(),
+            _isSwappedSubscriberVIP = $.getSetIniDbBoolean('settings', 'isSwappedSubscriberVIP', true),
             _usersGroupsLock = new Packages.java.util.concurrent.locks.ReentrantLock();
 
     /**
      * @export $
      */
-    var PERMISSION = {
+    let PERMISSION = {
         Caster: 0,
         Admin: 1,
         Mod: 2,
@@ -59,9 +57,9 @@
      * @function cleanTwitchBots
      */
     function cleanTwitchBots() {
-        var twitchBots = $.readFile('./addons/ignorebots.txt');
+        let twitchBots = $.readFile('./addons/ignorebots.txt');
 
-        for (var i in twitchBots) {
+        for (let i in twitchBots) {
             $.inidb.del('points', twitchBots[i].toLowerCase());
             $.inidb.del('time', twitchBots[i].toLowerCase());
         }
@@ -72,9 +70,9 @@
      *
      */
     function loadTwitchBots() {
-        var twitchBots = $.readFile('./addons/ignorebots.txt');
+        let twitchBots = $.readFile('./addons/ignorebots.txt');
 
-        for (var i = 0; i < twitchBots.length; i++) {
+        for (let i = 0; i < twitchBots.length; i++) {
             botList.addIfAbsent($.javaString(twitchBots[i].toLowerCase()));
         }
     }
@@ -120,7 +118,7 @@
      * @returns {boolean}
      */
     function hasKey(list, value) {
-        for (var i = 0; i < list.length; i++) {
+        for (let i = 0; i < list.length; i++) {
             if ($.equalsIgnoreCase(list[i], value)) {
                 return true;
             }
@@ -138,27 +136,9 @@
      * then it disassociates from the original list causing issues.
      *
      *** This can take a very long time to complete and is very hard on your CPU when large array.
+     * @deprecated
      */
-    function updateUsersObject(newUsers) {
-        var i;
-
-        _usersLock.lock();
-        try {
-            for (i in newUsers) {
-                if (!userExists(newUsers[i])) {
-                    users.push(newUsers[i]);
-                }
-            }
-
-            for (i = users.length - 1; i >= 0; i--) {
-                if (!hasKey(newUsers, users[i])) {
-                    users.splice(i, 1);
-                }
-            }
-        } finally {
-            _usersLock.unlock();
-        }
-    }
+    function updateUsersObject(newUsers) {}
 
     /**
      * @function getKeyIndex
@@ -167,7 +147,7 @@
      * @returns {boolean}
      */
     function getKeyIndex(list, value) {
-        for (var i = 0; i < list.length; i++) {
+        for (let i = 0; i < list.length; i++) {
             if (list[i] !== undefined && $.equalsIgnoreCase(list[i], value)) {
                 return i;
             }
@@ -183,12 +163,7 @@
      * @returns {boolean}
      */
     function userExists(username) {
-        _usersLock.lock();
-        try {
-            return hasKey(users, username);
-        } finally {
-            _usersLock.unlock();
-        }
+        return hasKey($.users, username);
     }
 
     /**
@@ -218,7 +193,7 @@
      * @returns {boolean}
      */
     function isCaster(username) {
-        return queryDBPermission(username.toLowerCase()) === PERMISSION.Caster || isOwner(username);
+        return queryDBPermission(username.toLowerCase()) === PERMISSION.Caster || $.equalsIgnoreCase(username, $.channelName) || isOwner(username);
     }
 
     /**
@@ -238,7 +213,7 @@
      * @returns {boolean}
      */
     function isModNoTags(username) {
-        return isModeratorCache(username.toLowerCase()) || queryDBPermission(username.toLowerCase()) <= PERMISSION.Mod || isOwner(username);
+        return isModeratorCache(username.toLowerCase()) || queryDBPermission(username.toLowerCase()) <= PERMISSION.Mod || isCaster(username);
     }
 
     /**
@@ -249,8 +224,8 @@
      * Checks if provided tags are not empty
      */
     function checkTags(tags) {
-        $.consoleDebug('Tags: ' + tags + ', isNull: ' + (tags === null) + ', isUndefined: ' + (tags === undefined) + ', strict -1: ' + (tags !== '-1') + ', strict {}: ' + (tags !== '{}'));
-        return !(tags === null || tags !== '{}' || tags !== '-1' || tags === undefined);
+        $.consoleDebug('Tags: ' + tags + ', isNull: ' + (tags === null) + ', isUndefined: ' + (tags === undefined) + ', is -1: ' + (tags === '-1') + ', is {}: ' + (tags === '{}'));
+        return !(tags === null || tags === '{}' || tags === '-1' || tags === undefined);
     }
 
     /**
@@ -261,9 +236,11 @@
      * @returns {boolean}
      */
     function isMod(username, tags) {
-        $.consoleDebug($.findCaller());
-        if (checkTags(tags) && tags.get('user-type').length() > 0) { // Broadcaster should be included here.
-            return true;
+        $.consoleDebug('');
+        if (checkTags(tags)) {
+            if (tags.getOrDefault('user-type', '').length() > 0 || tags.getOrDefault('mod', '0').equals('1')) {
+                return true;
+            }
         }
 
         $.consoleDebug('Used isMod without tags');
@@ -278,7 +255,7 @@
      * @returns {boolean}
      */
     function isSubNoTags(username) {
-        return subUsers.contains($.javaString(username.toLowerCase())) || queryDBPermission(username.toLowerCase()) === PERMISSION.Sub;
+        return isSubCache(username) || queryDBPermission(username.toLowerCase()) === PERMISSION.Sub;
     }
 
     /**
@@ -289,9 +266,11 @@
      * @returns {boolean}
      */
     function isSub(username, tags) {
-        $.consoleDebug($.findCaller());
-        if (checkTags(tags) && tags.containsKey('subscriber')) {
-            return tags.get('subscriber').equals('1');
+        $.consoleDebug('');
+        if (checkTags(tags)) {
+            if (tags.getOrDefault('subscriber', '0').equals('1')) {
+                return true;
+            }
         }
 
         $.consoleDebug('Used isSub without tags');
@@ -305,9 +284,11 @@
      * @returns {boolean}
      */
     function isTurbo(tags) {
-        $.consoleDebug($.findCaller());
-        if (checkTags(tags) && tags.containsKey('turbo')) {
-            return tags.get('turbo').equals('1');
+        $.consoleDebug('');
+        if (checkTags(tags)) {
+            if (tags.containsKey('turbo')) {
+                return tags.get('turbo').equals('1');
+            }
         }
 
         return false;
@@ -330,9 +311,11 @@
      * @returns {boolean}
      */
     function isVIP(username, tags) {
-        $.consoleDebug($.findCaller());
-        if (checkTags(tags) && tags.containsKey('vip')) {
-            return tags.get('vip').equals('1');
+        $.consoleDebug('');
+        if (checkTags(tags)) {
+            if (tags.containsKey('vip')) {
+                return true;
+            }
         }
 
         $.consoleDebug('Used isVIP without tags');
@@ -346,7 +329,7 @@
      * @returns {boolean}
      */
     function isVIPNoTags(username) {
-        return vipUsers.contains($.javaString(username.toLowerCase())) || queryDBPermission(username.toLowerCase()) === PERMISSION.VIP;
+        return isVIPCache(username) || queryDBPermission(username.toLowerCase()) === PERMISSION.VIP;
     }
 
     /**
@@ -417,7 +400,7 @@
             return PERMISSION.Caster;
         }
 
-        var id = PERMISSION.Viewer;
+        let id = PERMISSION.Viewer;
 
         if (id > PERMISSION.Caster && isCaster(username)) {
             id = PERMISSION.Caster;
@@ -452,7 +435,12 @@
      * @returns {Number}
      */
     function checkUserPermission(username, tags, permission) {
-        $.consoleDebug($.findCaller());
+        $.consoleDebug('');
+
+        if (permission === PERMISSION.Panel) {
+            return isBot(username);
+        }
+
         return getUserGroupId(username, tags) <= permission;
     }
 
@@ -469,8 +457,8 @@
      * Checks if the user has adequate permission to execute a command or subcommand
      */
     function permCom(username, command, subcommand, tags) {
-        $.consoleDebug($.findCaller());
-        var commandGroup, allowed;
+        $.consoleDebug('');
+        let commandGroup, allowed;
         if (subcommand === '' || subcommand === undefined) {
             commandGroup = $.getCommandGroup(command);
         } else {
@@ -496,11 +484,7 @@
      * @returns {Number}
      */
     function queryDBPermission(username) {
-        var id = PERMISSION.None;
-        if ($.inidb.exists('group', username.toLowerCase())) {
-            id = parseInt($.inidb.get('group', username.toLowerCase()));
-        }
-        return id;
+        return $.inidb.GetInteger('group', '', username.toLowerCase(), PERMISSION.None);
     }
 
     /**
@@ -537,12 +521,12 @@
      * @returns {Number}
      */
     function getGroupIdByName(inGroupName) {
-        var groupName = $.javaString(inGroupName),
+        let groupName = $.javaString(inGroupName),
                 userGroupName;
 
         _usersGroupsLock.lock();
         try {
-            for (var i = 0; i < userGroups.length; i++) {
+            for (let i = 0; i < userGroups.length; i++) {
                 userGroupName = $.javaString(userGroups[i]);
                 if ($.equalsIgnoreCase(userGroupName, groupName.toLowerCase()) || $.equalsIgnoreCase(userGroupName.substring(0, userGroupName.length() - 1), groupName.toLowerCase())) {
                     return i;
@@ -572,7 +556,9 @@
      * @param {Number} id
      */
     function setUserGroupById(username, id) {
-        $.setIniDbNumber('group', username.toLowerCase(), id);
+        if (id < PERMISSION.None) {
+            $.setIniDbNumber('group', username.toLowerCase(), id);
+        }
     }
 
     /**
@@ -589,13 +575,13 @@
      * @function reloadGroups
      */
     function reloadGroups() {
-        var groupKeys = $.inidb.GetKeyList('groups', '');
+        let groupKeys = $.inidb.GetKeyList('groups', '');
 
         _usersGroupsLock.lock();
         try {
             userGroups = [];
 
-            for (var i in groupKeys) {
+            for (let i in groupKeys) {
                 userGroups[parseInt(groupKeys[i])] = $.getIniDbString('groups', groupKeys[i], '');
             }
         } finally {
@@ -609,21 +595,16 @@
      * @returns {Array}
      */
     function getUsernamesArrayByGroupId(filterId) {
-        var array = [];
+        let array = [];
 
-        _usersLock.lock();
-        try {
-            for (var i in users) {
-                if (filterId) {
-                    if (getUserGroupId(users[i]) <= filterId) {
-                        array.push(users[i]);
-                    }
-                } else {
-                    array.push(users[i]);
+        for (let i in $.users) {
+            if (filterId) {
+                if (getUserGroupId($.users[i]) <= filterId) {
+                    array.push($.users[i]);
                 }
+            } else {
+                array.push($.users[i]);
             }
-        } finally {
-            _usersLock.unlock();
         }
 
         return array;
@@ -648,6 +629,16 @@
     }
 
     /**
+     * @function isSubCache
+     * @export $
+     * @param {String} username
+     * @returns {boolean}
+     */
+    function isSubCache(username) {
+        return subUsers.contains($.javaString(username.toLowerCase()));
+    }
+
+    /**
      * @function addVIPUsersList
      * @export $
      * @param {String} username
@@ -663,6 +654,16 @@
      */
     function delVIPUsersList(username) {
         vipUsers.remove($.javaString(username.toLowerCase()));
+    }
+
+    /**
+     * @function isVIPCache
+     * @export $
+     * @param {String} username
+     * @returns {boolean}
+     */
+    function isVIPCache(username) {
+        return vipUsers.contains($.javaString(username.toLowerCase()));
     }
 
     /**
@@ -697,10 +698,10 @@
      * @function loadModeratorsCache
      */
     function loadModeratorsCache() {
-        var keys = $.inidb.GetKeyValueList('group', ''),
+        let keys = $.inidb.GetKeyValueList('group', ''),
             a = new Packages.java.util.ArrayList();
 
-        for (var i in keys) {
+        for (let i in keys) {
             if (parseInt(keys[i].getValue()) <= PERMISSION.Mod) {
                 a.add($.javaString(keys[i].getKey().toLowerCase()));
             }
@@ -719,14 +720,14 @@
      * VIPs do get updated through OMode and thus shouldn't need to be fixed
      */
     function restoreSubscriberStatus(username) {
-        username = username.toString().toLowerCase();
+        username = $.jsString(username.toString().toLowerCase());
 
         if (isMod(username) || isAdmin(username)) { //Ignore high privileged users
             return;
         }
 
-        var oldID = queryDBPermission(username),
-            isInCache = subUsers.contains(username);
+        let oldID = queryDBPermission(username),
+            isInCache = isSubCache(username);
 
         if (isInCache && oldID !== PERMISSION.Sub) { //User got added to subscriber cache but it's database value is out of sync
             if (isVIP(username) && oldID > PERMISSION.VIP) { //User is also a VIP - Only change permissions if needed
@@ -735,6 +736,7 @@
                 setUserGroupById(username, PERMISSION.Sub);
             }
 
+            oldID = (oldID > PERMISSION.Regular) ? PERMISSION.Regular : oldID; //Only save meaningful permissions
             $.setIniDbNumber('preSubGroup', username, oldID); //Save the old (permission) id for reference when the subscription runs out
         } else if (!isInCache && oldID === PERMISSION.Sub) { //User is not in the subscriber cache but holds subscriber permissions according to the database
             if (isVIP(username)) { //User is a VIP - Set permission to VIP
@@ -754,7 +756,7 @@
      * @returns {String}
      */
     function getGroupList() {
-        var keys = $.inidb.GetKeyList('groups', ''),
+        let keys = $.inidb.GetKeyList('groups', ''),
                 groups = [],
                 temp = [],
                 i;
@@ -767,10 +769,10 @@
         }
 
         for (i in groups) {
-            temp.push('Permission IDs: ' + groups[i].id + ' (' + groups[i].group + ')');
+            temp.push('' + groups[i].id + ' (' + groups[i].group + ')');
         }
 
-        return temp.join(', ');
+        return 'Permission IDs: ' + temp.join(', ');
     }
 
     /**
@@ -844,7 +846,7 @@
     function swapSubscriberVIP() {
         _usersGroupsLock.lock();
         try {
-            var oldSubL = userGroups[PERMISSION.Sub],
+            let oldSubL = userGroups[PERMISSION.Sub],
                 oldSubD = $.inidb.get('groups', PERMISSION.Sub.toString()),
                 oldSubU = $.inidb.GetKeysByLikeValues('group', '', PERMISSION.Sub.toString()),
                 newSubU = [],
@@ -928,67 +930,50 @@
 
     /**
      * @event ircChannelJoinUpdate
-     *
-     * @info Event that is sent when a large amount of people join/leave. This is done on a new thread.
      */
     $.bind('ircChannelUsersUpdate', function (event) {
-        setTimeout(function () {
-            // Don't allow other events to add or remove users.
-            isUpdatingUsers = true;
 
-            var joins = event.getJoins(),
-                    parts = event.getParts(),
-                    values = [],
-                    i;
+        if (isUpdatingUsers) {
+            return; //Skip this update run
+        }
 
-            // Handle parts
-            for (i = 0; i < parts.length; i++) {
-                // Cast the user as a string, because Rhino.
-                parts[i] = parts[i].toString();
-                // Remove the user from the users array.
-                _usersLock.lock();
-                try {
-                    var t = getKeyIndex(users, parts[i]);
-                    if (t >= 0) {
-                        users.splice(t, 1);
-                    }
-                } finally {
-                    _usersLock.unlock();
-                }
+        // Don't allow other events to add or remove users.
+        isUpdatingUsers = true;
 
-                $.restoreSubscriberStatus(parts[i]);
-                $.username.removeUser(parts[i]);
+        let chatters = event.chatters(),
+                newUsers = [],
+                keys = [],
+                values = [];
+
+        // Process new users list
+        for (let i = 0; i < newUsers.length; i++) {
+            let username = $.jsString(chatters.get(i).login().toLowerCase());
+            if (isTwitchBot(username)) {
+                continue;
             }
 
-            // Handle joins.
-            for (i = 0; i < joins.length; i++) {
-                // Cast the user as a string, because Rhino.
-                joins[i] = joins[i].toString();
-                values[i] = 'true';
-
-                if (isTwitchBot(joins[i])) {
-                    continue;
-                }
-
-                _usersLock.lock();
-                try {
-                    users.push(joins[i]);
-                } finally {
-                    _usersLock.unlock();
-                }
+            if (!isOwner(username) && !$.users.includes(username)) { //Ignore already known users and bots as well as the streamer
+                keys.push(username);
+                values.push('true');
+                restoreSubscriberStatus(username);
             }
 
-            $.inidb.SetBatchString('visited', '', joins, values);
+            newUsers.push(username);
+        }
 
-            isUpdatingUsers = false;
-        }, 0, 'core::permissions.js::ircChannelUsersUpdate');
+        $.users = newUsers;
+        isUpdatingUsers = false;
+
+        if (keys.length !== 0) {
+            $.inidb.SetBatchString('visited', '', keys, values);
+        }
     });
 
     /**
      * @event ircChannelJoin
      */
     $.bind('ircChannelJoin', function (event) {
-        var username = event.getUser().toLowerCase();
+        let username = $.jsString(event.getUser().toLowerCase());
 
         if (isTwitchBot(username)) {
             return;
@@ -1000,13 +985,6 @@
             }
 
             lastJoinPart = $.systemTime();
-
-            _usersLock.lock();
-            try {
-                users.push(username);
-            } finally {
-                _usersLock.unlock();
-            }
         }
     });
 
@@ -1014,7 +992,7 @@
      * @event ircChannelMessage
      */
     $.bind('ircChannelMessage', function (event) {
-        var username = event.getSender().toLowerCase(),
+        let username = $.jsString(event.getSender().toLowerCase()),
             tags = event.getTags();
 
         if (isTwitchBot(username)) {
@@ -1025,20 +1003,16 @@
             if (!$.user.isKnown(username)) {
                 $.setIniDbBoolean('visited', username, true);
             }
-
-            _usersLock.lock();
-            try {
-                users.push(username);
-            } finally {
-                _usersLock.unlock();
-            }
-
-            // The subscriber Cache should always be up-to-date for restoreSubscriberStatus() to properly work
-            if (checkTags(tags) && tags.containsKey('subscriber') && tags.get('subscriber').equals('1')) {
+        } else if (checkTags(tags)) { // The subscriber and vip cache should always be up-to-date for restoreSubscriberStatus() to properly work
+            if (tags.getOrDefault('subscriber', '0').equals('1')) {
                 addSubUsersList(username);
+            } else {
+                delSubUsersList(username);
             }
-            if (checkTags(tags) && tags.containsKey('vip') && tags.get('vip').equals('1')) {
+            if (tags.containsKey('vip')) {
                 addVIPUsersList(username);
+            } else {
+                delVIPUsersList(username);
             }
         }
     });
@@ -1047,21 +1021,11 @@
      * @event ircChannelLeave
      */
     $.bind('ircChannelLeave', function (event) {
-        var username = event.getUser().toLowerCase(),
-                i;
+        let username = $.jsString(event.getUser().toLowerCase());
 
         if (!isUpdatingUsers) {
-            _usersLock.lock();
-            try {
-                i = getKeyIndex(users, username);
-
-                if (i >= 0) {
-                    users.splice(i, 1);
-                    restoreSubscriberStatus(username.toLowerCase());
-                    $.username.removeUser(username);
-                }
-            } finally {
-                _usersLock.unlock();
+            if (userExists(username)) {
+                restoreSubscriberStatus(username.toLowerCase());
             }
         }
     });
@@ -1070,7 +1034,7 @@
      * @event ircChannelUserMode
      */
     $.bind('ircChannelUserMode', function (event) {
-        var username = event.getUser().toLowerCase();
+        let username = event.getUser().toLowerCase();
 
         if (event.getMode().equalsIgnoreCase('o')) {
             if (event.getAdd().toString().equals('true')) {
@@ -1094,6 +1058,8 @@
                     setUserGroupById(username, PERMISSION.Sub);
                 } else if (isVIP(username)) {
                     setUserGroupById(username, PERMISSION.VIP);
+                } else {
+                    setUserGroupById(username, PERMISSION.Viewer);
                 }
             }
         } else if (event.getMode().equalsIgnoreCase('vip')) {
@@ -1120,7 +1086,7 @@
      * @event ircPrivateMessage
      */
     $.bind('ircPrivateMessage', function (event) {
-        var sender = event.getSender().toLowerCase(),
+        let sender = event.getSender().toLowerCase(),
                 message = event.getMessage().toLowerCase().trim(),
                 subsTxtList = [],
                 spl,
@@ -1148,7 +1114,7 @@
      * @event command
      */
     $.bind('command', function (event) {
-        var sender = event.getSender().toLowerCase(),
+        let sender = event.getSender().toLowerCase(),
                 command = event.getCommand(),
                 args = event.getArgs(),
                 actionValue = args[0];
@@ -1167,14 +1133,7 @@
          * @commandpath users - List users currently in the channel
          */
         if (command.equalsIgnoreCase('users')) {
-            _usersLock.lock();
-            try {
-                var len = users.length;
-            } finally {
-                _usersLock.unlock();
-            }
-
-            if (len > 20) {
+            if ($.users.length > 20) {
                 $.say($.whisperPrefix(sender) + $.lang.get('permissions.current.listtoolong', len));
             } else {
                 $.say($.whisperPrefix(sender) + $.lang.get('permissions.current.users', getUsernamesArrayByGroupId().join(', ')));
@@ -1185,7 +1144,7 @@
          * @commandpath mods - List mods currently in the channel
          */
         if (command.equalsIgnoreCase('mods')) {
-            var tmp = getUsernamesArrayByGroupId(PERMISSION.Mod);
+            let tmp = getUsernamesArrayByGroupId(PERMISSION.Mod);
             if (tmp.length > 20) {
                 $.say($.whisperPrefix(sender) + $.lang.get('permissions.current.listtoolong', tmp.length));
             } else {
@@ -1251,7 +1210,7 @@
                 return;
             }
 
-            var username = $.user.sanitize(args[0]),
+            let username = $.user.sanitize(args[0]),
                     groupId = parseInt(args[1]);
 
             if (!$.user.isKnown(username)) {
@@ -1260,7 +1219,7 @@
             }
 
             if (args[1] === undefined) {
-                $.say($.whisperPrefix(sender) + $.lang.get('permissions.group.other.current', $.username.resolve(args[0]), $.getUserGroupName(args[0])));
+                $.say($.whisperPrefix(sender) + $.lang.get('permissions.group.other.current', $.viewer.getByLogin(args[0]).name(), $.getUserGroupName(args[0])));
                 return;
             }
 
@@ -1283,7 +1242,7 @@
                 return;
             }
 
-            $.say($.whisperPrefix(sender) + $.lang.get('permissions.group.set.success', $.username.resolve(username), getGroupNameById(groupId) + ' (' + groupId + ')'));
+            $.say($.whisperPrefix(sender) + $.lang.get('permissions.group.set.success', $.viewer.getByLogin(username).name(), getGroupNameById(groupId) + ' (' + groupId + ')'));
             setUserGroupById(username, groupId);
             if (groupId <= PERMISSION.Mod) {
                 addModeratorToCache(username);
@@ -1296,7 +1255,7 @@
          * @commandpath permissionpoints [permissionID] [online / offline] [points] - Show/set the points gained for each permissions. -1 defaults to the global configuration.
          */
         if (command.equalsIgnoreCase('permissionpoints')) {
-            var groupId,
+            let groupId,
                     channelStatus,
                     points;
 
@@ -1311,11 +1270,14 @@
                 return;
             }
 
+            let onlinePoints = $.inidb.OptInteger('grouppoints', '', getGroupNameById(groupId)),
+                    offlinePoints = $.inidb.OptInteger('grouppointsoffline', '', getGroupNameById(groupId));
             if (!args[1]) {
+
                 $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup', getGroupNameById(groupId),
-                        ($.inidb.exists('grouppoints', getGroupNameById(groupId)) ? $.inidb.get('grouppoints', getGroupNameById(groupId)) : '(undefined)'),
+                        (onlinePoints.isPresent() ? onlinePoints.get() : '(undefined)'),
                         $.pointNameMultiple,
-                        ($.inidb.exists('grouppointsoffline', getGroupNameById(groupId)) ? $.inidb.get('grouppointsoffline', getGroupNameById(groupId)) : '(undefined)'),
+                        (offlinePoints.isPresent() ? offlinePoints.get() : '(undefined)'),
                         $.pointNameMultiple));
                 return;
             }
@@ -1329,11 +1291,11 @@
             if (!args[2]) {
                 if (channelStatus.equalsIgnoreCase('online')) {
                     $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup.online', getGroupNameById(groupId),
-                            ($.inidb.exists('grouppoints', getGroupNameById(groupId)) ? $.inidb.get('grouppoints', getGroupNameById(groupId)) : '(undefined)'),
+                            (onlinePoints.isPresent() ? onlinePoints.get() : '(undefined)'),
                             $.pointNameMultiple));
                 } else if (channelStatus.equalsIgnoreCase('offline')) {
                     $.say($.whisperPrefix(sender) + $.lang.get('permissions.grouppoints.showgroup.offline', getGroupNameById(groupId),
-                            ($.inidb.exists('grouppointsoffline', getGroupNameById(groupId)) ? $.inidb.get('grouppointsoffline', getGroupNameById(groupId)) : '(undefined)'),
+                            (offlinePoints.isPresent() ? offlinePoints.get() : '(undefined)'),
                             $.pointNameMultiple));
                 }
                 return;
@@ -1393,7 +1355,7 @@
         $.registerChatCommand('./core/permissions.js', 'ignorelist', $.PERMISSION.Admin);
         $.registerChatCommand('./core/permissions.js', 'ignoreadd', $.PERMISSION.Admin);
         $.registerChatCommand('./core/permissions.js', 'ignoreremove', $.PERMISSION.Admin);
-        $.registerChatCommand('./core/permissions.js', 'swapsubscribervip', $.PERMISSION.Admin1);
+        $.registerChatCommand('./core/permissions.js', 'swapsubscribervip', $.PERMISSION.Admin);
 
         /** Load groups and generate default groups if they don't exist */
         reloadGroups();
@@ -1417,7 +1379,10 @@
     $.userGroups = userGroups;
     $.modeOUsers = modeOUsers;
     $.subUsers = subUsers;
-    $.users = users;
+    $.users = [];
+    /**
+     * @deprecated
+     */
     $.lastJoinPart = lastJoinPart;
 
     $.userExists = userExists;
@@ -1430,9 +1395,11 @@
     $.isModeratorCache = isModeratorCache;
     $.isOwner = isOwner;
     $.isSub = isSub;
+    $.isSubCache = isSubCache;
     $.isTurbo = isTurbo;
     $.isDonator = isDonator;
     $.isVIP = isVIP;
+    $.isVIPCache = isVIPCache;
     $.isRegular = isRegular;
     $.isViewer = isViewer;
     $.hasPermissionLevel = hasPermissionLevel;

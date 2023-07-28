@@ -18,8 +18,16 @@
 /* global Packages */
 
 (function () {
-    var transformers = {},
-            _lock = new Packages.java.util.concurrent.locks.ReentrantLock();
+    let transformers = {},
+            tagPattern = Packages.java.util.regex.Pattern.compile("(?:[^\\\\]|^)(\\(([^\\\\\\s\\|=()]*)([\\s=\\|])?((?:\\\\\\(|\\\\\\)|[^()])*)?(?<!\\\\)\\))"),
+            _lock = new Packages.java.util.concurrent.locks.ReentrantLock(),
+            debugon = false;
+
+    function debug(str) {
+        if (debugon) {
+            $.consoleDebug(str);
+        }
+    }
 
     /*
      * transformer function definition
@@ -29,24 +37,27 @@
      * param {object} args - a js object that may contain any of the following params
      *
      *
-     * param {jsString} tagArgs - any arguments provided in the tag itself
-     * * Example: (mytag arg1 arg2 arg3) - tagArgs = 'arg1 arg2 arg3'
+     * param {jsString} args.argsep - any seperator between the tag name and the tag args. Valid values (RegEx): /[\s=\|]/
+     * * Example: (mytag|arg1 arg2 arg3) - argsep = '|'
      *
-     * param {jsString} tag - the name of the tag
+     * param {jsString} args.args - any arguments provided in the tag itself
+     * * Example: (mytag arg1 arg2 arg3) - args = 'arg1 arg2 arg3'
      *
-     * param {javaObject[T extends tv.phantombot.event.Event]} event - the event object which triggered the caller of the tag processor,
+     * param {jsString} args.tag - the name of the tag
+     *
+     * param {javaObject[T extends tv.phantombot.event.Event]} args.event - the event object which triggered the caller of the tag processor,
      *              such as a CommandEvent
      *
-     * param {jsObject} customArgs - a js object which can contain arbitrary arguments defined by the caller
+     * param {jsObject} args.customArgs - a js object which can contain arbitrary arguments defined by the caller
      *
-     * param {jsArray[jsString]} globalTransformerRequiredLabels - the input to the globalTransformerRequiredLabels argument from $.transformers.tags
+     * param {jsArray[jsString]} args.globalTransformerRequiredLabels - the input to the globalTransformerRequiredLabels argument from $.transformers.tags
      *
-     * param {jsArray[jsString]} globalTransformerAnyLabels - the input to the globalTransformerAnyLabels argument from $.transformers.tags
+     * param {jsArray[jsString]} args.globalTransformerAnyLabels - the input to the globalTransformerAnyLabels argument from $.transformers.tags
      *
-     * param {jsString} platform - identifies the platform that triggered the command. Valid values: 'twitch', 'discord'
+     * param {jsString} args.platform - identifies the platform that triggered the command. Valid values: 'twitch', 'discord'
      *
      * return {jsObject}     {
-     *                         result: {jsString or null}, // default: ''. the returned value. The tag being processed will be replaced with this
+     *                         result: {jsString or null}, // default: ''. The returned value. The tag being processed will be replaced with this
      *                                                     //     value, if a valid string is returned (including empty string)
      *                         cancel: {boolean},          // default: false. Set `true` to cancel further tag processing and return null to the caller
      *                         raw: {boolean},             // default: false. If set to `false`, the value of `result` will be escaped, preventing
@@ -164,8 +175,8 @@
      * @return {string or null}
      */
     function tags(event, message, globalTransformerRequiredLabels, args) {
-        var match,
-                tagFound = false,
+        debug('tags');
+        let tagFound = false,
                 transformed,
                 transformCache = {};
 
@@ -193,32 +204,46 @@
             args.platform = 'twitch';
         }
 
-        message = $.jsString(message);  // make sure this is a JS string, not a Java string
-        while ((match = message.match(/(?:[^\\]|^)(\(([^\\\s\|=()]*)([\s=\|](?:\\\(|\\\)|[^()])*)?\))/))) {
-            var wholeMatch = match[1],
-                    tagName = match[2].toLowerCase(),
+        message = $.jsString(message);  // make sure this is a JS string
+        debug(message);
+
+        let globalTransformers = getTransformers();
+
+        let matcher = tagPattern.matcher($.javaString(message));
+        while (matcher.find()) {
+            let wholeMatch = $.jsString(matcher.group(1)),
+                    tagName = $.jsString(matcher.group(2)).toLowerCase(),
                     tagArgs = {
                         event: event,
                         tag: tagName,
-                        args: match[3] ? unescapeTags(match[3]) : '',
+                        argsep: matcher.group(3) !== null ? $.jsString(matcher.group(3)) : '',
+                        args: matcher.group(4) !== null ? unescapeTags($.jsString(matcher.group(4))) : '',
                         customArgs: args.customArgs,
                         globalTransformerRequiredLabels: globalTransformerRequiredLabels,
                         globalTransformerAnyLabels: args.globalTransformerAnyLabels,
                         platform: args.platform.toLowerCase()
                     },
                     thisTagFound = false;
+                    if (debugon) {
+                        debug('>>');
+                        debug('wholeMatch=' + wholeMatch);
+                        debug('tagArgs=' + JSON.stringify(tagArgs));
+                    }
             if (transformCache.hasOwnProperty(wholeMatch)) {
-                $.replace(message, wholeMatch, transformCache[wholeMatch]);
+                debug('cached');
+                message = $.replace(message, wholeMatch, transformCache[wholeMatch]);
                 thisTagFound = true;
             } else {
                 _lock.lock();
                 try {
                     if (args.localTransformers.hasOwnProperty(tagName)
                             && (transformed = args.localTransformers[tagName](tagArgs))) {
+                        debug('local');
                         thisTagFound = true;
-                    } else if (transformers.hasOwnProperty(tagName) && transformers[tagName].hasAllLabels(globalTransformerRequiredLabels)
-                            && transformers[tagName].hasAnyLabel(args.globalTransformerAnyLabels)
-                            && (transformed = transformers[tagName].transformer(tagArgs))) {
+                    } else if (globalTransformers.hasOwnProperty(tagName) && globalTransformers[tagName].hasAllLabels(globalTransformerRequiredLabels)
+                            && globalTransformers[tagName].hasAnyLabel(args.globalTransformerAnyLabels)
+                            && (transformed = globalTransformers[tagName].transformer(tagArgs))) {
+                        debug('global');
                         thisTagFound = true;
                     }
                 } finally {
@@ -228,38 +253,52 @@
                 if (thisTagFound) {
                     tagFound = true;
                     if (transformed === undefined || transformed === null) {
+                        debug('tag did not return');
                         transformed = {};
                     }
                     if (transformed.hasOwnProperty('result') && transformed.result !== null) {
                         transformed.result = $.jsString(transformed.result);
                     } else {
+                        debug('no result');
                         transformed.result = '';
                     }
                     if (transformed.hasOwnProperty('cancel') && transformed.cancel) {
+                        debug('cancel');
                         return null;
                     }
                     if (!transformed.hasOwnProperty('raw') || !transformed.raw) {
                         transformed.result = escapeTags(transformed.result);
+                    } else {
+                        debug('raw');
                     }
                     if (transformed.hasOwnProperty('cache') && transformed.cache) {
+                        debug('cache');
                         transformCache[wholeMatch] = transformed.result;
                         message = $.replace(message, wholeMatch, transformed.result);
                     } else {
                         // only replace the first appearance
                         message = message.replace(wholeMatch, transformed.result);
                     }
+                    if (debugon) {
+                        debug('result=' + JSON.stringify(transformed));
+                        debug('message=' + message);
+                    }
                 }
             }
 
             if (!thisTagFound) {
+                debug('!found');
                 message = $.replace(message, wholeMatch, '\\(' + wholeMatch.slice(1, -1) + '\\)');
             }
+
+            matcher.reset($.javaString(message));
         }
 
         // custom commands without tags can be directed towards users by mods
         if (!tagFound && args.atEnabled && event.getArgs()[0] !== undefined && $.checkUserPermission(event.getSender(), event.getTags(), $.PERMISSION.Mod)) {
+            debug('atUser');
             // Split the message into parts
-            var part = message.split(' ');
+            let part = message.split(' ');
             // Check if the command is written in color ('/me ')
             if (part[0] !== undefined && part[0] === '/me') {
                 //  remove '/me ' if present
@@ -272,7 +311,9 @@
 
         }
 
-        return unescapeTags(message).trim();
+        message = unescapeTags(message).trim();
+        debug('final message: ' + message);
+        return message;
     }
 
     /*
@@ -326,7 +367,7 @@
      * @param {jsArray[transformer]} transformerSet - an array of transformer objects constructed from $.transformers.transformer
      */
     function addTransformers(transformerSet) {
-        for (var i = 0; i < transformerSet.length; i++) {
+        for (let i = 0; i < transformerSet.length; i++) {
             addTransformer(transformerSet[i]);
         }
     }
@@ -338,12 +379,17 @@
      * @returns {object[string->transformer]}
      */
     function getTransformers() {
+        let ret = {};
         _lock.lock();
         try {
-            return transformers;
+            for (let x in transformers) {
+                ret[x] = transformers[x];
+            }
         } finally {
             _lock.unlock();
         }
+
+        return ret;
     }
 
     /*
@@ -370,12 +416,12 @@
      * @returns {jsArray[transformer]}
      */
     function getTransformersWithLabel(label) {
-        var result = [];
+        let result = [];
         _lock.lock();
         try {
-            for (var i = 0; i < transformers.length; i++) {
-                if (transformers[i].hasLabel(label)) {
-                    result.push(transformers[i]);
+            for (let x in transformers) {
+                if (transformers[x].hasLabel(label)) {
+                    result.push(transformers[x]);
                 }
             }
         } finally {
@@ -393,12 +439,12 @@
      * @returns {jsArray[transformer]}
      */
     function getTransformersWithAllLabels(labelSet) {
-        var result = [];
+        let result = [];
         _lock.lock();
         try {
-            for (var i = 0; i < transformers.length; i++) {
-                if (transformers[i].hasAllLabels(labelSet)) {
-                    result.push(transformers[i]);
+            for (let x in transformers) {
+                if (transformers[x].hasAllLabels(labelSet)) {
+                    result.push(transformers[x]);
                 }
             }
         } finally {
@@ -416,12 +462,12 @@
      * @returns {jsArray[transformer]}
      */
     function getTransformersWithAnyLabel(labelSet) {
-        var result = [];
+        let result = [];
         _lock.lock();
         try {
-            for (var i = 0; i < transformers.length; i++) {
-                if (transformers[i].hasAnyLabel(labelSet)) {
-                    result.push(transformers[i]);
+            for (let x in transformers) {
+                if (transformers[x].hasAnyLabel(labelSet)) {
+                    result.push(transformers[x]);
                 }
             }
         } finally {
@@ -435,7 +481,7 @@
      * @deprecated
      */
     function legacyTags(event, message, atEnabled, localTransformers, disableGlobalTransformers) {
-        var globalRequired = [];
+        let globalRequired = [];
         if (disableGlobalTransformers === true) {
             globalRequired.push('local');
         } else {

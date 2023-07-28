@@ -16,25 +16,34 @@
  */
 package com.gmt2001;
 
-import com.illusionaryone.Logger;
-import com.sun.management.HotSpotDiagnosticMXBean;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.lang.management.RuntimeMXBean;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
+
 import javax.management.MBeanServer;
+
+import com.illusionaryone.Logger;
+import com.sun.management.HotSpotDiagnosticMXBean;
+
 import tv.phantombot.PhantomBot;
 import tv.phantombot.RepoVersion;
 
 /**
+ * Provides methods which perform common reflection operations
  *
  * @author gmt2001
  */
@@ -49,6 +58,11 @@ public final class Reflect {
     private Reflect() {
     }
 
+    /**
+     * Loads all classes visible to the default {@link ClassLoader} which have the specified package prefix into the classloaders cache
+     *
+     * @param pkg the package or package prefix to load
+     */
     public void loadPackageRecursive(String pkg) {
         pkg = pkg.replace('.', '/');
         ClassLoader classLoader = Reflect.class.getClassLoader();
@@ -75,46 +89,81 @@ public final class Reflect {
         }
     }
 
+    /**
+     * Workaround to get the {@link ClassLoader#classes} field in JDK 12+
+     *
+     * @return the field
+     * @throws NoSuchMethodException if unable to load {@link Class#getDeclaredFields0()} or unable to find the field
+     * @throws IllegalAccessException if Java language access control blocks invocation
+     * @throws InvocationTargetException if an exception is thrown by the method being invoked
+     */
+    private Field getClassesField() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        Method getDeclaredFields0 = Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class);
+        getDeclaredFields0.setAccessible(true);
+        Field[] fields = (Field[]) getDeclaredFields0.invoke(ClassLoader.class, false);
+        Field modifiers = null;
+        for (Field each : fields) {
+            if ("classes".equals(each.getName())) {
+                return each;
+            }
+        }
+
+        throw new NoSuchMethodException("Could not find field 'classes'");
+    }
+
+    /**
+     * Gets a list of {@link Class} that are in the cache of the default {@link ClassLoader}
+     *
+     * @return a list of {@link Class}
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public List<Class<?>> getClasses() {
         List<Class<?>> cl = new ArrayList<>();
 
         try {
-            Field f = ClassLoader.class.getDeclaredField("classes");
+            Field f = this.getClassesField();
             f.setAccessible(true);
             ClassLoader classLoader = Reflect.class.getClassLoader();
             @SuppressWarnings("UseOfObsoleteCollectionType")
-            java.util.Vector<Class> classes = (java.util.Vector<Class>) f.get(classLoader);
-            classes.forEach((c) -> {
-                cl.add(c);
-            });
-        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException ex) {
+            List<Class> classes = (List<Class>) f.get(classLoader);
+            final int size = classes.size();
+            for (int i = 0; i < size; i++) {
+                cl.add(classes.get(i));
+            }
+        } catch (IllegalArgumentException | IllegalAccessException | NoSuchMethodException | SecurityException | InvocationTargetException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
         }
 
-        return cl;
+        return Collections.unmodifiableList(cl);
     }
 
+    /**
+     * Gets a list of non-abstract {@link Class} that are in the cache of the default {@link ClassLoader} which are assignable from the specified type
+     *
+     * @param <T> the parent class or interface
+     * @param type the parent class or interface
+     * @return a list of sub-classes
+     */
     @SuppressWarnings("unchecked")
     public <T> List<Class<? extends T>> getSubTypesOf(final Class<T> type) {
         List<Class<? extends T>> cl = new ArrayList<>();
 
-        getClasses().stream().filter((c) -> (type.isAssignableFrom(c))).forEachOrdered((c) -> {
+        getClasses().stream().filter((c) -> (type.isAssignableFrom(c) && !Modifier.isAbstract(c.getModifiers()))).forEachOrdered((c) -> {
             cl.add((Class<? extends T>) c);
         });
 
-        return cl;
+        return Collections.unmodifiableList(cl);
     }
 
+    /**
+     * Dumps the Java heap to an hprof file
+     * <p>
+     * This method tries to generate a filename of {@code java_pid##.TIMESTAMP.hprof} where {@code ##} is
+     * the PID of the running process and {@code TIMESTAMP} is the timestamp when the method was called in {@code yyyy-MM-dd_HH-mm-ss} format
+     * <p>
+     * This method calls {@link #dumpHeap(String, boolean)} with the {@code live} parameter set to {@code true}
+     */
     public static void dumpHeap() {
-        int pid;
-        try {
-            pid = pid();
-        } catch (NumberFormatException ex) {
-            com.gmt2001.Console.err.printStackTrace(ex);
-            pid = 0;
-        }
-
         String timestamp;
         try {
             timestamp = Logger.instance().logFileDTTimestamp();
@@ -129,7 +178,7 @@ public final class Reflect {
         }
 
         try {
-            String fName = "java_pid" + Integer.toString(pid) + "." + timestamp + ".hprof";
+            String fName = "java_pid" + Long.toString(pid()) + "." + timestamp + ".hprof";
             String fPath;
 
             if (RepoVersion.isDocker()) {
@@ -144,19 +193,61 @@ public final class Reflect {
         }
     }
 
+    /**
+     * Dumps the Java Heap to a file
+     *
+     * @param filePath the path to the file where the heap should be written
+     * @param live {@code true} to only dump <i>live</i> objects
+     * @throws IOException if the file already exists, cannot be created, opened, or written to
+     */
     // https://www.baeldung.com/java-heap-dump-capture
-    public static void dumpHeap(String filePath, boolean live) throws IOException {
+    /**
+     * Dumps the Java heap to an hprof file
+     *
+     * @param filePath the path to where the heap dump should be written
+     * @param live {@code true} to only dump <i>live</i> objects (objects which are referenced by others)
+     * @throws IOException if the {@code outputFile} already exists, cannot be created, opened, or written to
+     * @throws IllegalArgumentException if {@code filePath} does not end with the {@code .hprof} extension
+     */
+    public static void dumpHeap(String filePath, boolean live) throws IOException, IllegalArgumentException {
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         HotSpotDiagnosticMXBean mxBean = ManagementFactory.newPlatformMXBeanProxy(
                 server, "com.sun.management:type=HotSpotDiagnostic", HotSpotDiagnosticMXBean.class);
         mxBean.dumpHeap(filePath, live);
     }
 
-    public static int pid() throws NumberFormatException {
-        RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
-        return Integer.parseInt(runtime.getName().split("@")[0]);
+    /**
+     * Attempts to retrieve the PID of the running process from the {@link RuntimeMXBean} of the JVM process
+     *
+     * @return the PID
+     */
+    public static long pid() throws NumberFormatException {
+        return ManagementFactory.getRuntimeMXBean().getPid();
     }
 
+    /**
+     * Gets a {@link MemoryUsage} containing information about the current memory usage of the heap
+     *
+     * @return a {@link MemoryUsage} for the heap
+     */
+    public static MemoryUsage getHeapMemoryUsage() {
+        return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+    }
+
+    /**
+     * Gets a {@link MemoryUsage} containing information about the current non-heap memory usage
+     *
+     * @return a {@link MemoryUsage} for non-heap memory
+     */
+    public static MemoryUsage getNonHeapMemoryUsage() {
+        return ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage();
+    }
+
+    /**
+     * Attempts to retrieve the full, real, absolute path to the directory in which PhantomBot.jar is located
+     *
+     * @return {@code .} on failure; otherwise, the path
+     */
     public static String GetExecutionPath() {
         try {
             return Paths.get(PhantomBot.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent().toAbsolutePath().toRealPath().toString();

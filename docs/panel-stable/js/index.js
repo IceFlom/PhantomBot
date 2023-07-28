@@ -50,6 +50,7 @@ $(function () {
      */
     var sendToSocket = function (message) {
         try {
+            message.section = $.currentPage().folder;
             let json = JSON.stringify(message);
 
             webSocket.send(json);
@@ -474,6 +475,185 @@ $(function () {
     };
 
     /*
+     * @function Gets all panel users
+     *
+     * @param {String}       callback_id
+     * @param {Function}     callback
+     */
+    socket.getAllPanelUsers = function (callback_id, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUser: callback_id,
+            getAll: true
+        });
+    };
+
+    /*
+     * @function Gets specific panel user
+     *
+     * @param {String}       callback_id
+     * @param {String}       username
+     * @param {Function}     callback
+     */
+    socket.getPanelUser = function (callback_id, username, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUserRO: callback_id,
+            get: String(username)
+        });
+    };
+
+    /*
+     * @function Adds a panel User
+     *
+     * @param {String}       callback_id
+     * @param {String}       username
+     * @param {String}       permission
+     * @param {Boolean}      enabled
+     * @param {Function}     callback
+     */
+    socket.addPanelUser = function (callback_id, username, permission, enabled, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUser: callback_id,
+            add: {
+                username: String(username),
+                permission: String(permission),
+                enabled: enabled
+            }
+        });
+    };
+
+    /*
+     * @function Deletes a panel User
+     *
+     * @param {String}       callback_id
+     * @param {String}       username
+     * @param {Function}     callback
+     */
+    socket.deletePanelUser = function (callback_id, username, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUser: callback_id,
+            delete: String(username)
+        });
+    };
+
+    /*
+     * @function Edits a panel user
+     *
+     * @param {String}       callback_id
+     * @param {String}       currentUsername
+     * @param {String}       newUsername
+     * @param {String}       permission
+     * @param {Boolean}      enabled
+     * @param {Function}     callback
+     */
+    socket.editPanelUser = function (callback_id, currentUsername, newUsername, permission, enabled, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUser: callback_id,
+            edit: {
+                currentUsername: String(currentUsername),
+                newUsername: String(newUsername),
+                permission: String(permission),
+                enabled: enabled
+            }
+        });
+    };
+
+    /*
+     * @function Changes a panel user's password
+     *
+     * @param {String}       callback_id
+     * @param {String}       username
+     * @param {String}       currentPassword
+     * @param {String}       newPassword
+     * @param {Function}     callback
+     */
+    socket.changePanelUserPWD = function (callback_id, username, currentPassword, newPassword, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUserRO: callback_id,
+            changePassword: {
+                username: String(username),
+                currentPassword: String(CryptoJS.SHA256(currentPassword).toString()),
+                newPassword: String(CryptoJS.SHA256(newPassword).toString())
+            }
+        });
+    };
+
+    /*
+     * @function Resets a panel user's password
+     *
+     * @param {String}       callback_id
+     * @param {String}       username
+     * @param {Function}     callback
+     */
+    socket.resetPanelUserPWD = function (callback_id, username, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUser: callback_id,
+            resetPassword: String(username)
+        });
+    };
+
+    /*
+     * @function Gets all panel permission level
+     *
+     * @param {String}       callback_id
+     * @param {Function}     callback
+     */
+    socket.getPanelPermissionLevels = function (callback_id, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUserRO: callback_id,
+            permission: true
+        });
+    };
+
+    /*
+     * @function Gets all panel sections to which permissions can be assigned
+     *
+     * @param {String}       callback_id
+     * @param {Function}     callback
+     */
+    socket.getPanelSections = function (callback_id, callback) {
+        // Genetate a callback.
+        generateCallBack(callback_id, [], false, true, callback);
+
+        // Query database.
+        sendToSocket({
+            panelUserRO: callback_id,
+            sections: true
+        });
+    };
+
+    /*
      * @function Sends a remote panel query.
      *
      * @param {String}   query_id
@@ -481,7 +661,7 @@ $(function () {
      * @param {Object}   params
      * @param {Function} callback
      */
-    socket.doRemote = function (query_id, query, params, callback) {
+    socket.doRemote = function (query_id, query, params, callback, isArray) {
         generateCallBack(query_id, [], false, true, callback);
 
         sendToSocket({
@@ -572,6 +752,7 @@ $(function () {
         helpers.logError('Connection lost with the websocket.', helpers.LOG_TYPE.FORCE);
         // Add error toast.
         toastr.error('Connection lost with the websocket.', '', {timeOut: 0});
+        window.updateCookie();
     };
 
     /*
@@ -594,6 +775,7 @@ $(function () {
                 if (message.authresult === 'false') {
                     helpers.logError('Failed to auth with the socket.', helpers.LOG_TYPE.FORCE);
                     toastr.error('Failed to auth with the socket.', '', {timeOut: 0});
+                    webSocket.close();
                 } else {
                     // This is to stop a reconnect loading the main page.
                     if (helpers.isAuth === true) {
@@ -606,8 +788,8 @@ $(function () {
                         id: 'initLoad.panelSettings',
                         query: 'panelSettings'
                     });
+                    helpers.log('Auth success', helpers.LOG_TYPE.DEBUG);
                 }
-                helpers.log('Auth success', helpers.LOG_TYPE.DEBUG);
                 return;
             }
 
@@ -617,6 +799,7 @@ $(function () {
                     window.panelSettings.channelName = message.channelName;
                     window.panelSettings.botName = message.botName;
                     window.panelSettings.displayName = message.displayName;
+                    helpers.loadCurrentUserInfo();
                     $.loadPage('dashboard', 'dashboard.html');
                     helpers.getUserLogo();
                 }

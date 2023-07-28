@@ -30,7 +30,7 @@
         var audioHookFiles = $.findFiles('./config/audio-hooks/', ''),
             audioHookNames = {},
             dbAudioHookNames,
-            reFileExt = new RegExp(/\.mp3$|\.ogg$|\.aac$/);
+            reFileExt = new RegExp(/\.[A-Za-z0-9]+$/);
 
         for (var i in audioHookFiles) {
             var fileName = audioHookFiles[i] + '';
@@ -40,10 +40,11 @@
         var keys = Object.keys(audioHookNames);
 
         for (var i in keys) {
-            if (!$.inidb.exists('audio_hooks', keys[i])) {
+            let hook = $.inidb.OptString('audio_hooks', '', keys[i]);
+            if (!hook.isPresent()) {
                 $.inidb.set('audio_hooks', keys[i], audioHookNames[keys[i]]);
             } else {
-                var hook = $.inidb.get('audio_hooks', keys[i]);
+                hook = hook.get();
 
                 if (hook != null && hook.indexOf('.') === -1) {
                     $.inidb.set('audio_hooks', keys[i], audioHookNames[keys[i]]);
@@ -71,7 +72,7 @@
             i;
 
         for (i in keys) {
-            if (keys[i].equalsIgnoreCase(hook)) {
+            if ($.equalsIgnoreCase(keys[i], hook)) {
                 return true;
             }
         }
@@ -181,15 +182,16 @@
         /**
          * Checks if the command is an audio hook
          */
-        if ($.inidb.exists('audioCommands', command)) {
-            if ($.inidb.get('audioCommands', command).match(/\(list\)/g)) {
+        let hook = $.inidb.OptString('audioCommands', '', command);
+        if (hook.isPresent()) {
+            if (hook.get().match(/\(list\)/g)) {
                 $.paginateArray(getAudioHookCommands(), 'audiohook.list', ', ', true, sender);
                 return;
             }
             if (messageToggle) {
-                $.say($.whisperPrefix(sender) + $.lang.get('audiohook.play.success', $.inidb.get('audioCommands', command)));
+                $.say($.whisperPrefix(sender) + $.lang.get('audiohook.play.success', hook.get()));
             }
-            $.alertspollssocket.triggerAudioPanel($.inidb.get('audioCommands', command));
+            $.alertspollssocket.triggerAudioPanel(hook.get());
             return;
         }
 

@@ -44,7 +44,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function adds commas to thousands.
      *
      * @param  {String} number
@@ -76,7 +76,7 @@ $(function () {
         return number;
     };
 
-    /*
+    /**
      * @function checks if the object has a valid string or number.
      *
      * @param  {Object} obj
@@ -97,7 +97,7 @@ $(function () {
         return false;
     };
 
-    /*
+    /**
      * @function Checks if the value is null and returns the default if it is.
      *
      * @param  {String} value
@@ -112,7 +112,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function gets the proper event message.
      *
      * @param  {Object} event
@@ -149,7 +149,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function that gets the right color for an event.
      *
      * @param  {String} event
@@ -187,7 +187,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function handle input validation
      *
      * @param {Object} obj
@@ -237,7 +237,7 @@ $(function () {
         return !obj.parent().hasClass('has-error');
     };
 
-    /*
+    /**
      * @function handles the string input checks.
      *
      * @param {Object} obj
@@ -261,7 +261,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function handles the number input checks.
      *
      * @param  {Object} obj
@@ -279,7 +279,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function handles the date input checks.
      *
      * @param  {Object} obj
@@ -296,7 +296,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function handles hiding info for the panels (the four dashboard info panels).
      *
      * @param {Object} obj
@@ -322,7 +322,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function handles setting the info for the panels (the four dashboard info panels).
      *
      * @param {Object} obj
@@ -349,7 +349,7 @@ $(function () {
         obj.data('parsed', parsed);
     };
 
-    /*
+    /**
      * @function Adds padding to the date with a 0.
      *
      * @param  {String} dateString
@@ -367,7 +367,7 @@ $(function () {
         return dateMatches.join('');
     };
 
-    /*
+    /**
      * @function Generates a basic modal, you have to append your own body with jQuery.
      *
      * @param  {String}        id - Element ID for the modal
@@ -382,7 +382,9 @@ $(function () {
      *      footerpost: [],                // Array of additional HTML elements for the footer, appended after the "Cancel" button
      *      cancelclass: 'primary',        // Overrides the `btn-default` class on the "Cancel" button. Can be used to add other classes as well
      *      canceltext: 'Close',           // Overrides the text displayed on the "Cancel" button
-     *      cancelclick: function(){}      // Overrides the function triggered on click for the "Cancel" button. Default `undefined`
+     *      cancelclick: function(){},     // Overrides the function triggered on click for the "Cancel" button. Default `undefined`
+     *      blockClosing: boolean          // Overrides all methods to close the dialog other than using the buttons
+     *      removecancel: boolean          // Removes the "Cancel" button from the dialog
      * }
      * @return {jQuery Object} A modal which is ready to be shown using `.modal('show')`
      */
@@ -410,19 +412,31 @@ $(function () {
             footerbuttons.push(...override.footercenter);
         }
 
-        footerbuttons.push($('<button/>', {
-            'class': 'btn ' + (override.hasOwnProperty('cancelclass') ? override.cancelclass : 'btn-default'),
-            'type': 'button',
-            'text': (override.hasOwnProperty('canceltext') ? override.canceltext : 'Cancel'),
-            'data-dismiss': 'modal',
-            'click': (override.hasOwnProperty('cancelclick') ? override.cancelclick : undefined)
-        }));
+        if (!override.hasOwnProperty('removecancel') || (override.hasOwnProperty('removecancel') && !override.removecancel)) {
+            footerbuttons.push($('<button/>', {
+                'class': 'btn ' + (override.hasOwnProperty('cancelclass') ? override.cancelclass : 'btn-default'),
+                'type': 'button',
+                'text': (override.hasOwnProperty('canceltext') ? override.canceltext : 'Cancel'),
+                'data-dismiss': 'modal',
+                'click': (override.hasOwnProperty('cancelclick') ? override.cancelclick : undefined)
+            }));
+        }
 
         if (override.hasOwnProperty('footerpost') && override.footerpost.length > 0) {
             footerbuttons.push(...override.footerpost);
         }
 
-        return $('<div/>', {
+        let closeButton;
+        if(!(override.hasOwnProperty('blockClosing') && override.blockClosing)) {
+            closeButton = $('<button/>', {
+                'type': 'button',
+                'class': 'close',
+                'data-dismiss': 'modal',
+                'html': '&times;'
+            });
+        }
+
+        return  $('<div/>', {
             'class': 'modal fade',
             'tabindex': '99',
             'id': id
@@ -432,12 +446,7 @@ $(function () {
             'class': 'modal-content'
         }).append($('<div/>', {
             'class': 'modal-header'
-        }).append($('<button/>', {
-            'type': 'button',
-            'class': 'close',
-            'data-dismiss': 'modal',
-            'html': '&times;'
-        })).append($('<h4/>', {
+        }).append(closeButton).append($('<h4/>', {
             'class': 'modal-title',
             'text': title
         }))).append($('<div/>', {
@@ -452,7 +461,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function Generates an advanced modal, you have to append your own body with jQuery.
      *
      * Elements which should be hidden behind the "Show Advanced" collapse section should be enclosed in an element defined as
@@ -569,7 +578,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function Generates an input group
      *
      * @param  {String}  id
@@ -601,7 +610,7 @@ $(function () {
         }).prop('disabled', (disabled === undefined ? false : disabled)));
     };
 
-    /*
+    /**
      * @function Generates a textarea group
      *
      * @param  {String}  id
@@ -635,7 +644,7 @@ $(function () {
         }));
     };
 
-    /*
+    /**
      * @function Generates a dropdown.
      *
      * @param  {String} id
@@ -742,7 +751,7 @@ $(function () {
         }))));
     };
 
-    /*
+    /**
      * @function Generates a multi-select dropdown.
      *
      * @param  {String} id
@@ -813,7 +822,7 @@ $(function () {
         }))));
     };
 
-    /*
+    /**
      * @function Generates a multi-select dropdown.
      *
      * @param  {String} id
@@ -866,7 +875,7 @@ $(function () {
         }))));
     };
 
-    /*
+    /**
      * @function gets a checkbox
      *
      * @param  {String}  id
@@ -908,7 +917,7 @@ $(function () {
         // }).prop('checked', value)).append(text));
     };
 
-    /*
+    /**
      * @function gets a collapsible accordion panel.
      *
      * @param  {String} id
@@ -939,7 +948,7 @@ $(function () {
         })));
     };
 
-    /*
+    /**
      * @function gets the confrim delete modal
      *
      * @param  {String}   id
@@ -947,9 +956,18 @@ $(function () {
      * @param  {Boolean}  hasBodyMsg
      * @param  {String}   closeMessage
      * @param  {Function} onClose
+     * @param  {JS Object}     override - optionally overrides some options of the dialog
+     * {
+     *      deleteText: 'Delete',   // Overrides the text displayed on the "Delete" button
+     *      blockClosing: boolean   // Overrides all methods to close the dialog other than using the confirm button
+     * }
      * @return {Object}
      */
-    helpers.getConfirmDeleteModal = function (id, title, hasBodyMsg, closeMessage, onClose) {
+    helpers.getConfirmDeleteModal = function (id, title, hasBodyMsg, closeMessage, onClose, override) {
+        if (override === undefined || override === null) {
+            override = {};
+        }
+
         swal({
             'title': title,
             'text': (hasBodyMsg ? 'Once removed, it be will gone forever.' : ''),
@@ -957,15 +975,17 @@ $(function () {
             'reverseButtons': true,
             'buttons': {
                 'confirm': {
-                    'text': 'Delete',
+                    'text': (override.hasOwnProperty('deleteText') ? override.deleteText : 'Delete'),
                     'visible': true
                 },
                 'cancel': {
                     'text': 'Cancel',
-                    'visible': true
+                    'visible': (override.hasOwnProperty('blockClosing') ? !override.blockClosing : true)
                 }
             },
-            'dangerMode': true
+            'dangerMode': true,
+            'closeOnClickOutside': (override.hasOwnProperty('blockClosing') ? !override.blockClosing : true),
+            'closeOnEsc': (override.hasOwnProperty('blockClosing') ? !override.blockClosing : true)
         }).then(function (isRemoved) {
             if (isRemoved) {
                 let result = onClose();
@@ -982,7 +1002,7 @@ $(function () {
         });
     };
 
-    /*
+    /**
      * @function Generates a random string.
      *
      * @param  {Number} len
@@ -999,7 +1019,7 @@ $(function () {
         return str;
     };
 
-    /*
+    /**
      * @function Creates a new timer interval.
      *
      * @param {Function} func
@@ -1009,7 +1029,7 @@ $(function () {
         timers.push(setInterval(func, interval));
     };
 
-    /*
+    /**
      * @function Creates a new timer timeout.
      *
      * @param {Function} func
@@ -1019,7 +1039,7 @@ $(function () {
         timers.push(setTimeout(func, timeout));
     };
 
-    /*
+    /**
      * @function Clears all timers.
      */
     helpers.clearTimers = function () {
@@ -1028,7 +1048,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function checked if a module is on.
      *
      * @param  {String}|{Array} id
@@ -1061,7 +1081,7 @@ $(function () {
         return toggle === 'true';
     };
 
-    /*
+    /**
      * @function Same as the function above but doesn't return anything but true.
      *
      * @param  {String}|{Array} id
@@ -1071,14 +1091,14 @@ $(function () {
         return helpers.getModuleStatus(id, toggle, swit);
     };
 
-    let _isSwappedSubscriberVIP = false;
+    let _isSwappedSubscriberVIP = true;
     helpers.isSwappedSubscriberVIP = function () {
         return _isSwappedSubscriberVIP;
     };
 
     let checkSwappedSubscriberVIP = function () {
         socket.getDBValue('helpers_isSwappedSubscriberVIP', 'settings', 'isSwappedSubscriberVIP', function (e) {
-            _isSwappedSubscriberVIP = e.settings === '1';
+            _isSwappedSubscriberVIP = e.settings === '1' || e.settings === 'true';
         });
     };
 
@@ -1090,7 +1110,7 @@ $(function () {
         checkSwappedSubscriberVIP();
     }, 30e3);
 
-    /*
+    /**
      * @function Gets the group ID by its name.
      *
      * @param  {String}  name
@@ -1102,7 +1122,7 @@ $(function () {
         return (asString ? idx.toString() : parseInt(idx));
     };
 
-    /*
+    /**
      * @function Gets the group ID by its name.
      *
      * @param  {String}  name
@@ -1121,28 +1141,35 @@ $(function () {
         return 'null';
     };
 
+    let permGroupNames = [
+        '0 (Caster)',
+        '1 (Administrator)',
+        '2 (Moderator)',
+        '3 (VIP)',
+        '4 (Donator)',
+        '5 (Subscriber)',
+        '6 (Regular)',
+        '7 (Viewer)'
+
+    ];
+
     let updatePermGroups = function () {
         socket.getDBTableValues('permissions_get_all_groups', 'groups', function (results) {
-            permGroups;
-            for (let i = 0; i < results.length; i++) {
-                permGroups[i] = results[i].value;
-                permGroupNames[i] = i.toString() + ' (' + results[i].value + ')';
+            for (let x of results) {
+                permGroupNames[parseInt(x.key)] = x.key + ' (' + x.value + ')';
             }
         });
     };
 
-    let permGroups = [];
-    let permGroupNames = [];
-
     setTimeout(function () {
         updatePermGroups();
-    }, 1e3);
+    }, 5e3);
 
     setInterval(function () {
         updatePermGroups();
     }, 30e3);
 
-    /*
+    /**
      * @function Gets the group name by its ID.
      *
      * @param  {String} id
@@ -1156,7 +1183,22 @@ $(function () {
         return permGroupNames;
     };
 
-    /*
+    /**
+     * Capitalizes the first letter of each word in a string
+     * @param {String} str The string to process
+     * @returns The string with the first letter of each word being capitalized
+     */
+    helpers.capitalizeFirstLettersInString = function (str) {
+        var words = str.toLowerCase().split(' ');
+        for (var i = 0; i < words.length; i++) {
+          words[i] = words[i].charAt(0).toUpperCase() + words[i].slice(1);
+        }
+        return words.join(' ');
+    };
+
+    helpers.isPermissionErrorRunning = false;
+
+    /**
      * @function Gets the group name by its ID.
      *
      * @param  {String} j
@@ -1191,7 +1233,7 @@ $(function () {
         };
     };
 
-    /*
+    /**
      * @function Handles the dark mode toggle.
      *
      * @param {Boolean} isDark
@@ -1269,7 +1311,7 @@ $(function () {
         $('#notifications-menu-ul').append($('<li/>').append(html));
     };
 
-    /*
+    /**
      * @function Handles showing new updates to the user.
      *
      * @param {String} version
@@ -1324,7 +1366,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function Gets a random rgb color.
      *
      * @return {String}
@@ -1333,7 +1375,7 @@ $(function () {
         return 'rgb(' + Math.floor(Math.random() * 256) + ', ' + Math.floor(Math.random() * 256) + ', ' + Math.floor(Math.random() * 256) + ')';
     };
 
-    /*
+    /**
      * @function Used to print debug messages in the console.
      *
      * @param {String}  message
@@ -1345,7 +1387,7 @@ $(function () {
         }
     };
 
-    /*
+    /**
      * @function Used to print error messages in the console.
      *
      * @param {String}  message
@@ -1355,7 +1397,7 @@ $(function () {
         console.log('%c[PhantomBot Error]', 'color: red; font-weight: 900;', message);
     };
 
-    /*
+    /**
      * @function Gets the epoch time from a date.
      *
      * @param  {String}  date
@@ -1441,13 +1483,6 @@ $(function () {
     };
 
     helpers.setupAuth = function () {
-        if (window.localStorage.getItem('remember') && window.localStorage.getItem('expires')) {
-            if (window.localStorage.getItem('expires') > Date.now()) {
-                window.localStorage.setItem('expires', Date.now() + (parseInt(window.localStorage.getItem('remember')) * 3600000));
-            } else {
-                window.sessionStorage.removeItem('webauth');
-            }
-        }
         window.panelSettings.auth = window.sessionStorage.getItem('webauth') || '!missing';
     };
 
@@ -1484,6 +1519,62 @@ $(function () {
         });
     };
 
+    helpers.loadCurrentUserInfo = function () {
+        socket.getPanelUser("get_current_panel_user", helpers.getPanelUserNameFromCookie(), function (res) {
+            if (res === undefined || res.error !== undefined) {
+                helpers.signOut();
+            }
+            helpers.currentPanelUserData = res;
+        });
+    };
+
+    helpers.getCookieField = function (name) {
+        let decodedCookie = decodeURIComponent(document.cookie),
+            cookieArray = decodedCookie.split(';');
+        name = name + "=";
+
+        for(let i = 0; i < cookieArray.length; i++) {
+            let cookie = cookieArray[i].trim();
+
+            if (cookie.indexOf(name) === 0) {
+                return cookie.substring(name.length, cookie.length);
+            }
+        }
+
+        return undefined;
+    };
+
+    helpers.getPanelUserNameFromCookie = function () {
+        let b64 = helpers.getCookieField("panellogin");
+        if (b64 === undefined) {
+            return "Phantombot";
+        }
+        let userpass = atob(b64);
+        let colon = userpass.indexOf(':');
+        return userpass.substring(0, colon);
+    };
+
+    helpers.signOut = function () {
+        toastr.info('Signing out...', '', {timeOut: 0});
+        socket.close();
+        window.logoutCookie();
+        window.location = window.location.origin + window.location.pathname + 'login/#logoutSuccess=true';
+    };
+
+    helpers.getDateStringFromDate = function (date) {
+        if (date === undefined) {
+            return 'Invalid Date';
+        }
+        let months = ["January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                        ],
+                hours = (date.getHours() < 10) ? "0" + date.getHours() : date.getHours(),
+                minutes = (date.getMinutes() < 10) ? "0" + date.getMinutes() : date.getMinutes(),
+                seconds = (date.getSeconds() < 10) ? "0" + date.getSeconds() : date.getSeconds();
+
+        return hours +  ":" + minutes + ":" + seconds + " " + date.getDate() + " " + months[date.getMonth()] + " "+ date.getFullYear();
+    };
+
     //https://stackoverflow.com/a/57380742
     helpers.promisePoll = (promiseFunction, { pollIntervalMs = 2000 } = {}) => {
         const startPoll = async resolve => {
@@ -1513,13 +1604,16 @@ $(function () {
         return helpers.getBotHost() === window.location.host;
     };
 
-    // Takes an object {} and an array [] of keys.
-    // Foreach key in keys:
-    //   If obj has the key, and its value is typeof string that starts with '{',
-    //   attempts to parse the value as JSON. On success, the string value is replaced
-    //   with the resulting object. On failure info is sent to debug, the value is left unchanged,
-    //   and the next key is processed.
-    // Does not return anything, the original object will be changed.
+    const ipRegex = /(?<ip>(?<ipv4>(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9]))|(?<ipv6>(?:::)?(?:[0-9a-fA-F]{1,4}(?:::|:)){2,7}(?:[0-9a-fA-F]{1,4}|)|(?:::[0-9a-fA-F]{1,4})|(?:[0-9a-fA-F]{1,4}::(?:[0-9a-fA-F]{1,4})?)))/;
+
+    /** Takes an object {} and an array [] of keys.
+    * Foreach key in keys:
+    *   If obj has the key, and its value is typeof string that starts with '{',
+    *   attempts to parse the value as JSON. On success, the string value is replaced
+    *   with the resulting object. On failure info is sent to debug, the value is left unchanged,
+    *   and the next key is processed.
+    * Does not return anything, the original object will be changed.
+    */
     helpers.parseJSONValues = function (obj, keys) {
         for (let key in keys) {
             key = keys[key];
@@ -1543,6 +1637,12 @@ $(function () {
     helpers.getBranch = function () {
         return helpers.isNightly() ? 'nightly' : 'stable';
     };
+
+    helpers.canEmbedTwitch = function() {
+        return location.protocol.toLowerCase().startsWith('https') && location.hostname.includes('.') && !ipRegex.test(location.hostname) && (location.port === '' || location.port === 443);
+    };
+
+    helpers.CANT_EMBED_TWITCH_TEXT = 'Due to changes by Twitch, the live feed panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443 or setup a reverse proxy. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.';
 
     // Export.
     window.helpers = helpers;

@@ -26,6 +26,8 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -35,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 import tv.phantombot.CaselessProperties;
 import tv.phantombot.CaselessProperties.Transaction;
+import tv.phantombot.event.EventBus;
+import tv.phantombot.event.twitch.TwitchOAuthReauthorizedEvent;
 import tv.phantombot.PhantomBot;
 import tv.phantombot.httpserver.HTTPOAuthHandler;
 import tv.phantombot.twitch.api.TwitchValidate;
@@ -43,12 +47,15 @@ import tv.phantombot.twitch.api.TwitchValidate;
  *
  * @author gmt2001
  */
-public class TwitchAuthorizationCodeFlow {
+public final class TwitchAuthorizationCodeFlow {
 
     private static final String BASE_URL = "https://id.twitch.tv/oauth2";
     private static final long REFRESH_INTERVAL = 900000L;
     private static final int DEFAULT_EXPIRE_TIME = 15000;
     private boolean timerStarted = false;
+    private Instant lastBotRefresh = Instant.MIN;
+    private Instant lastBroadcasterRefresh = Instant.MIN;
+    private static final Duration minRefreshInterval = Duration.ofMinutes(15);
 
     public TwitchAuthorizationCodeFlow(String clientid, String clientsecret) {
         this.startup(clientid, clientsecret);
@@ -112,7 +119,8 @@ public class TwitchAuthorizationCodeFlow {
 
     private boolean refreshBotOAuth(Transaction refreshTransaction) {
         boolean changed = false;
-        if (CaselessProperties.instance().containsKey("refresh") && !CaselessProperties.instance().getProperty("refresh").isBlank()) {
+        boolean minExpired = this.lastBotRefresh.plus(minRefreshInterval).isBefore(Instant.now());
+        if (minExpired && CaselessProperties.instance().containsKey("refresh") && !CaselessProperties.instance().getProperty("refresh").isBlank()) {
             JSONObject result = tryRefresh(CaselessProperties.instance().getProperty("clientid"), CaselessProperties.instance().getProperty("clientsecret"), CaselessProperties.instance().getProperty("refresh"));
 
             if (result.has("error")) {
@@ -125,6 +133,7 @@ public class TwitchAuthorizationCodeFlow {
                 refreshTransaction.setProperty("oauth", "oauth:" + result.getString("access_token"));
                 refreshTransaction.setProperty("refresh", result.getString("refresh_token"));
                 refreshTransaction.setProperty("oauthexpires", c.getTimeInMillis() + "");
+                this.lastBotRefresh = Instant.now();
 
                 com.gmt2001.Console.out.println("Refreshed the bot token");
                 com.gmt2001.Console.debug.println("New oauth=" + result.getString("access_token") + " refresh=" + result.getString("refresh_token") + " oauthexpires=" + c.getTimeInMillis() + "");
@@ -132,7 +141,8 @@ public class TwitchAuthorizationCodeFlow {
             }
         } else {
             com.gmt2001.Console.debug.println("skipped refresh " + (CaselessProperties.instance().containsKey("refresh") ? "t" : "f")
-                    + (CaselessProperties.instance().containsKey("refresh") && !CaselessProperties.instance().getProperty("refresh").isBlank() ? "t" : "f"));
+                    + (CaselessProperties.instance().containsKey("refresh") && !CaselessProperties.instance().getProperty("refresh").isBlank() ? "t" : "f")
+                    + (minExpired ? "t" : "f"));
         }
 
         return changed;
@@ -140,6 +150,7 @@ public class TwitchAuthorizationCodeFlow {
 
     private boolean refreshAPIOAuth(Transaction refreshTransaction) {
         boolean changed = false;
+        boolean minExpired = this.lastBroadcasterRefresh.plus(minRefreshInterval).isBefore(Instant.now());
         if (CaselessProperties.instance().containsKey("apirefresh") && !CaselessProperties.instance().getProperty("apirefresh").isBlank()) {
             JSONObject result = tryRefresh(CaselessProperties.instance().getProperty("clientid"), CaselessProperties.instance().getProperty("clientsecret"), CaselessProperties.instance().getProperty("apirefresh"));
 
@@ -153,6 +164,7 @@ public class TwitchAuthorizationCodeFlow {
                 refreshTransaction.setProperty("apioauth", "oauth:" + result.getString("access_token"));
                 refreshTransaction.setProperty("apirefresh", result.getString("refresh_token"));
                 refreshTransaction.setProperty("apiexpires", c.getTimeInMillis() + "");
+                this.lastBroadcasterRefresh = Instant.now();
 
                 com.gmt2001.Console.out.println("Refreshed the broadcaster token");
                 com.gmt2001.Console.debug.println("New apioauth=" + result.getString("access_token") + " apirefresh=" + result.getString("refresh_token") + " apiexpires=" + c.getTimeInMillis() + "");
@@ -160,7 +172,8 @@ public class TwitchAuthorizationCodeFlow {
             }
         } else {
             com.gmt2001.Console.debug.println("skipped refresh " + (CaselessProperties.instance().containsKey("apirefresh") ? "t" : "f")
-                    + (CaselessProperties.instance().containsKey("apirefresh") && !CaselessProperties.instance().getProperty("apirefresh").isBlank() ? "t" : "f"));
+                    + (CaselessProperties.instance().containsKey("apirefresh") && !CaselessProperties.instance().getProperty("apirefresh").isBlank() ? "t" : "f")
+                    + (minExpired ? "t" : "f"));
         }
 
         return changed;
@@ -273,6 +286,8 @@ public class TwitchAuthorizationCodeFlow {
                     TwitchValidate.instance().updateChatToken(CaselessProperties.instance().getProperty("oauth"));
                     TwitchValidate.instance().updateAPIToken(CaselessProperties.instance().getProperty("apioauth"));
                     PhantomBot.instance().reconnect();
+
+                    EventBus.instance().postAsync(new TwitchOAuthReauthorizedEvent(!qsd.parameters().get("type").get(0).equals("bot")));
 
                     if (qsd.parameters().get("type").get(0).equals("bot")) {
                         com.gmt2001.Console.debug.println("Saved oauth=" + CaselessProperties.instance().getProperty("oauth") + " refresh=" + CaselessProperties.instance().getProperty("refresh") + " oauthexpires=" + CaselessProperties.instance().getProperty("oauthexpires"));

@@ -292,20 +292,15 @@ public final class TMIMessage {
      *
      * @param rawBadges The raw {@code badges} value of {@link #tags}
      * @return A Map of legacy badges
+     * @deprecated Please use official Twitch IRC tags instead {@link https://dev.twitch.tv/docs/irc/tags/}
      */
+    @Deprecated(since = "3.8.2.0", forRemoval = true)
     private Map<String, String> parseLegacyBadges(String rawBadges) {
         Map<String, String> rbadges = new HashMap<>();
 
         if (rawBadges.isBlank()) {
             return rbadges;
         }
-
-        // Add default values.
-        rbadges.put("user-type", "");
-        rbadges.put("subscriber", "0");
-        rbadges.put("turbo", "0");
-        rbadges.put("premium", "0");
-        rbadges.put("vip", "0");
 
         if (rawBadges.length() > 0) {
             String badgeParts[] = rawBadges.split(",");

@@ -72,7 +72,7 @@
                 donationCurrency = donationJson.getString("currency"),
                 donationAmount = parseFloat(donationJson.getString("amount")),
                 donationUsername = donationJson.getString("name"),
-                donationMsg = donationJson.getString("message");
+                donationMsg = donationJson.isNull("message") ? "" : donationJson.optString("message");
 
         if ($.inidb.exists('donations', donationID)) {
             return;
@@ -80,7 +80,7 @@
 
         $.inidb.set('donations', donationID, event.getJsonString());
 
-        $.inidb.set('streamInfo', 'lastDonator', $.username.resolve(donationUsername));
+        $.inidb.set('streamInfo', 'lastDonator', $.viewer.getByLogin(donationUsername).name());
 
         $.inidb.set('donations', 'last_donation', donationID);
 
@@ -125,8 +125,9 @@
         }
 
         if (donationGroup) {
-            $.inidb.incr('donations', donationUsername.toLowerCase(), parseInt(donationAmount.toFixed(2)));
-            if ($.inidb.exists('donations', donationUsername.toLowerCase()) && $.inidb.get('donations', donationUsername.toLowerCase()) >= donationGroupMin) {
+            $.inidb.incr('donations', donationUsername.toLowerCase(), donationAmount.toFixed(2));
+            let donationsAmount = $.inidb.GetDouble('donations', '', donationUsername.toLowerCase());
+            if (donationsAmount >= donationGroupMin) {
                 if ($.getUserGroupId(donationUsername.toLowerCase()) > $.PERMISSION.Donator) {
                     $.setUserGroupById(donationUsername.toLowerCase(), $.PERMISSION.Donator);
                 }
@@ -239,11 +240,11 @@
 
                 if (subAction.equalsIgnoreCase('erase')) {
                     $.inidb.del('donations', 'currencycode');
-                    Packages.com.illusionaryone.TwitchAlertsAPIv1.instance().SetCurrencyCode('');
+                    Packages.com.illusionaryone.StreamLabsAPI.instance().SetCurrencyCode('');
                     $.say($.whisperPrefix(sender) + $.lang.get('donationhandler.streamlabs.currencycode.success-erase'));
                 } else {
                     $.setIniDbString('donations', 'currencycode', subAction);
-                    Packages.com.illusionaryone.TwitchAlertsAPIv1.instance().SetCurrencyCode(subAction);
+                    Packages.com.illusionaryone.StreamLabsAPI.instance().SetCurrencyCode(subAction);
                     $.say($.whisperPrefix(sender) + $.lang.get('donationhandler.streamlabs.currencycode.success', subAction));
                 }
             }
