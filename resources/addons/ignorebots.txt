@@ -30,8 +30,6 @@ skinnyseahorse
 apricotdrupefruit
 anotherttvviewer
 Feuerwehr
-maarsellow
-rufusroyfs
 teyyd
 0x2F7C37
 0_AppleBadApple_0
@@ -40,7 +38,6 @@ cachebear
 hostmeraffle
 lurxx
 eisigerbot
-slidingowl
 ub3rb0t
 p0sitivitybot
 v_and_k
