@@ -39,15 +39,17 @@ import org.jooq.ConnectionProvider;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
 import org.jooq.ExecutorProvider;
+import org.jooq.RecordListener;
 import org.jooq.SQLDialect;
 import org.jooq.Table;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultConfiguration;
 
-import com.gmt2001.ExecutorService;
-import com.gmt2001.Reflect;
 import com.gmt2001.datastore.DataStore;
+import com.gmt2001.datastore2.record.AttachableRecord;
+import com.gmt2001.util.Reflect;
+import com.gmt2001.util.concurrent.ExecutorService;
 
 import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager;
 import biz.source_code.miniConnectionPoolManager.MiniConnectionPoolManager.TimeoutException;
@@ -64,7 +66,11 @@ import tv.phantombot.PhantomBot;
  */
 public abstract class Datastore2 {
     /**
-     * Table name prefix for all tables created as POJOs instead of using {@link DataStore}
+     * Paths to exclude when calling {@link Reflect#loadPackageRecursive(String, List)}
+     */
+    private static final List<String> REFLECT_EXCLUDE = List.of("/meta/", "/records/");
+    /**
+     * Table name prefix for all tables created as POJOs
      */
     public static final String PREFIX = "phantombot2_";
     /**
@@ -104,7 +110,7 @@ public abstract class Datastore2 {
     }
 
     /**
-     * Returns a timestamp sutible for database backup names in the format {@code yyyy-MM-dd.hh-mm-ss}
+     * Returns a timestamp suitable for database backup names in the format {@code yyyy-MM-dd.hh-mm-ss}
      *
      * @return the timestamp
      */
@@ -168,12 +174,15 @@ public abstract class Datastore2 {
         if (packageName.startsWith("com.gmt2001.datastore2.")) {
             com.gmt2001.Console.debug.println("Checking for a built-in driver");
             // Resolve builtin classes case-insensitively
-            final String fdataStoreType = dataStoreType;
+            final String fdataStoreType = className;
             final String fdataStoreType2 = DataStore.resolveClassname(className);
-            Reflect.instance().loadPackageRecursive(Datastore2.class.getName().substring(0, Datastore2.class.getName().lastIndexOf('.')));
-            Optional<String> tempdataStoreType = Reflect.instance().getSubTypesOf(Datastore2.class).stream().filter((c) -> {
-                return c.getSimpleName().equalsIgnoreCase(fdataStoreType) || c.getSimpleName().equalsIgnoreCase(fdataStoreType2);
-            }).map(c -> c.getName()).findFirst();
+            Optional<String> tempdataStoreType = Reflect.instance()
+                .loadPackageRecursive(Datastore2.class.getName()
+                    .substring(0, Datastore2.class.getName().lastIndexOf('.')), REFLECT_EXCLUDE)
+                .getSubTypesOf(Datastore2.class).stream().filter((c) -> {
+                    return c.getSimpleName().equalsIgnoreCase(fdataStoreType)
+                        || c.getSimpleName().equalsIgnoreCase(fdataStoreType2);
+                }).map(c -> c.getName()).findFirst();
 
             if (tempdataStoreType.isPresent()) {
                 com.gmt2001.Console.debug.println("Found a built-in driver");
@@ -183,13 +192,13 @@ public abstract class Datastore2 {
         }
 
         if (loader == null) {
-            com.gmt2001.Console.debug.println("Preping to load a custom driver");
+            com.gmt2001.Console.debug.println("Preparing to load a custom driver");
             // Set loader to retrieve custom classes from jar files
             try {
                 loader = new URLClassLoader(new URL[] { new URL("file://./datastores/" + className + ".jar") },
                         Datastore2.class.getClassLoader());
             } catch (MalformedURLException ex) {
-                com.gmt2001.Console.debug.println("Failed to prep a URLClassLoader");
+                com.gmt2001.Console.debug.println("Failed to prepare a URLClassLoader");
                 com.gmt2001.Console.err.logStackTrace(ex);
                 loader = Datastore2.class.getClassLoader();
             }
@@ -286,7 +295,11 @@ public abstract class Datastore2 {
                 return ExecutorService.executorService();
             }
 
-        });
+        }).set(RecordListener.onLoadEnd(ctx -> {
+            if (AttachableRecord.class.isAssignableFrom(ctx.record().getClass())) {
+                ((AttachableRecord) ctx.record()).doAttachments();
+            }
+        }));
         this.dslContext = DSL.using(configuration);
     }
 
@@ -468,7 +481,7 @@ public abstract class Datastore2 {
      *
      * @return the DataType
      */
-    public abstract DataType<?> longTextDataType();
+    public abstract DataType<String> longTextDataType();
 
     /**
      * Indicates if this driver supports making backups without an external tool

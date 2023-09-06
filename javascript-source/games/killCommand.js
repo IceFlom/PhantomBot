@@ -314,7 +314,7 @@
         /**
          * @commandpath kill [username] - Kill a fellow viewer (not for real!), omit the username to kill yourself
          */
-        if (command.equalsIgnoreCase('kill')) {
+        if ($.equalsIgnoreCase(command, 'kill')) {
             var target;
 
             if (subcommand != null) {
@@ -363,7 +363,7 @@
         /**
          * @commandpath killset [subcommand] [value] - Change kill settings
          */
-        if (command.equalsIgnoreCase('killset')) {
+        if ($.equalsIgnoreCase(command, 'killset')) {
             if (subcommand == null) {
                 $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.usage'));
                 return;

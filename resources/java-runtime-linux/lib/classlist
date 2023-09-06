@@ -238,8 +238,8 @@ java/lang/ref/Reference$1
 java/lang/ref/Finalizer$FinalizerThread
 jdk/internal/access/JavaLangAccess
 java/lang/System$2
-jdk/internal/util/SystemProps
 jdk/internal/misc/VM
+jdk/internal/util/SystemProps
 jdk/internal/util/SystemProps$Raw
 java/nio/charset/Charset
 java/nio/charset/spi/CharsetProvider
@@ -712,8 +712,12 @@ java/util/zip/ZipFile$ZipFileInflaterInputStream
 java/util/zip/Inflater
 java/util/zip/Inflater$InflaterZStreamRef
 java/util/zip/ZipFile$InflaterCleanupAction
-java/util/jar/JarVerifier
+sun/security/util/SignatureFileVerifier
 sun/security/util/Debug
+java/util/Locale
+sun/util/locale/LocaleUtils
+sun/security/action/GetIntegerAction
+java/util/jar/JarVerifier
 java/security/CodeSigner
 java/io/ByteArrayOutputStream
 java/util/jar/Attributes
@@ -821,8 +825,6 @@ java/lang/invoke/StringConcatFactory$2
 java/lang/invoke/StringConcatFactory$3
 sun/launcher/LauncherHelper
 sun/net/util/URLUtil
-java/util/Locale
-sun/util/locale/LocaleUtils
 java/security/PrivilegedExceptionAction
 jdk/internal/loader/URLClassPath$3
 jdk/internal/loader/URLClassPath$Loader

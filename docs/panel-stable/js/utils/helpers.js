@@ -332,7 +332,7 @@ $(function () {
         let item = localStorage.getItem('phantombot_' + id.substring(id.indexOf('-') + 1)),
                 isSmall = $('.small-box').width() < 230;
 
-        if (item === 'true' || item === null) {
+        if (helpers.isTrue(item) || item === null) {
             let numval = obj.data('number');
             if (numval === undefined || numval === null || numval.trim().length === 0) {
                 numval = '0';
@@ -687,11 +687,11 @@ $(function () {
                     o.attr('value', option.value);
                 }
 
-                if (option.selected !== undefined && (option.selected === true || option.selected === 'true')) {
+                if (option.selected !== undefined && (option.selected === true || helpers.isTrue(option.selected))) {
                     o.attr('selected', 'selected');
                 }
 
-                if (option.disabled !== undefined && (option.disabled === true || option.disabled === 'true')) {
+                if (option.disabled !== undefined && (option.disabled === true || helpers.isTrue(option.disabled))) {
                     o.attr('disabled', 'disabled');
                 }
             } else {
@@ -734,13 +734,13 @@ $(function () {
                     o.attr('value', roles[i].value);
                 }
 
-                if (roles[i].selected !== undefined && (roles[i].selected === true || roles[i].selected === 'true')) {
+                if (roles[i].selected !== undefined && (roles[i].selected === true || helpers.isTrue(roles[i].selected))) {
                     o.attr('selected', 'selected');
                 } else if (selected !== undefined && selected.indexOf(roles[i]._id) > -1) {
                     o.attr('selected', 'selected');
                 }
 
-                if (roles[i].disabled !== undefined && (roles[i].disabled === true || roles[i].disabled === 'true')) {
+                if (roles[i].disabled !== undefined && (roles[i].disabled === true || helpers.isTrue(roles[i].disabled))) {
                     o.attr('disabled', 'disabled');
                 }
 
@@ -805,13 +805,13 @@ $(function () {
                     o.attr('value', roles[i].value);
                 }
 
-                if (roles[i].selected !== undefined && (roles[i].selected === true || roles[i].selected === 'true')) {
+                if (roles[i].selected !== undefined && (roles[i].selected === true || helpers.isTrue(roles[i].selected))) {
                     o.attr('selected', 'selected');
                 } else if (selected !== undefined && selected.indexOf(roles[i]._id) > -1) {
                     o.attr('selected', 'selected');
                 }
 
-                if (roles[i].disabled !== undefined && (roles[i].disabled === true || roles[i].disabled === 'true')) {
+                if (roles[i].disabled !== undefined && (roles[i].disabled === true || helpers.isTrue(roles[i].disabled))) {
                     o.attr('disabled', 'disabled');
                 }
 
@@ -863,11 +863,11 @@ $(function () {
                 o.attr('value', option.value);
             }
 
-            if (option.selected !== undefined && (option.selected === true || option.selected === 'true')) {
+            if (option.selected !== undefined && (option.selected === true || helpers.isTrue(option.selected))) {
                 o.attr('selected', 'selected');
             }
 
-            if (option.disabled !== undefined && (option.disabled === true || option.disabled === 'true')) {
+            if (option.disabled !== undefined && (option.disabled === true || helpers.isTrue(option.disabled))) {
                 o.attr('disabled', 'disabled');
             }
 
@@ -1048,6 +1048,20 @@ $(function () {
         }
     };
 
+    helpers.isTrue = function(val) {
+        if (val === undefined || val === null) {
+            return false;
+        }
+
+        try {
+            if (typeof val === 'string') {
+                val = val.trim().toLowerCase();
+            }
+        } catch (e) {}
+
+        return val === true || val === 1 || val === 'true' || val === '1' || val === 'yes';
+    }
+
     /**
      * @function checked if a module is on.
      *
@@ -1057,7 +1071,7 @@ $(function () {
     helpers.getModuleStatus = function (id, toggle, swit) {
         if (typeof id === 'object') {
             for (let i = 0; i < id.length; i++) {
-                if (toggle === 'false') {
+                if (!helpers.isTrue(toggle)) {
                     //$('#' + id[i]).slideUp(helpers.DELAY_MS);
                     $('#' + id[i] + ' *').prop('disabled', true);
                 } else {
@@ -1066,9 +1080,9 @@ $(function () {
                 }
             }
             // Handle the switch toggle
-            $('#' + swit).prop('checked', toggle === 'true');
+            $('#' + swit).prop('checked', helpers.isTrue(toggle));
         } else {
-            if (toggle === 'false') {
+            if (!helpers.isTrue(toggle)) {
                 $('#' + id + 'Toggle').prop('checked', false);
                 //$('#' + id).slideUp(helpers.DELAY_MS);
                 $('#' + id + ' *').prop('disabled', true);
@@ -1078,7 +1092,7 @@ $(function () {
                 $('#' + id + ' *').prop('disabled', false);
             }
         }
-        return toggle === 'true';
+        return helpers.isTrue(toggle);
     };
 
     /**
@@ -1098,7 +1112,7 @@ $(function () {
 
     let checkSwappedSubscriberVIP = function () {
         socket.getDBValue('helpers_isSwappedSubscriberVIP', 'settings', 'isSwappedSubscriberVIP', function (e) {
-            _isSwappedSubscriberVIP = e.settings === '1' || e.settings === 'true';
+            _isSwappedSubscriberVIP = helpers.isTrue(e.settings);
         });
     };
 
@@ -1184,7 +1198,7 @@ $(function () {
     };
 
     /**
-     * Capitalizes the first letter of each word in a string 
+     * Capitalizes the first letter of each word in a string
      * @param {String} str The string to process
      * @returns The string with the first letter of each word being capitalized
      */
@@ -1210,7 +1224,7 @@ $(function () {
         let perms = [];
 
         for (let i = 0; i < json.roles.length; i++) {
-            if (json.roles[i].selected === 'true')
+            if (helpers.isTrue(json.roles[i].selected))
                 roles.push(json.roles[i].name);
         }
 
@@ -1219,7 +1233,7 @@ $(function () {
         }
 
         for (let i = 0; i < json.permissions.length; i++) {
-            if (json.permissions[i].selected === 'true')
+            if (helpers.isTrue(json.permissions[i].selected))
                 perms.push(json.permissions[i].name);
         }
 
@@ -1572,7 +1586,7 @@ $(function () {
                 minutes = (date.getMinutes() < 10) ? "0" + date.getMinutes() : date.getMinutes(),
                 seconds = (date.getSeconds() < 10) ? "0" + date.getSeconds() : date.getSeconds();
 
-        return hours +  ":" + minutes + ":" + seconds + " " + date.getDate() + " " + months[date.getMonth()] + " "+ date.getFullYear();
+        return date.getFullYear() + " " + months[date.getMonth()] + " " + date.getDate() + " " + hours +  ":" + minutes + ":" + seconds;
     };
 
     //https://stackoverflow.com/a/57380742
@@ -1603,6 +1617,8 @@ $(function () {
     helpers.isLocalPanel = function () {
         return helpers.getBotHost() === window.location.host;
     };
+
+    const ipRegex = /(?<ip>(?<ipv4>(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9]))|(?<ipv6>(?:::)?(?:[0-9a-fA-F]{1,4}(?:::|:)){2,7}(?:[0-9a-fA-F]{1,4}|)|(?:::[0-9a-fA-F]{1,4})|(?:[0-9a-fA-F]{1,4}::(?:[0-9a-fA-F]{1,4})?)))/;
 
     /** Takes an object {} and an array [] of keys.
     * Foreach key in keys:
@@ -1635,6 +1651,12 @@ $(function () {
     helpers.getBranch = function () {
         return helpers.isNightly() ? 'nightly' : 'stable';
     };
+
+    helpers.canEmbedTwitch = function() {
+        return location.protocol.toLowerCase().startsWith('https') && location.hostname.includes('.') && !ipRegex.test(location.hostname) && (location.port === '' || location.port === 443);
+    };
+
+    helpers.CANT_EMBED_TWITCH_TEXT = 'Due to changes by Twitch, the live feed panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443 or setup a reverse proxy. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.';
 
     // Export.
     window.helpers = helpers;

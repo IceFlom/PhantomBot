@@ -42,7 +42,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 
-import com.gmt2001.ExecutorService;
 import com.gmt2001.HttpRequest;
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
@@ -50,6 +49,7 @@ import com.gmt2001.httpclient.NotJSONException;
 import com.gmt2001.httpclient.URIUtil;
 import com.gmt2001.twitch.cache.ViewerCache;
 import com.gmt2001.twitch.eventsub.EventSubSubscription;
+import com.gmt2001.util.concurrent.ExecutorService;
 
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
@@ -262,7 +262,7 @@ public class Helix {
 
         try {
             if ((this.oAuthToken == null || this.oAuthToken.isBlank()) && (oauth == null || oauth.isBlank())) {
-                throw new IllegalArgumentException("apioauth is required");
+                throw new IllegalArgumentException("apioauth is required. Try re-authorizing the Broadcaster");
             }
 
             if (data == null) {
@@ -2844,6 +2844,10 @@ public class Helix {
             throws JSONException, IllegalArgumentException {
         first = Math.max(1, Math.min(100, first));
 
+        if (ViewerCache.instance().broadcaster() == null) {
+            return Mono.just(null);
+        }
+
         String endpoint = "/channels/followers?" + this.qspValid("broadcaster_id", ViewerCache.instance().broadcaster().id())
         + this.qspValid("&user_id", user_id) + this.qspValid("&first", first) + this.qspValid("&after", after);
 
@@ -2866,6 +2870,10 @@ public class Helix {
     public Mono<JSONObject> getChattersAsync(int first, @Nullable String after)
             throws JSONException, IllegalArgumentException {
         first = Math.max(1, Math.min(1000, first));
+
+        if (ViewerCache.instance().broadcaster() == null) {
+            return Mono.just(null);
+        }
 
         String endpoint = "/chat/chatters?" + this.qspValid("broadcaster_id", ViewerCache.instance().broadcaster().id())
         + this.qspValid("&moderator_id", TwitchValidate.instance().getAPIUserID()) + this.qspValid("&first", first)

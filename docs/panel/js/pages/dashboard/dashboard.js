@@ -30,8 +30,8 @@ $(function () {
         tables: ['panelData', 'panelData', 'modules'],
         keys: ['isDark', 'isReverseSortEvents', './systems/commercialSystem.js']
     }, true, function (e) {
-        helpers.isDark = e.isDark === 'true';
-        helpers.isReverseSortEvents = e.isReverseSortEvents === 'true';
+        helpers.isDark = helpers.isTrue(e.isDark);
+        helpers.isReverseSortEvents = helpers.isTrue(e.isReverseSortEvents);
 
         // Handle the dark mode skins.
         helpers.handleDarkMode(helpers.isDark, true);
@@ -141,7 +141,7 @@ $(function () {
                 // Set stream title.
                 $('#stream-title').val(e.title);
                 // Set stream game.
-                if ($('#stream-game').find('option[value="' + e.game + '"]').length) {
+                if ($('#stream-game').find('option[value="' + e.game.replaceAll('"', '\\"') + '"]').length) {
                     $('#stream-game').val(e.game).trigger('change');
                 } else {
                     // Create a DOM Option and pre-select by default
@@ -181,8 +181,8 @@ $(function () {
                         tables: ['panelData', 'panelData'],
                         keys: ['hasChat', 'hasPlayer']
                     }, true, function (e) {
-                        e.hasChat = (e.hasChat === 'true' || e.hasChat === null);
-                        e.hasPlayer = (e.hasPlayer === 'true' || e.hasPlayer === null);
+                        e.hasChat = (helpers.isTrue(e.hasChat) || e.hasChat === null);
+                        e.hasPlayer = (helpers.isTrue(e.hasPlayer) || e.hasPlayer === null);
 
                         // Handle adding the chat.
                         if (e.hasChat && helpers.canEmbedTwitch()) {

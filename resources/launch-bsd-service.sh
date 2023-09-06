@@ -20,21 +20,21 @@
 # PhantomBot Launcher - BSD
 #
 # Please run the following to launch the bot, the chmod is required only once.
-# % chmod +x launch.sh
-# % ./launch.sh
+# % chmod +x launch-bsd-service.sh
+# % ./launch-bsd-service.sh
 #
 # You can also specify a custom path to the Java executable as the first parameter, using java=PATH
-# ex: ./launch.sh java=/usr/local/jdk-17/bin/java
+# ex: ./launch-bsd-service.sh java=/usr/local/jdk-17/bin/java
 #
 
 unset DISPLAY
 
 tmp=""
 
-JAVA=$(which java 2>/dev/null)
+JAVA=$(which /usr/local/*17*/bin/java 2>/dev/null)
 
 if [ "$JAVA" -eq "" ]; then
-    JAVA=$(which /usr/local/*17*/bin/java)
+    JAVA=$(which java)
 fi
 
 if [ -e "$1" ]; then
@@ -87,9 +87,9 @@ if [ $jvermaj -lt 17 ]; then
 
     echo
     echo "If you have already installed it, try specifying the path to the java executable as a parameter to this script"
-    echo "Example: ./launch.sh java=/usr/local/jdk-17/bin/java"
+    echo "Example: ./launch-bsd-service.sh java=/usr/local/jdk-17/bin/java"
 
     exit 1
 fi
 
-${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@"
+${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@"

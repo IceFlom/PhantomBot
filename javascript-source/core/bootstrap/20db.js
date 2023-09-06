@@ -18,9 +18,32 @@
 /**
  * db.js
  *
- * Extra DB fubctions
+ * Extra DB functions
  */
 (function () {
+    function wrapOpt(opt, converterFunc) {
+        return {
+            backing: opt,
+            converter: converterFunc,
+            isPresent: function() {
+                return this.backing !== undefined && this.backing !== null && this.backing.isPresent();
+            },
+            get: function() {
+                if (this.backing === undefined || this.backing === null) {
+                    return null;
+                }
+
+                let val = this.backing.get();
+
+                if (this.converter !== undefined && this.converter !== null) {
+                    val = this.converter(val);
+                }
+
+                return val;
+            }
+        }
+    }
+
     /**
      * @function getIniDbBoolean
      * @export $
@@ -39,6 +62,10 @@
         }
 
         return $.inidb.GetBoolean(fileName, '', key, defaultValue);
+    }
+
+    function optIniDbBoolean(fileName, key) {
+        return wrapOpt($.inidb.OptBoolean(fileName, '', key));
     }
 
     /**
@@ -90,6 +117,10 @@
         return $.jsString($.inidb.GetString(fileName, '', key, defaultValue));
     }
 
+    function optIniDbString(fileName, key) {
+        return wrapOpt($.inidb.OptString(fileName, '', key), $.jsString);
+    }
+
     /**
      * @function getSetIniDbString
      * @export $
@@ -127,9 +158,13 @@
      */
     function getIniDbNumber(fileName, key, defaultValue) {
         if (defaultValue === undefined || defaultValue === null) {
-            return $.inidb.GetInteger(fileName, '', key);
+            return $.inidb.GetLong(fileName, '', key);
         }
-        return $.inidb.GetInteger(fileName, '', key, defaultValue);
+        return $.inidb.GetLong(fileName, '', key, defaultValue);
+    }
+
+    function optIniDbNumber(fileName, key) {
+        return wrapOpt($.inidb.OptLong(fileName, '', key));
     }
 
     /**
@@ -140,12 +175,12 @@
      * @param {number}
      */
     function getSetIniDbNumber(fileName, key, defaultValue) {
-        let res = $.inidb.OptInteger(fileName, '', key);
+        let res = $.inidb.OptLong(fileName, '', key);
         if (res.isPresent()) {
             return res.get();
         }
 
-        $.inidb.SetInteger(fileName, '', key, defaultValue);
+        $.inidb.SetLong(fileName, '', key, defaultValue);
         return defaultValue;
     }
 
@@ -157,7 +192,7 @@
      * @param {number}
      */
     function setIniDbNumber(fileName, key, value) {
-        $.inidb.SetInteger(fileName, '', key, value);
+        $.inidb.SetLong(fileName, '', key, value);
     }
 
     /**
@@ -173,6 +208,10 @@
         }
 
         return $.inidb.GetFloat(fileName, '', key, defaultValue);
+    }
+
+    function optIniDbFloat(fileName, key) {
+        return wrapOpt($.inidb.OptFloats(fileName, '', key));
     }
 
     /**
@@ -293,6 +332,10 @@
     $.getIniDbString = getIniDbString;
     $.getIniDbNumber = getIniDbNumber;
     $.getIniDbFloat = getIniDbFloat;
+    $.optIniDbBoolean = optIniDbBoolean;
+    $.optIniDbString = optIniDbString;
+    $.optIniDbNumber = optIniDbNumber;
+    $.optIniDbFloat = optIniDbFloat;
     $.getSetIniDbBoolean = getSetIniDbBoolean;
     $.getSetIniDbString = getSetIniDbString;
     $.getSetIniDbNumber = getSetIniDbNumber;

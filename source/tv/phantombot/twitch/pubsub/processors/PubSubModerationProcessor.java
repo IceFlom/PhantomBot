@@ -16,7 +16,7 @@
  */
 package tv.phantombot.twitch.pubsub.processors;
 
-import com.gmt2001.ExecutorService;
+import com.gmt2001.util.concurrent.ExecutorService;
 import com.illusionaryone.Logger;
 import java.time.Instant;
 import java.util.Map;
@@ -85,7 +85,9 @@ public class PubSubModerationProcessor extends AbstractPubSubProcessor {
 
     @Override
     protected void onClose() {
-        this.future.cancel(true);
+        if (this.future != null) {
+            this.future.cancel(true);
+        }
         this.timeoutCache.clear();
     }
 

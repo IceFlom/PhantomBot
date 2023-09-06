@@ -20,6 +20,9 @@
 # PhantomBot Launcher - Docker
 #
 
+# Required Java major version
+javarequired=17
+
 # https://unix.stackexchange.com/questions/146756/forward-sigterm-to-child-in-bash/444676#444676
 prep_term()
 {
@@ -53,14 +56,85 @@ prep_term
 unset DISPLAY
 
 tmp=""
+success=0
+hwname="$( uname -m )"
+trylinux=0
+tryarm64=0
+tryarm32=0
 
-JAVA=$(which java)
+if [[ "$hwname" =~ "arm64" || "$hwname" =~ "aarch64" ]]; then
+    tryarm64=1
+elif [[ "$hwname" =~ "arm" ]]; then
+    tryarm32=1
+fi
+if [[ "$hwname" =~ "x86_64" || "$MACHTYPE" =~ "x86_64" ]]; then
+    trylinux=1
+fi
+
+if (( success == 0 )); then
+    JAVA="/opt/java/openjdk/bin/java"
+    jver=$($JAVA --version 2>/dev/null)
+    res=$?
+    jvermaj=$(echo "$jver" | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
+    if (( res == 0 && jvermaj == javarequired )); then
+        success=1
+    fi
+fi
+
+if (( success == 0 && trylinux == 1 )); then
+    JAVA="./java-runtime-linux/bin/java"
+    chm=$(chmod u+x $JAVA 2>/dev/null)
+    jver=$($JAVA --version 2>/dev/null)
+    res=$?
+    jvermaj=$(echo "$jver" | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
+    if (( res == 0 && jvermaj == javarequired )); then
+        success=1
+    fi
+fi
+
+if (( success == 0 && tryarm64 == 1 )); then
+    JAVA="./java-runtime-arm64/bin/java"
+    chm=$(chmod u+x $JAVA 2>/dev/null)
+    jver=$($JAVA --version 2>/dev/null)
+    res=$?
+    jvermaj=$(echo "$jver" | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
+    if (( res == 0 && jvermaj == javarequired )); then
+        success=1
+    fi
+fi
+
+if (( success == 0 && tryarm32 == 1 )); then
+    JAVA="./java-runtime-arm32/bin/java"
+    chm=$(chmod u+x $JAVA 2>/dev/null)
+    jver=$($JAVA --version 2>/dev/null)
+    res=$?
+    jvermaj=$(echo "$jver" | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
+    if (( res == 0 && jvermaj == javarequired )); then
+        success=1
+    fi
+fi
+
+if (( success == 0 )); then
+    JAVA=$(which java)
+    res1=$?
+    jver=$($JAVA --version 2>/dev/null)
+    res2=$?
+    jvermaj=$(echo "$jver" | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
+    if (( res1 == 0 && res2 == 0 && jvermaj == javarequired )); then
+        success=1
+    fi
+fi
+
+if (( success == 0 )); then
+    echo "PhantomBot requires Java ${javarequired} to run"
+    exit 1
+fi
 
 if mount | grep '/tmp' | grep -q noexec; then
     mkdir -p $(dirname $(readlink -f $0))/tmp
     tmp="-Djava.io.tmpdir=$(dirname $(readlink -f $0))/tmp"
 fi
 
-${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@" &
+${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@" &
 
 wait_term

@@ -641,13 +641,15 @@
                             subCommand = $.getSubCommandFromArguments(command, args),
                             isMod = $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod);
 
-                    if (isReady === false && command.equalsIgnoreCase($.botName) && args[0].equalsIgnoreCase('moderate')) {
+                    if (isReady === false && ($.equalsIgnoreCase(command, 'pbcore') || $.equalsIgnoreCase(command, $.botName)) && args[0].equalsIgnoreCase('moderate')) {
                         Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
                     }
 
                     // Check if the command exists or if the module is disabled or if the command is restricted.
                     if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command)) || !$.commandRestrictionMet(command, subCommand)) {
-                        $.log.error("Command doesn't exist or is disabled/restricted: " + command);
+                        if (!event.isHandeled() && !$.equalsIgnoreCase(command, 'pbinternalping')) {
+                            $.log.error("Command doesn't exist or is disabled/restricted: " + command);
+                        }
                         return;
                     }
 
@@ -664,6 +666,7 @@
                                 subcmd,
                                 parts;
 
+                        event.handeled();
                         if (alias.indexOf(';') === -1) {
                             parts = alias.split(' ');
                             aliasCommand = parts.shift();
@@ -687,7 +690,6 @@
                     // Check the command permission.
                     if ($.permCom(sender, command, subCommand, event.getTags()) !== 0) {
                         $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.perm.404', (!$.subCommandExists(command, subCommand) ? $.getCommandGroupName(command) : $.getSubCommandGroupName(command, subCommand))), $.getIniDbBoolean('settings', 'permComMsgEnabled', false));
-                        //consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
                         consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
                         return;
                     }
@@ -725,6 +727,7 @@
                         return;
                     }
 
+                    event.handeled();
                     // Call the command function.
                     callHook('command', event, false);
 

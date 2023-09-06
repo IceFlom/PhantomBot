@@ -715,8 +715,10 @@ java/util/zip/ZipFile$ZipFileInflaterInputStream
 java/util/zip/Inflater
 java/util/zip/Inflater$InflaterZStreamRef
 java/util/zip/ZipFile$InflaterCleanupAction
-java/util/jar/JarVerifier
+sun/security/util/SignatureFileVerifier
 sun/security/util/Debug
+sun/security/action/GetIntegerAction
+java/util/jar/JarVerifier
 java/security/CodeSigner
 java/io/ByteArrayOutputStream
 java/util/jar/Attributes

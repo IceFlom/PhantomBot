@@ -40,11 +40,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 
-import com.gmt2001.ExecutorService;
-import com.gmt2001.Reflect;
 import com.gmt2001.httpclient.URIUtil;
 import com.gmt2001.ratelimiters.ExponentialBackoff;
 import com.gmt2001.twitch.eventsub.EventSubSubscription.SubscriptionStatus;
+import com.gmt2001.util.Reflect;
+import com.gmt2001.util.concurrent.ExecutorService;
 import com.gmt2001.wsclient.WSClient;
 import com.gmt2001.wsclient.WsClientFrameHandler;
 
@@ -81,8 +81,9 @@ public final class EventSub extends SubmissionPublisher<EventSubInternalEvent> i
         debug("Starting EventSub");
         ExecutorService.schedule(() -> {
             try {
-                Reflect.instance().loadPackageRecursive(EventSubSubscriptionType.class.getName().substring(0, EventSubSubscriptionType.class.getName().lastIndexOf('.')));
-                Reflect.instance().getSubTypesOf(EventSubSubscriptionType.class).stream().forEachOrdered((c) -> {
+                Reflect.instance().loadPackageRecursive(EventSubSubscriptionType.class.getName()
+                    .substring(0, EventSubSubscriptionType.class.getName().lastIndexOf('.')))
+                .getSubTypesOf(EventSubSubscriptionType.class).stream().forEachOrdered((c) -> {
                     for (Constructor<?> constructor : c.getConstructors()) {
                         if (constructor.getParameterCount() == 0) {
                             try {
