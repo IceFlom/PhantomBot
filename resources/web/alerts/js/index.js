@@ -250,11 +250,6 @@ $(function () {
             let played = [];
             for (let i = 0; i < queue.length; i++) {
                 let event = queue.slice(i, i + 1)[0];
-                /** TODO - Handle TTS, before:
-
-                if (event.tts_signal !== undefined) {
-                  handleTts(event);
-                } */
                 let ignoreIsPlaying = (event.ignoreIsPlaying !== undefined ? event.ignoreIsPlaying : false);
                 let isplayed = false;
 
@@ -330,36 +325,6 @@ $(function () {
                 }
             }
         } finally {
-            isPlaying = false;
-        }
-    }
-
-    /*
-     * @function Handles TTS.
-     *
-     * @param {Object} json
-     */
-    function handleTts(json) {
-        // Make sure we can allow audio hooks.
-        if (getOptionSetting('enableAudioHooks', getOptionSetting('allow-audio-hooks', 'false')) === 'true') {
-            let message = json.tts_signal,
-                audio;
-
-            // Create a new audio file.
-            audio = new Audio(message);
-            // Set the volume.
-            audio.volume = getOptionSetting('audioHookVolume', getOptionSetting('audio-hook-volume', '1'));
-            // Add an event handler.
-            $(audio).on('ended', function() {
-                audio.currentTime = 0;
-                isPlaying = false;
-            });
-            playingAudioFiles.push(audio);
-            // Play the audio.
-            audio.play().catch(function(err) {
-                console.log(err);
-            });
-        } else {
             isPlaying = false;
         }
     }
