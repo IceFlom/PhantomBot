@@ -334,7 +334,7 @@
                 return;
             }
             // sender == target
-            if (target.equalsIgnoreCase(sender)) {
+            if ($.equalsIgnoreCase(target, sender)) {
                 selfKill(sender);
                 return;
             }
@@ -368,14 +368,14 @@
                 $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.usage'));
                 return;
             }
-            if (subcommand.equalsIgnoreCase("toggletimeout")) {
+            if ($.equalsIgnoreCase(subcommand, "toggletimeout")) {
                 toggleTimeoutEnabled();
                 $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'timeoutenabled', timeoutEnabled));
                 return;
             }
 
             var value = args[1];
-            if (subcommand.equalsIgnoreCase("killtimeout")) {
+            if ($.equalsIgnoreCase(subcommand, "killtimeout")) {
                 if (!isNaN(value)) {
                     setKilltimeout(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'killtimeout', killTimeout));
@@ -384,7 +384,7 @@
                 }
                 return;
             }
-            if (subcommand.equalsIgnoreCase("jailtimeout")) {
+            if ($.equalsIgnoreCase(subcommand, "jailtimeout")) {
                 if (!isNaN(value)) {
                     setJailtimeout(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'jailtimeout', jailTimeout));
@@ -393,7 +393,7 @@
                 }
                 return;
             }
-            if (subcommand.equalsIgnoreCase("mincostkill")) {
+            if ($.equalsIgnoreCase(subcommand, "mincostkill")) {
                 if (!isNaN(value)) {
                     setMinCostKill(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostkill', $.getPointsString(minCostKill)));
@@ -402,7 +402,7 @@
                 }
                 return;
             }
-            if (subcommand.equalsIgnoreCase("maxcostkill")) {
+            if ($.equalsIgnoreCase(subcommand, "maxcostkill")) {
                 if (!isNaN(value)) {
                     setMaxCostKill(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostkill', $.getPointsString(maxCostKill)));
@@ -411,7 +411,7 @@
                 }
                 return;
             }
-            if (subcommand.equalsIgnoreCase("mincostinjured")) {
+            if ($.equalsIgnoreCase(subcommand, "mincostinjured")) {
                 if (!isNaN(value)) {
                     setMinCostInjured(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'mincostinjured', $.getPointsString(minCostInjured)));
@@ -420,7 +420,7 @@
                 }
                 return;
             }
-            if (subcommand.equalsIgnoreCase("maxcostinjured")) {
+            if ($.equalsIgnoreCase(subcommand, "maxcostinjured")) {
                 if (!isNaN(value)) {
                     setMaxCostInjured(value);
                     $.say($.whisperPrefix(sender) + $.lang.get('killcommand.set.updated', 'maxcostinjured', $.getPointsString(maxCostInjured)));

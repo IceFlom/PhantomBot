@@ -202,12 +202,12 @@
                 /**
                  * @commandpath slot onlineonly - Toggles the onlineonly option.
                  */
-                if (args[0].equalsIgnoreCase('onlineonly')) {
+                if ($.equalsIgnoreCase(args[0], 'onlineonly')) {
                     toggleOnlineonly(sender);
                     return;
                 }
 
-                if (args[0].equalsIgnoreCase("cost")) {
+                if ($.equalsIgnoreCase(args[0], "cost")) {
                     var costvalue = args[1];
                     if (!isNaN(costvalue)) {
                         updateCost(costvalue);
