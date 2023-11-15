@@ -28,14 +28,44 @@
      * @function load
      */
     function load(force) {
-        let curLang = $.jsString($.getSetIniDbString('settings', 'lang', 'english'));
-        $.bot.loadScriptRecursive('./lang/english', true, (force ? force : false));
+        let curLang = $.getSetIniDbString('settings', 'lang', 'english');
+        loadLang('./lang/english', force);
         if (curLang !== 'english') {
-            $.bot.loadScriptRecursive('./lang/' + curLang, true, (force ? force : false));
+            loadLang('./lang/' + curLang, force);
         }
 
         if ($.isDirectory('./scripts/lang/custom')) {
-            $.bot.loadScriptRecursive('./lang/custom', true, (force ? force : false));
+            loadLang('./lang/custom', force);
+        }
+    }
+
+    function loadLang(path, force) {
+        $.bot.loadScriptRecursive(path, true, (force ? force : false));
+        loadJSON(path);
+    }
+
+    function loadJSON(path) {
+        if (!path.startsWith('./scripts/')) {
+            path = './scripts/' + path;
+        }
+
+        let files = $.findFiles(path, '');
+
+        for (let x in files) {
+            let fPath = path + '/' + files[x];
+            try {
+                if ($.isDirectory(fPath)) {
+                    loadJSON(fPath);
+                } else if (fPath.endsWith('.json')) {
+                    let jso = JSON.parse($.readFileString(fPath).trim());
+                    for (let y in jso) {
+                        register(y, jso[y]);
+                    }
+                }
+            } catch (e) {
+                $.log.error('Error loading ' + fPath);
+                $.log.error(e);
+            }
         }
     }
 
@@ -115,6 +145,14 @@
     function exists(key) {
         return key !== undefined && key !== null && data[key.toLowerCase()] !== undefined && data[key.toLowerCase()] !== null;
     }
+
+    $.bind('webPanelSocketUpdate', function (event) {
+        if ($.equalsIgnoreCase(event.getScript(), 'core/bootstrap/lang')) {
+            if ($.equalsIgnoreCase(event.getId(), 'langUpdated')) {
+                load(true);
+            }
+        }
+    });
 
     /** Export functions to API */
     $.lang = {

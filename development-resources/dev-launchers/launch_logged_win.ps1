@@ -6,8 +6,8 @@ $origEnvDir = [Environment]::CurrentDirectory
 Push-Location $PSScriptRoot
 [Environment]::CurrentDirectory = $PSScriptRoot
 
-$path = ".\PhantomBot_Transcript_$((get-date).ToString("MM-dd-yyyy-hhmmss")).txt"
-.\launch.bat --nowt @args 2>&1 | Tee-Object -FilePath $path
+$path = ".\PhantomBot_Transcript_$((get-date).ToString("MM-dd-yyyy-HHmmss")).txt"
+.\launch.bat @args 2>&1 | Tee-Object -FilePath $path
 
 Pop-Location
 [Environment]::CurrentDirectory = $origEnvDir

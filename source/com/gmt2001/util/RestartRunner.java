@@ -17,6 +17,8 @@
 package com.gmt2001.util;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.json.JSONStringer;
 
@@ -25,6 +27,7 @@ import com.gmt2001.util.concurrent.ExecutorService;
 
 import net.engio.mbassy.listener.Handler;
 import tv.phantombot.CaselessProperties;
+import tv.phantombot.RepoVersion;
 import tv.phantombot.event.EventBus;
 import tv.phantombot.event.Listener;
 import tv.phantombot.event.webpanel.websocket.WebPanelSocketUpdateEvent;
@@ -93,7 +96,7 @@ public final class RestartRunner implements Listener {
          * @botpropertycatsort restartcmd 50 50 Misc
          */
         return CaselessProperties.instance().containsKey("restartcmd")
-                && !CaselessProperties.instance().getProperty("restartcmd").isBlank();
+                && !CaselessProperties.instance().getProperty("restartcmd").isBlank() || !RepoVersion.isDocker();
     }
 
     /**
@@ -102,7 +105,8 @@ public final class RestartRunner implements Listener {
      * The broadcast of the 0 exit code may not always work depending on timings of the bot shutdown and the method used to initiate the shutdown
      */
     public void restartBot() {
-        if (this.canRestart()) {
+        if (CaselessProperties.instance().containsKey("restartcmd")
+                && !CaselessProperties.instance().getProperty("restartcmd").isBlank()) {
             String cmd;
             String osname = System.getProperty("os.name").toLowerCase();
             if (osname.contains("win")) {
@@ -121,7 +125,8 @@ public final class RestartRunner implements Listener {
 
             ExecutorService.execute(() -> {
                 try {
-                    int exitCode = Runtime.getRuntime().exec(String.format(cmd, CaselessProperties.instance().getProperty("restartcmd"))).waitFor();
+                    Process p = Runtime.getRuntime().exec(String.format(cmd, CaselessProperties.instance().getProperty("restartcmd")));
+                    int exitCode = p.waitFor();
                     if (exitCode == 0 || exitCode == 143) {
                         JSONStringer jsonObject = new JSONStringer();
                         jsonObject.object().key("query_id").value("restart-bot-result").key("results").object()
@@ -133,6 +138,20 @@ public final class RestartRunner implements Listener {
                                 .key("success").value(false).key("code").value(exitCode).endObject().endObject();
                         WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
                     }
+                    try (Stream<String> stdout = p.inputReader().lines()) {
+                        List<String> s = stdout.toList();
+                        if (!s.isEmpty()) {
+                            com.gmt2001.Console.out.println("[RestartRunner] STDOUT");
+                            s.forEach(l -> com.gmt2001.Console.out.println("   " + l));
+                        }
+                    }
+                    try (Stream<String> stderr = p.errorReader().lines()) {
+                        List<String> s = stderr.toList();
+                        if (!s.isEmpty()) {
+                            com.gmt2001.Console.err.println("[RestartRunner] STDERR");
+                            s.forEach(l -> com.gmt2001.Console.err.println("   " + l));
+                        }
+                    }
                 } catch (IOException | InterruptedException ex) {
                     com.gmt2001.Console.err.printStackTrace(ex);
                     JSONStringer jsonObject = new JSONStringer();
@@ -141,6 +160,8 @@ public final class RestartRunner implements Listener {
                     WebSocketFrameHandler.broadcastWsFrame("/ws/panel", WebSocketFrameHandler.prepareTextWebSocketResponse(jsonObject.toString()));
                 }
             });
+        } else if (!RepoVersion.isDocker()) {
+            System.exit(53);
         }
     }
 }

@@ -52,12 +52,17 @@
 
     function addToQueue(sender) {
         var rankStr = $.resolveRank(sender),
-                message = $.getIniDbString('greeting', sender, undefined),
-                lastUserGreeting = $.getIniDbNumber('greetingCoolDown', sender, 0),
-                now = $.systemTime();
+            message = $.optIniDbString('greeting', sender),
+            lastUserGreeting = $.getIniDbNumber('greetingCoolDown', sender, 0),
+            now = $.systemTime();
+
         if (lastUserGreeting + greetingCooldown < now) {
-            if (message !== undefined) {
-                greetingQueue.add(message.replace('(name)', rankStr));
+            if (message.isPresent()) {
+                message = message.get().replace('(name)', rankStr); // Keep (name)
+                message = $.transformers.tags(null, message, ['twitch', ['noevent']]);
+
+                greetingQueue.add(message);
+
                 $.inidb.set('greetingCoolDown', sender, now);
             }
         }

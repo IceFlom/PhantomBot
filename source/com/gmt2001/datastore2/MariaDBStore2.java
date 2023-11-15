@@ -16,13 +16,16 @@
  */
 package com.gmt2001.datastore2;
 
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Map;
 
 import org.jooq.DataType;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.SQLDataType;
-import org.mariadb.jdbc.MariaDbPoolDataSource;
+import org.mariadb.jdbc.MariaDbDataSource;
 
 import tv.phantombot.CaselessProperties;
 
@@ -36,6 +39,10 @@ public final class MariaDBStore2 extends Datastore2 {
      * MariaDB {@code LONGTEXT} type
      */
     private static final DataType<String> LONGTEXT = new DefaultDataType<>(SQLDialect.MARIADB, SQLDataType.CLOB, "longtext", "char");
+    /**
+     * The selected schema
+     */
+    private final String schema;
 
     /**
      * Constructor
@@ -47,21 +54,38 @@ public final class MariaDBStore2 extends Datastore2 {
             Class.forName("org.mariadb.jdbc.Driver");
         } catch (ClassNotFoundException ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
+            this.schema = null;
             return;
         }
 
         String connectionString;
-        if (CaselessProperties.instance().getProperty("mysqlport", "").isEmpty()) {
-            connectionString = "jdbc:mariadb://" + CaselessProperties.instance().getProperty("mysqlhost", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
-        } else {
-            connectionString = "jdbc:mariadb://" + CaselessProperties.instance().getProperty("mysqlhost", "") + ":" + CaselessProperties.instance().getProperty("mysqlport", "") + "/" + CaselessProperties.instance().getProperty("mysqlname", "") + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
+        String dbname = CaselessProperties.instance().getProperty("mysqlname", "");
+
+        if (dbname.isBlank()) {
+            dbname = "phantombot";
         }
 
-        MariaDbPoolDataSource dataSource = new MariaDbPoolDataSource();
+        this.schema = dbname;
+
+        if (CaselessProperties.instance().getProperty("mysqlport", "").isEmpty()) {
+            connectionString = "jdbc:mariadb://" + CaselessProperties.instance().getProperty("mysqlhost", "") + "/" + dbname + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
+        } else {
+            connectionString = "jdbc:mariadb://" + CaselessProperties.instance().getProperty("mysqlhost", "") + ":" + CaselessProperties.instance().getProperty("mysqlport", "") + "/" + dbname + "?useSSL=" + (CaselessProperties.instance().getPropertyAsBoolean("mysqlssl", false) ? "true" : "false") + "&user=" + CaselessProperties.instance().getProperty("mysqluser", "") + "&password=" + CaselessProperties.instance().getProperty("mysqlpass", "");
+        }
+
+        MariaDbDataSource dataSource = new MariaDbDataSource();
         try {
             dataSource.setUrl(connectionString);
         } catch (SQLException ex) {
             ex.printStackTrace(System.err);
+        }
+
+        try (Connection connection = dataSource.getConnection()) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("CREATE DATABASE IF NOT EXISTS `" + dbname.replaceAll("`", "``") + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;");
+            }
+        } catch (SQLException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex, Map.of("_____report", Boolean.FALSE));
         }
 
         this.init(dataSource, SQLDialect.MARIADB);
@@ -70,5 +94,12 @@ public final class MariaDBStore2 extends Datastore2 {
     @Override
     public DataType<String> longTextDataType() {
         return LONGTEXT;
+    }
+
+    @Override
+    protected void prepareConnection(Connection connection) throws SQLException {
+        super.prepareConnection(connection);
+        connection.setCatalog(this.schema);
+        connection.setSchema(this.schema);
     }
 }

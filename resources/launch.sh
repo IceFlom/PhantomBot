@@ -23,9 +23,7 @@
 # % chmod +x launch.sh
 # % ./launch.sh
 #
-# Optional command line parameters
-# --daemon - Enables daemon mode (No console input)
-# --java </path/to/jre/bin/java> - Overrides the first Java executable attempted
+# Usage available by using the --help flag
 #
 
 unset DISPLAY
@@ -51,10 +49,26 @@ fedoramin=37
 
 #############################
 
+# Determine the directory of the running script
+pushd . > '/dev/null';
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}";
+
+while [ -h "$SCRIPT_PATH" ];
+do
+    cd "$( dirname -- "$SCRIPT_PATH"; )";
+    SCRIPT_PATH="$( readlink -f -- "$SCRIPT_PATH"; )";
+done
+
+cd "$( dirname -- "$SCRIPT_PATH"; )" > '/dev/null';
+SCRIPT_PATH="$( pwd; )";
+popd  > '/dev/null'
+
+# Switch to script directory
+pushd "$SCRIPT_PATH"
+
 # Internal vars
 tmp=""
 interactive="-Dinteractive"
-pwd=""
 hwname="$( uname -m )"
 trylinux=0
 trymac=0
@@ -64,50 +78,49 @@ daemon=0
 myjava=0
 JAVA=""
 
-isjava=0
-for arg do
-  shift
-  if [[ "$arg" = "--daemon" ]]; then
-    daemon=1
-    continue
-  fi
-  if (( isjava == 1 )); then
-    JAVA="$arg"
-    myjava=1
-    isjava=0
-    continue
-  fi
-  if [[ "$arg" = "--java" ]]; then
-    isjava=1
-    continue
-  fi
-  set -- "$@" "$arg"
+POSITIONAL_ARGS=()
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --daemon)
+      daemon=1
+      shift
+      ;;
+    --java)
+      JAVA="$2"
+      myjava=1
+      shift
+      shift
+      ;;
+    --help)
+      echo "Usage: launch.sh [options] [args]"
+      echo ""
+      echo "Options:"
+      echo "  --daemon                        Enables daemon mode (STDIN disabled)"
+      echo "  --java </path/to/jre/bin/java>  Overrides the first Java executable attempted"
+      echo "  args                            Arguments to pass to PhantomBot.jar"
+      echo ""
+      echo "JVM flags can be passed by editing the java.opt.custom file"
+      exit 0
+    ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
 done
 
-# Get dir of this script
-# Special handling for macOS
-if [[ "$OSTYPE" =~ "darwin" ]]; then
-    SOURCE="${BASH_SOURCE[0]}"
-    while [ -h "$SOURCE" ]; do
-        DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-        SOURCE="$(readlink "$SOURCE")"
-        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-    done
-    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-    pwd=$DIR
-else
-    pwd=$(dirname $(readlink -f $0))
-fi
+set -- "${POSITIONAL_ARGS[@]}"
 
-# cd to script dir
-cd $pwd
-
+# Ensure running user has chown if daemon mode
+# Also disable interactive switch
 if (( daemon == 1 )); then
     interactive=""
     if [[ ! -O "PhantomBot.jar" ]]; then
         echo "The directory is not chown by the service user"
         echo "Please run the following command to fix this:"
-        echo "   sudo chown ${EUID} ${pwd}"
+        echo "   sudo chown ${EUID} ${SCRIPT_PATH}"
 
         exit 1
     fi
@@ -268,9 +281,23 @@ if (( success == 0 )); then
     exit 1
 fi
 
+chm=$(chmod u+x $( dirname -- "$( dirname -- "$JAVA" )" )/lib/jspawnhelper 2>/dev/null)
+
 if mount | grep '/tmp' | grep -q noexec; then
-    mkdir -p ${pwd}/tmp
-    tmp="-Djava.io.tmpdir=${pwd}/tmp"
+    mkdir -p ${SCRIPT_PATH}/tmp
+    tmp="-Djava.io.tmpdir=${SCRIPT_PATH}/tmp"
 fi
 
-${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security ${interactive} -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@"
+function launch {
+    touch java.opt.custom
+
+    ${JAVA} @java.opt ${tmp} ${interactive} @java.opt.custom -jar PhantomBot.jar "$@"
+
+    if (( $? == 53 )); then
+        launch
+    fi
+}
+
+launch
+
+popd
