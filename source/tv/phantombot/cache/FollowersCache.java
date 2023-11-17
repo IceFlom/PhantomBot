@@ -17,8 +17,12 @@
 package tv.phantombot.cache;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -26,10 +30,10 @@ import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.gmt2001.ExecutorService;
 import com.gmt2001.datastore.DataStore;
 import com.gmt2001.twitch.cache.ViewerCache;
 import com.gmt2001.twitch.eventsub.EventSub;
+import com.gmt2001.util.concurrent.ExecutorService;
 
 import reactor.core.publisher.Mono;
 import tv.phantombot.CaselessProperties;
@@ -53,6 +57,9 @@ public final class FollowersCache {
     private ScheduledFuture<?> fullUpdateTimeout = null;
     private int total = 0;
     private boolean killed = false;
+    private Map<String, Instant> recent = new ConcurrentHashMap<>();
+    private static final long RECENT_TIME_M = 15;
+    private static final long MAX_ANNOUNCE_MINUTES = 30;
 
     public static FollowersCache instance() {
         return INSTANCE;
@@ -67,6 +74,12 @@ public final class FollowersCache {
             } catch (Exception ex) {
                 com.gmt2001.Console.err.printStackTrace(ex);
             }
+            Instant now = Instant.now();
+            recent.entrySet().forEach(kv -> {
+                if (kv.getValue().isBefore(now)) {
+                    recent.remove(kv.getKey());
+                }
+            });
         }, 30, 30, TimeUnit.SECONDS);
         this.fullUpdate = ExecutorService.submit(() -> {
             Thread.currentThread().setName("FollowersCache::fullUpdateCache");
@@ -175,14 +188,16 @@ public final class FollowersCache {
     public void addFollow(String loginName, String followedAt, boolean silent) {
         DataStore datastore = PhantomBot.instance().getDataStore();
         loginName = loginName.toLowerCase();
-        if (!datastore.exists("followed", loginName)) {
-            if (!silent) {
-                EventBus.instance().postAsync(new TwitchFollowEvent(loginName, followedAt));
-            }
-            datastore.set("followed", loginName, "true");
-        }
         if (!datastore.exists("followedDate", loginName)) {
             datastore.set("followedDate", loginName, followedAt);
+        }
+        if (!datastore.exists("followed", loginName)) {
+            datastore.set("followed", loginName, "true");
+            if (!silent && !this.recent.containsKey(loginName)
+                && Duration.between(this.followedDate(loginName), ZonedDateTime.now()).abs().toMinutes() < MAX_ANNOUNCE_MINUTES) {
+                this.recent.put(loginName, Instant.now().plus(RECENT_TIME_M, ChronoUnit.MINUTES));
+                EventBus.instance().postAsync(new TwitchFollowEvent(loginName, followedAt));
+            }
         }
     }
 

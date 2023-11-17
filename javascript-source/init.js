@@ -50,9 +50,15 @@
      * @param {string} where The location of the error
      * @param {java.lang.Exception_or_Error} ex The exception or error object to log
      */
-    function handleException(where, ex) {
+    function handleException(where, ex, noReport) {
         let loc = 0;
         let errmsg = null;
+        let data = new Packages.java.util.HashMap();
+
+        if (noReport === true) {
+            data.put("_____report", false);
+        }
+
         try {
             if (where === undefined || where === null || (typeof where) !== 'string') {
                 try {
@@ -90,23 +96,22 @@
                 consoleLn("Sending stack trace to error log...");
                 try {
                     loc = 6;
-                    Packages.com.gmt2001.Console.err.printStackTrace(ex.javaException, errmsg);
+                    Packages.com.gmt2001.Console.err.printStackTrace(ex.javaException, data, errmsg, false);
                 } catch (e) {
                     loc = 7;
-                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), errmsg);
+                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), data, errmsg, false);
                 }
             } else {
                 try {
                     loc = 8;
-                    Packages.com.gmt2001.Console.err.printStackTrace(ex, errmsg);
+                    Packages.com.gmt2001.Console.err.printStackTrace(ex, data, errmsg, false);
                 } catch (e) {
                     loc = 9;
-                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), errmsg);
+                    Packages.com.gmt2001.Console.err.printStackTrace(new Packages.java.lang.RuntimeException("Unable to printStackTrace"), data, errmsg, false);
                 }
             }
         } catch (oops) {
             let oopsmsg = "Location[handleException] Encountered an unrecoverable exception while trying to handle another exception";
-            let data = new Packages.java.util.HashMap();
             try {
                 data.put("loc", loc);
             } catch (e) {
@@ -635,19 +640,28 @@
              */
             $api.on($script, 'command', function (event) {
                 try {
-                    let sender = event.getSender(),
-                            command = event.getCommand(),
+                    let sender;
+                    try {
+                        sender = event.getSender();
+                    } catch (e) {
+                        $.consoleLn('Rejected an invalid CommandEvent');
+                        handleException('command', e, true);
+                        return;
+                    }
+                    let command = event.getCommand(),
                             args = event.getArgs(),
                             subCommand = $.getSubCommandFromArguments(command, args),
                             isMod = $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod);
 
-                    if (isReady === false && command.equalsIgnoreCase($.botName) && args[0].equalsIgnoreCase('moderate')) {
+                    if (isReady === false && ($.equalsIgnoreCase(command, 'pbcore') || $.equalsIgnoreCase(command, $.botName)) && args[0].equalsIgnoreCase('moderate')) {
                         Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();
                     }
 
                     // Check if the command exists or if the module is disabled or if the command is restricted.
                     if (!$.commandExists(command) || !isModuleEnabled($.getCommandScript(command)) || !$.commandRestrictionMet(command, subCommand)) {
-                        $.log.error("Command doesn't exist or is disabled/restricted: " + command);
+                        if (!event.isHandeled() && !$.equalsIgnoreCase(command, 'pbinternalping')) {
+                            $.log.error("Command doesn't exist or is disabled/restricted: " + command);
+                        }
                         return;
                     }
 
@@ -664,6 +678,7 @@
                                 subcmd,
                                 parts;
 
+                        event.handeled();
                         if (alias.indexOf(';') === -1) {
                             parts = alias.split(' ');
                             aliasCommand = parts.shift();
@@ -687,7 +702,6 @@
                     // Check the command permission.
                     if ($.permCom(sender, command, subCommand, event.getTags()) !== 0) {
                         $.sayWithTimeout($.whisperPrefix(sender) + $.lang.get('cmd.perm.404', (!$.subCommandExists(command, subCommand) ? $.getCommandGroupName(command) : $.getSubCommandGroupName(command, subCommand))), $.getIniDbBoolean('settings', 'permComMsgEnabled', false));
-                        //consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
                         consoleDebug('Command !' + command + ' was not sent due to the user not having permission for it.');
                         return;
                     }
@@ -725,6 +739,7 @@
                         return;
                     }
 
+                    event.handeled();
                     // Call the command function.
                     callHook('command', event, false);
 

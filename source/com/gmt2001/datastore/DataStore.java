@@ -16,6 +16,7 @@
  */
 package com.gmt2001.datastore;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,7 +29,6 @@ import java.util.stream.Collectors;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.InsertValuesStep3;
-import org.jooq.Nullability;
 import org.jooq.Record1;
 import org.jooq.SelectConnectByStep;
 import org.jooq.SelectForUpdateStep;
@@ -37,9 +37,12 @@ import org.jooq.SelectSeekStep1;
 import org.jooq.SelectWhereStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import com.gmt2001.datastore2.Datastore2;
+import com.gmt2001.datastore2.H2Store2;
+import com.gmt2001.datastore2.SQLiteStore2;
 
 /**
  * Provides access to the database in a key-value store style
@@ -95,10 +98,6 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      */
     public Optional<Table<?>> findTable(String fName) {
         return Datastore2.instance().tables().stream().filter(t -> t.getName().equalsIgnoreCase("phantombot_" + fName)).findFirst();
-    }
-
-    private void invalidateTableCache() {
-        Datastore2.instance().invalidateTableCache();
     }
 
     /**
@@ -656,9 +655,47 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
     }
 
     /**
+     * Returns the record for the given table, section, and key
+     *
+     * @param fName a table name, without the {@code phantombot_} prefix
+     * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
+     * @param key the value of the {@code variable} column to retrieve
+     * @return an {@link Optional} that may contain a {@link SectionVariableValueRecord} if the row exists
+     */
+    public Optional<SectionVariableValueRecord> OptRecord(String fName, String section, String key) {
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName, false);
+
+        if (table == null) {
+            return Optional.empty();
+        } else {
+            return this.OptRecord(table, section, key);
+        }
+    }
+
+    /**
+     * Returns the record for the given table, section, and key
+     *
+     * @param table the table to search
+     * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
+     * @param key the value of the {@code variable} column to retrieve
+     * @return an {@link Optional} that may contain a {@link SectionVariableValueRecord} if the row exists
+     */
+    public Optional<SectionVariableValueRecord> OptRecord(SectionVariableValueTable table, String section, String key) {
+        Optional<SectionVariableValueRecord> res;
+        if (section == null) {
+            res = dsl().fetchOptional(table, table.VARIABLE.eq(key));
+        } else {
+            res = dsl().fetchOptional(table, table.SECTION.eq(section), table.VARIABLE.eq(key));
+        }
+
+        return res.map(r -> r.with(table));
+    }
+
+    /**
      * Returns the value of the {@code value} column for the given table, section, and key as a string
      * <p>
      * It is not possible to distinguish between the SQL value {@code NULL} and the table/row not being found with this method
+     *
      * @param fName a table name, without the {@code phantombot_} prefix
      * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
      * @param key the value of the {@code variable} column to retrieve
@@ -673,27 +710,14 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * <p>
      * A return value of {@code null} may denote that the table/row is not found, or that the actual stored value is SQL {@code NULL}.
      * Use {@link #HasKey(String, String, String)} to verify if the row exists
+     *
      * @param fName a table name, without the {@code phantombot_} prefix
      * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
      * @param key the value of the {@code variable} column to retrieve
      * @return the value
      */
     public String GetString(String fName, String section, String key) {
-        Optional<Table<?>> otbl = findTable(fName);
-
-        if (otbl.isPresent()) {
-            Table<?> tbl = otbl.get();
-            if (section == null) {
-                return dsl().select(field("value", tbl)).from(tbl)
-                .where(field("variable", tbl).eq(key)).fetchAny(field("value", tbl));
-            } else {
-                return dsl().select(field("value", tbl)).from(tbl)
-                .where(field("section", tbl).eq(section),
-                field("variable", tbl).eq(key)).fetchAny(field("value", tbl));
-            }
-        }
-
-        return null;
+        return this.OptRecord(fName, section, key).map(r -> r.value()).orElse(null);
     }
 
     /**
@@ -718,43 +742,12 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param value the new value of the {@code value} column
      */
     public void SetString(String fName, String section, String key, String value) {
-        Optional<Table<?>> otbl = findTable(fName);
-
-        if (!otbl.isPresent()) {
-            this.AddFile(fName);
-            otbl = findTable(fName);
-        }
-
-        if (otbl.isPresent()) {
-            this.SetString(dsl(), otbl.get(), this.HasKey(fName, section, key), section, key, value);
-        }
-    }
-
-    /**
-     * Sets the value of the {@code value} column for the given table, section, and key as a string
-     *
-     * @param dsl the {@link DSLContext} on which to execute the query
-     * @param tbl the {@link Table} to operate on
-     * @param hasKey {@code true} if the key already exists and an {@code UPDATE} should be performed
-     * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
-     * @param key the value of the {@code variable} column to update
-     * @param value the new value of the {@code value} column
-     */
-    private void SetString(DSLContext dsl, Table<?> tbl, boolean hasKey, String section, String key, String value) {
-        if (hasKey) {
-            if (section == null) {
-                dsl.update(tbl)
-                .set(field("value", tbl), value)
-                .where(field("variable", tbl).eq(key)).execute();
-            } else {
-                dsl.update(tbl)
-                .set(field("value", tbl), value)
-                .where(field("section", tbl).eq(section),
-                field("variable", tbl).eq(key)).execute();
-            }
-        } else {
-            dsl.insertInto(tbl).values(section, key, value).execute();
-        }
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName);
+        SectionVariableValueRecord record = this.OptRecord(table, section, key)
+            .orElseGet(() -> new SectionVariableValueRecord(table, section, key, value));
+        record.value(value);
+        record.changed(true);
+        record.merge();
     }
 
     /**
@@ -786,43 +779,42 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
             return;
         }
 
-        Optional<Table<?>> otbl = findTable(fName);
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName, false);
 
-        if (otbl.isPresent()) {
-            Table<?> tbl = otbl.get();
-            List<String> updates;
-            if (section == null) {
-                updates = dsl().select(field("variable", tbl)).from(tbl).where(field("variable", tbl).in(keys)).fetch(field("variable", tbl));
-            } else {
-                updates = dsl().select(field("variable", tbl)).from(tbl).where(field("section", tbl).eq(section), field("variable", tbl).in(keys)).fetch(field("variable", tbl));
-            }
+        if (table != null) {
             final int famount = amount;
             final String sfamount = Integer.toString(famount);
             dsl().batched(c -> {
-                c.dsl().startTransaction().execute();
-                if (section == null) {
-                    c.dsl().update(tbl)
-                    .set(Collections.singletonMap(field("value", tbl), field("value", tbl).cast(SQLDataType.INTEGERUNSIGNED).add(famount)))
-                    .where(field("variable", tbl).in(keys)).execute();
-                } else {
-                    c.dsl().update(tbl)
-                    .set(Collections.singletonMap(field("value", tbl), field("value", tbl).cast(SQLDataType.INTEGERUNSIGNED).add(famount)))
-                    .where(field("section", tbl).eq(section), field("variable", tbl).in(keys)).execute();
+                try {
+                    c.dsl().startTransaction().execute();
+                } catch (DataAccessException ex) {
+                    if (!ex.getMessage().contains("cannot start a transaction within a transaction")) {
+                        throw ex;
+                    }
                 }
 
-                if (updates.size() < keys.length) {
+                int numUpdate;
+                if (section == null) {
+                    numUpdate = c.dsl().update(table)
+                    .set(Collections.singletonMap(table.VALUE, table.VALUE.cast(SQLDataType.INTEGERUNSIGNED).add(famount)))
+                    .where(table.VARIABLE.in(keys)).execute();
+                } else {
+                    numUpdate = c.dsl().update(table)
+                    .set(Collections.singletonMap(table.VALUE, table.VALUE.cast(SQLDataType.INTEGERUNSIGNED).add(famount)))
+                    .where(table.SECTION.eq(section), table.VARIABLE.in(keys)).execute();
+                }
+
+                if (numUpdate < keys.length) {
                     String isection = section;
                     if (isection == null) {
                         isection = "";
                     }
 
                     InsertValuesStep3<?, String, String, String> iq = c.dsl()
-                    .insertInto(tbl, field("section", tbl), field("variable", tbl), field("value", tbl));
+                    .insertInto(table, table.SECTION, table.VARIABLE, table.VALUE);
 
                     for (String key : keys) {
-                        if (!updates.contains(key)) {
-                            iq = iq.values(isection, key, sfamount);
-                        }
+                        iq = iq.values(isection, key, sfamount);
                     }
 
                     iq.onDuplicateKeyIgnore().execute();
@@ -841,31 +833,30 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param fName a table name, without the {@code phantombot_} prefix
      * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
      * @param keys the values of the {@code variable} column to update
-     * @param value the new values to set the {@code value} column to
+     * @param values the new values to set the {@code value} column to
      */
-    public void SetBatchString(String fName, String section, String[] key, String[] value) {
-        Optional<Table<?>> otbl = findTable(fName);
+    public void SetBatchString(String fName, String section, String[] keys, String[] values) {
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName, false);
 
-        if (otbl.isPresent()) {
-            Table<?> tbl = otbl.get();
-            List<String> updates;
-            if (section == null) {
-                updates = dsl().select(field("variable", tbl)).from(tbl).where(field("variable", tbl).in(key)).fetch(field("variable", tbl));
-            } else {
-                updates = dsl().select(field("variable", tbl)).from(tbl).where(field("section", tbl).eq(section), field("variable", tbl).in(key)).fetch(field("variable", tbl));
-            }
+        if (table != null) {
             dsl().batched(c -> {
-                c.dsl().startTransaction().execute();
-                for (int i = 0; i < Math.min(key.length, value.length); i++) {
-                    if (updates.contains(key[i])) {
-                        this.SetString(c.dsl(), tbl, true, section, key[i], value[i]);
+                try {
+                    c.dsl().startTransaction().execute();
+                } catch (DataAccessException ex) {
+                    if (!ex.getMessage().contains("cannot start a transaction within a transaction")) {
+                        throw ex;
                     }
                 }
-                for (int i = 0; i < Math.min(key.length, value.length); i++) {
-                    if (!updates.contains(key[i])) {
-                        this.SetString(c.dsl(), tbl, false, section, key[i], value[i]);
-                    }
+
+                List<SectionVariableValueRecord> records = new ArrayList<>();
+                for (int i = 0; i < Math.min(keys.length, values.length); i++) {
+                    SectionVariableValueRecord record = new SectionVariableValueRecord(table, section, keys[i], values[i]);
+                    record.attach(c);
+                    records.add(record);
                 }
+
+                c.dsl().batchMerge(records).execute();
+
                 c.dsl().commit().execute();
             });
         }
@@ -1180,7 +1171,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
     /**
      * Deletes the row that matches the given table, section, and key
      * <p>
-     * If {@code section} is null, deletes all rows with a matching table and key, reguardless of section
+     * If {@code section} is null, deletes all rows with a matching table and key, regardless of section
      *
      * @param fName a table name, without the {@code phantombot_} prefix
      * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
@@ -1224,13 +1215,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param fName a table name, without the {@code phantombot_} prefix
      */
     public void AddFile(String fName) {
-        dsl().createTableIfNotExists("phantombot_" + fName)
-        .column("section", SQLDataType.VARCHAR(255).nullability(Nullability.NULL))
-        .column("variable", SQLDataType.VARCHAR(255).nullability(Nullability.NOT_NULL))
-        .column("value", Datastore2.instance().longTextDataType())
-        .unique("section", "variable").execute();
-
-        this.invalidateTableCache();
+        SectionVariableValueTable.instance(fName);
     }
 
     /**
@@ -1239,13 +1224,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param fName a table name, without the {@code phantombot_} prefix
      */
     public void RemoveFile(String fName) {
-        Optional<Table<?>> otbl = findTable(fName);
-
-        if (otbl.isPresent()) {
-            dsl().dropTable(otbl.get()).execute();
-        }
-
-        this.invalidateTableCache();
+        SectionVariableValueTable.instance(fName).drop();
     }
 
     /**
@@ -1255,13 +1234,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param fNameDest a new table name that does not yet exist, without the {@code phantombot_} prefix
      */
     public void RenameFile(String fNameSource, String fNameDest) {
-        Optional<Table<?>> otbl = findTable(fNameSource);
-
-         if (otbl.isPresent()) {
-            dsl().alterTable(otbl.get()).renameTo("phantombot_" + fNameDest).execute();
-         }
-
-        this.invalidateTableCache();
+        SectionVariableValueTable.instance(fNameSource).rename(fNameDest);
     }
 
     /**
@@ -1271,7 +1244,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @return {@code true} if the table exists
      */
     public boolean FileExists(String fName) {
-        return findTable(fName).isPresent();
+        return SectionVariableValueTable.instance(fName, false) != null;
     }
 
     /**
@@ -1395,7 +1368,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String section, String key, long amount) {
+    public void incrL(String fName, String section, String key, long amount) {
         if (amount == 0L) {
             return;
         }
@@ -1412,8 +1385,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String key, long amount) {
-        incr(fName, "", key, amount);
+    public void incrL(String fName, String key, long amount) {
+        incrL(fName, "", key, amount);
     }
 
     /**
@@ -1424,7 +1397,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String section, String key, double amount) {
+    public void incrD(String fName, String section, String key, double amount) {
         if (amount == 0.0d) {
             return;
         }
@@ -1441,8 +1414,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String key, double amount) {
-        incr(fName, "", key, amount);
+    public void incrD(String fName, String key, double amount) {
+        incrD(fName, "", key, amount);
     }
 
     /**
@@ -1453,7 +1426,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String section, String key, float amount) {
+    public void incrF(String fName, String section, String key, float amount) {
         if (amount == 0.0f) {
             return;
         }
@@ -1470,8 +1443,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to increase the value of the {@code value} column by
      */
-    public void incr(String fName, String key, float amount) {
-        incr(fName, "", key, amount);
+    public void incrF(String fName, String key, float amount) {
+        incrF(fName, "", key, amount);
     }
 
     /**
@@ -1504,8 +1477,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String key, long amount) {
-        decr(fName, "", key, amount);
+    public void decrL(String fName, String key, long amount) {
+        decrL(fName, "", key, amount);
     }
 
     /**
@@ -1516,8 +1489,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String section, String key, long amount) {
-        incr(fName, section, key, -amount);
+    public void decrL(String fName, String section, String key, long amount) {
+        incrL(fName, section, key, -amount);
     }
 
     /**
@@ -1527,8 +1500,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String key, double amount) {
-        decr(fName, "", key, amount);
+    public void decrD(String fName, String key, double amount) {
+        decrD(fName, "", key, amount);
     }
 
     /**
@@ -1539,8 +1512,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String section, String key, double amount) {
-        incr(fName, section, key, -amount);
+    public void decrD(String fName, String section, String key, double amount) {
+        incrD(fName, section, key, -amount);
     }
 
     /**
@@ -1550,8 +1523,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String key, float amount) {
-        decr(fName, "", key, amount);
+    public void decrF(String fName, String key, float amount) {
+        decrF(fName, "", key, amount);
     }
 
     /**
@@ -1562,8 +1535,8 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param key the value of the {@code variable} column
      * @param amount the amount to decrease the value of the {@code value} column by
      */
-    public void decr(String fName, String section, String key, float amount) {
-        incr(fName, section, key, (-amount));
+    public void decrF(String fName, String section, String key, float amount) {
+        incrF(fName, section, key, (-amount));
     }
 
     /**
@@ -1614,24 +1587,26 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
     public List<List<String>> query(String sql, String[] replacements) {
         List<List<String>> results = new ArrayList<>();
 
-        try ( PreparedStatement statement = Datastore2.instance().prepareStatement(sql)) {
-            int i = 1;
-            for (String k : replacements) {
-                statement.setString(i++, k);
-            }
+        try (Connection conn = Datastore2.instance().getConnection()) {
+            try ( PreparedStatement statement = conn.prepareStatement(sql)) {
+                int i = 1;
+                for (String k : replacements) {
+                    statement.setString(i++, k);
+                }
 
-            if (statement.execute()) {
-                try ( ResultSet rs = statement.getResultSet()) {
-                    int numcol = rs.getMetaData().getColumnCount();
+                if (statement.execute()) {
+                    try ( ResultSet rs = statement.getResultSet()) {
+                        int numcol = rs.getMetaData().getColumnCount();
 
-                    while (rs.next()) {
-                        List<String> row = new ArrayList<>();
+                        while (rs.next()) {
+                            List<String> row = new ArrayList<>();
 
-                        for (int b = 1; b <= numcol; b++) {
-                            row.add(rs.getString(b));
+                            for (int b = 1; b <= numcol; b++) {
+                                row.add(rs.getString(b));
+                            }
+
+                            results.add(row);
                         }
-
-                        results.add(row);
                     }
                 }
             }
@@ -1678,6 +1653,19 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      */
     @Deprecated(since = "3.9.0.0", forRemoval = true)
     public void CreateIndexes() {
+        if (Datastore2.instance() instanceof SQLiteStore2) {
+            try (Connection c = Datastore2.instance().getConnection()) {
+                SqliteStore.CreateIndexes(c);
+            } catch (SQLException ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+        } else if (Datastore2.instance() instanceof H2Store2) {
+            try (Connection c = Datastore2.instance().getConnection()) {
+                H2Store.CreateIndexes(c);
+            } catch (SQLException ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+        }
     }
 
     /**
@@ -1687,6 +1675,19 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      */
     @Deprecated(since = "3.9.0.0", forRemoval = true)
     public void DropIndexes() {
+        if (Datastore2.instance() instanceof SQLiteStore2) {
+            try (Connection c = Datastore2.instance().getConnection()) {
+                SqliteStore.DropIndexes(c);
+            } catch (SQLException ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+        } else if (Datastore2.instance() instanceof H2Store2) {
+            try (Connection c = Datastore2.instance().getConnection()) {
+                H2Store.DropIndexes(c);
+            } catch (SQLException ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
+        }
     }
 
     /**

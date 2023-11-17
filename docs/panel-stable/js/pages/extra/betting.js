@@ -70,7 +70,7 @@ $(function () {
      */
     const updateChart = function () {
         socket.getDBValue('get_betting_active_update', 'bettingPanel', 'isActive', function (e) {
-            if (e.bettingPanel === 'false' || e.bettingPanel === null) {
+            if (!helpers.isTrue(e.bettingPanel) || e.bettingPanel === null) {
                 isActive = false;
                 return;
             } else if (chartConfig.data.datasets[0].backgroundColor.length !== 0 && isActive === false) {
@@ -242,10 +242,10 @@ $(function () {
                 'role': 'form'
             })
                     // Append a select option for the save option
-                    .append(helpers.getDropdownGroup('save-bets', 'Save Bets', (e.save === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
+                    .append(helpers.getDropdownGroup('save-bets', 'Save Bets', (helpers.isTrue(e.save) ? 'Yes' : 'No'), ['Yes', 'No'],
                             'If past bets should be saved.'))
                     // Append a select option for the warning messages
-                    .append(helpers.getDropdownGroup('warning-bets', 'Warning Messages', (e.warningMessages === 'true' ? 'Yes' : 'No'), ['Yes', 'No'],
+                    .append(helpers.getDropdownGroup('warning-bets', 'Warning Messages', (helpers.isTrue(e.warningMessages) ? 'Yes' : 'No'), ['Yes', 'No'],
                             'If warning messages should be said in chat when users bet.'))
                     // Save format
                     .append(helpers.getInputGroup('bet-format', 'text', 'Save Format', '', e.format,
@@ -300,7 +300,7 @@ $(run = function () {
             return;
         }
 
-        if (location.protocol.toLowerCase().startsWith('https') && !(location.port > 0 && location.port !== 443)) {
+        if (helpers.canEmbedTwitch()) {
             // Add Twitch chat.
             $('#twitch-chat-betting').html($('<iframe/>', {
                 'frameborder': '0',
@@ -309,7 +309,7 @@ $(run = function () {
                 'src': 'https://www.twitch.tv/embed/' + getChannelName() + '/chat' + (helpers.isDark ? '?darkpopout&' : '?') + 'parent=' + location.hostname
             }));
         } else {
-            $('#twitch-chat-betting').html('Due to changes by Twitch, the chat panel can no longer be displayed unless you enable SSL on the PhantomBot Panel and change the baseport to 443. This may not work without root privileges.<br /><br />Alternatively, you can login using the GitHub version of the panel at <a href="https://phantombot.dev/">PhantomBot</a> which gets around this issue.<br /><br />For help setting up SSL, please see <a href="https://phantombot.dev/guides/#guide=content/integrations/twitchembeds&channel=' + helpers.getBranch() + '">this guide</a>.');
+            $('#twitch-chat-betting').html(helpers.CANT_EMBED_TWITCH_TEXT);
             $('#twitch-chat-betting').addClass('box-body');
         }
     });

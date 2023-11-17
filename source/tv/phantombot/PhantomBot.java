@@ -38,11 +38,7 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.SystemUtils;
 import org.json.JSONException;
 
-import com.gmt2001.ExecutorService;
-import com.gmt2001.GamesListUpdater;
 import com.gmt2001.PathValidator;
-import com.gmt2001.Reflect;
-import com.gmt2001.RestartRunner;
 import com.gmt2001.RollbarProvider;
 import com.gmt2001.TwitchAPIv5;
 import com.gmt2001.datastore.DataStore;
@@ -60,6 +56,10 @@ import com.gmt2001.twitch.TwitchAuthorizationCodeFlow;
 import com.gmt2001.twitch.cache.ViewerCache;
 import com.gmt2001.twitch.eventsub.EventSub;
 import com.gmt2001.twitch.tmi.TwitchMessageInterface;
+import com.gmt2001.util.GamesListUpdater;
+import com.gmt2001.util.Reflect;
+import com.gmt2001.util.RestartRunner;
+import com.gmt2001.util.concurrent.ExecutorService;
 import com.illusionaryone.GitHubAPIv3;
 import com.illusionaryone.StreamLabsAPI;
 import com.illusionaryone.YouTubeAPIv3;
@@ -261,6 +261,9 @@ public final class PhantomBot implements Listener {
      */
     @SuppressWarnings({"removal"})
     public PhantomBot() {
+        java.util.logging.Logger l = java.util.logging.Logger.getLogger("io.netty.resolver.dns.DefaultDnsServerAddressStreamProvider");
+        l.setLevel(java.util.logging.Level.OFF);
+
         /**
          * @botproperty reactordebug - If `true`, internal debugging for Reactor HTTP and WS processing is sent to the console. Default `false`
          * @botpropertycatsort reactordebug 300 900 Debug
@@ -303,6 +306,12 @@ public final class PhantomBot implements Listener {
         this.print(this.botDevelopers());
         this.print(this.getWebSite());
         this.print("");
+        if (RepoVersion.isStressTest()) {
+            this.print("----------------");
+            this.print("Stress Test Mode");
+            this.print("----------------");
+            this.print("");
+        }
 
         try {
             Files.deleteIfExists(Paths.get("./logs/.placeholder"));
@@ -331,8 +340,8 @@ public final class PhantomBot implements Listener {
 
         /* Load the datastore */
         Datastore2.init();
-        String oldds = CaselessProperties.instance().getProperty("datastore", "h2store");
-        if (!oldds.toLowerCase().startsWith("sqlite")) {
+        String oldds = CaselessProperties.instance().getProperty("datastore", "h2store").toLowerCase();
+        if (!oldds.startsWith("sqlite")) {
             if (DataStore.instance().GetFileList().length == 0 && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
                 && SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))
                 && SqliteStore.instance().GetFileList().length > 0) {
@@ -403,6 +412,7 @@ public final class PhantomBot implements Listener {
                 } else {
                     com.gmt2001.Console.warn.println();
                     com.gmt2001.Console.warn.println("Setup not completed yet. Please set the channel to join");
+                    com.gmt2001.Console.warn.println("Scroll up in the console to see instructions and logins");
                 }
             } else {
                 com.gmt2001.Console.warn.println();
@@ -1042,6 +1052,7 @@ public final class PhantomBot implements Listener {
     @Handler
     public void command(CommandEvent event) {
         if (event.getCommand().equals("pbinternalping")) {
+            event.handeled();
             this.tmi.sendPing();
         }
     }
@@ -1146,8 +1157,8 @@ public final class PhantomBot implements Listener {
     public static void main(String[] args) throws IOException {
         System.setProperty("io.netty.noUnsafe", "true");
 
-        if (Float.parseFloat(System.getProperty("java.specification.version")) < (float) 11) {
-            System.out.println("Detected Java " + System.getProperty("java.version") + ". " + "PhantomBot requires Java 11 or later.");
+        if (Float.parseFloat(System.getProperty("java.specification.version")) < (float) 17) {
+            System.out.println("Detected Java " + System.getProperty("java.version") + ". " + "PhantomBot requires Java 17 or later.");
             PhantomBot.exitError();
         }
 
@@ -1277,16 +1288,20 @@ public final class PhantomBot implements Listener {
 
         if (osname.contains("win")) {
             os = "-win";
+        } else if (osname.contains("bsd")) {
+            os = "-bot_only";
+        } else if (System.getProperty("os.arch").equalsIgnoreCase("arm64") || System.getProperty("os.arch").equalsIgnoreCase("aarch64")) {
+            os = "-arm64";
+        } else if (System.getProperty("os.arch").toLowerCase().startsWith("arm")) {
+            os = "-arm32";
         } else if (osname.contains("mac")) {
             os = "-mac";
-        } else if (osname.contains("bsd")) {
-            os = "-arm-bsd-other";
         } else if (osname.contains("nix") || osname.contains("nux") || osname.contains("aix")) {
-            if (System.getProperty("os.arch").toLowerCase().contains("arm")) {
-                os = "-arm-bsd-other";
-            } else {
-                os = "-lin";
-            }
+            os = "-lin";
+        }
+
+        if (os.isEmpty()) {
+            os = "-bot_only";
         }
 
         return os;
@@ -1313,7 +1328,7 @@ public final class PhantomBot implements Listener {
                                 Thread.sleep(6000);
                                 this.print("");
                                 this.print("New PhantomBot Nightly Build Detected: " + latestNightly);
-                                this.print("Download Link: https://github.com/PhantomBot/nightly-build/raw/master/PhantomBot-nightly" + PhantomBot.getOsSuffix() + ".zip");
+                                this.print("Download Link: https://github.com/PhantomBot/nightly-build/raw/master/PhantomBot-nightly-bot.zip");
                                 this.print("A reminder will be provided in 24 hours!");
                                 this.print("");
                             } catch (InterruptedException ex) {
@@ -1321,7 +1336,7 @@ public final class PhantomBot implements Listener {
                             }
 
                             if (CaselessProperties.instance().getPropertyAsBoolean("webenable", true)) {
-                                this.getDataStore().set("settings", "newrelease_info", "nightly-" + latestNightly + "|https://github.com/PhantomBot/nightly-build/raw/master/PhantomBot-nightly" + PhantomBot.getOsSuffix() + ".zip");
+                                this.getDataStore().set("settings", "newrelease_info", "nightly-" + latestNightly + "|https://github.com/PhantomBot/nightly-build/raw/master/PhantomBot-nightly-bot.zip");
                             }
                         }
                     } else {

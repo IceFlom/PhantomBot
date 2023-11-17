@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package tv.phantombot.panel.PanelUser;
 
 import java.util.Arrays;
@@ -22,9 +38,27 @@ public final class PanelUserHandler {
     /**
      * Sections on the panel to which a user can be granted permissions to
      */
-    private static final String[] PANEL_SECTIONS = {"dashboard", "commands", "moderation", "permissions", "timers", "alerts", "loyalty", "ranking",
-                                                    "quotes", "keywords & emotes", "games", "giveaways", "discord", "history", "extra",
-                                                    "audio", "stream overlay", "settings", "youtube player"};
+    private static final String[] PANEL_SECTIONS = {
+        "alerts",
+        "audio",
+        "commands",
+        "dashboard",
+        "discord",
+        "extra",
+        "games",
+        "giveaways",
+        "history",
+        "keywords & emotes",
+        "loyalty",
+        "moderation",
+        "permissions",
+        "quotes",
+        "ranking",
+        "settings",
+        "stream overlay",
+        "timers",
+        "youtube player"
+    };
 
     /**
      * Database tables that are generally called on the panel and are allowed with {@link Permission#READ_ONLY read only permission}
@@ -33,18 +67,107 @@ public final class PanelUserHandler {
     /**
      * {@link PANEL_SECTIONS Sections} and their respectively called scripts on the panel
      */
-    private static final Map<String, List<String>> PANEL_SECTION_SCRIPTS = Map.of("alerts", List.of("donationscache.java"),
-                                                                                    "audio", List.of("./core/commandcooldown.js"),
-                                                                                    "commands", List.of("./commands/customcommands.js", "./core/commandcooldown.js", "./core/commandregister.js"),
-                                                                                    "dashboard", List.of("./core/panelhandler.js"),
-                                                                                    "discord", List.of("./discord/handlers/followhandler.js", "./discord/handlers/subscribehandler.js", "./discord/handlers/bitshandler.js", "./discord/handlers/cliphandler.js",
-                                                                                                         "./discord/systems/greetingssystem.js", "./discord/handlers/streamlabshandler.js", "./discord/handlers/tipeeestreamhandler.js", "./discord/handlers/streamelementshandler.js",
-                                                                                                          "./discord/core/commandcooldown.js", "./discord/commands/customcommands.js", "./discord/games/gambling.js", "./core/logging.js"),
-                                                                                    "extra", List.of("./systems/commercialsystem.js", "./systems/queuesystem.js"),
-                                                                                    "Games", List.of("./games/random.js"),
-                                                                                    "keyword & emotes", List.of("./handlers/keywordemoteshandler.js", "./handlers/keywordhandler.js"),
-                                                                                    "loyalty", List.of("./handlers/channelpointshandler.js"),
-                                                                                    "settings", List.of("./core/corecommands.js", "./discord/core/commandcooldown.js", "./core/commandcooldown.js"));
+    private static final Map<String, List<String>> PANEL_SECTION_SCRIPTS = Map.ofEntries(
+        Map.entry("alerts", List.of(
+            "donationscache.java",
+            "./systems/greetingsystem.js",
+            "./handlers/followhandler.js",
+            "./handlers/subscribehandler.js",
+            "./handlers/bitshandler.js",
+            "./handlers/cliphandler.js",
+            "./systems/greetingsystem.js",
+            "./systems/welcomesystem.js",
+            "./handlers/donationhandler.js",
+            "./handlers/raidhandler.js",
+            "./handlers/tipeeestreamhandler.js",
+            "./handlers/streamelementshandler.js")
+        ),
+        Map.entry("audio", List.of(
+            "./core/commandcooldown.js",
+            "./systems/audiopanelsystem.js")
+        ),
+        Map.entry("commands", List.of(
+            "./commands/customcommands.js",
+            "./core/commandcooldown.js",
+            "./core/commandregister.js")
+        ),
+        Map.entry("dashboard", List.of(
+            "./core/panelhandler.js",
+            "./systems/commercialsystem.js")
+        ),
+        Map.entry("discord", List.of(
+            "./core/logging.js",
+            "./discord/commands/customCommands",
+            "./discord/core/commandcooldown.js",
+            "./discord/games/8ball.js",
+            "./discord/games/gambling.js",
+            "./discord/games/kill.js",
+            "./discord/games/random.js",
+            "./discord/games/roll.js",
+            "./discord/games/roulette.js",
+            "./discord/games/slotmachine.js",
+            "./discord/handlers/bitshandler.js",
+            "./discord/handlers/cliphandler.js",
+            "./discord/handlers/followhandler.js",
+            "./discord/handlers/keywordhandler.js",
+            "./discord/handlers/raidhandler.js",
+            "./discord/handlers/streamelementshandler.js",
+            "./discord/handlers/streamhandler.js",
+            "./discord/handlers/streamlabshandler.js",
+            "./discord/handlers/subscribehandler.js",
+            "./discord/handlers/tipeeestreamhandler.js",
+            "./discord/systems/greetingssystem.js")
+        ),
+        Map.entry("extra", List.of(
+            "./systems/bettingsystem.js",
+            "./systems/commercialsystem.js",
+            "./commands/deathctrcommand.js",
+            "./commands/dualstreamcommand.js",
+            "./commands/highlightcommand.js",
+            "./systems/pollsystem.js",
+            "./systems/queuesystem.js")
+        ),
+        Map.entry("games", List.of(
+            "./games/adventuresystem.js",
+            "./games/gambling.js",
+            "./games/killcommand.js",
+            "./games/random.js",
+            "./games/roll.js",
+            "./games/roulette.js",
+            "./games/slotmachine.js",
+            "./games/8ball.js")
+        ),
+        Map.entry("giveaways", List.of(
+            "./systems/auctionsystem.js",
+            "./systems/rafflesystem.js",
+            "./systems/ticketrafflesystem.js")
+        ),
+        Map.entry("history", List.of()),
+        Map.entry("keywords & emotes", List.of(
+            "./handlers/emojihandler.js",
+            "./handlers/emotesbttvhandler.js",
+            "./handlers/emotesffzhandler.js",
+            "./handlers/keywordemoteshandler.js",
+            "./handlers/keywordhandler.js")
+        ),
+        Map.entry("loyalty", List.of(
+            "./handlers/channelpointshandler.js",
+            "./systems/pointsystem.js")
+        ),
+        Map.entry("moderation", List.of()),
+        Map.entry("permissions", List.of()),
+        Map.entry("quotes", List.of("./systems/quotesystem.js")),
+        Map.entry("ranking", List.of("./systems/rankssystem.js")),
+        Map.entry("settings", List.of(
+            "./core/corecommands.js",
+            "./discord/core/commandcooldown.js",
+            "./core/commandcooldown.js",
+            "./core/logging.js")
+        ),
+        Map.entry("stream overlay", List.of()),
+        Map.entry("timers", List.of("./systems/noticesystem.js")),
+        Map.entry("youtube player", List.of())
+    );
     /**
      * Allowed commands with {@link Permission#READ_ONLY read only permission}
      */
@@ -285,7 +408,7 @@ public final class PanelUserHandler {
         }
 
         if (requestUri != null) {
-            if ((requestUri.contains("/setup/") || requestUri.contains("/oauth/")) && !user.isConfigUser()){
+            if ((requestUri.contains("/setup/") || requestUri.contains("/oauth/")) && (!user.isConfigUser() || !user.canManageUsers())){
                 return null;
             }
             if (requestUri.contains("/ytplayer/") && !(user.getPermission().containsKey("youtube player") && user.getPermission().get("youtube player").equals(Permission.READ_WRITE))) {
@@ -297,7 +420,7 @@ public final class PanelUserHandler {
             user.setLastLoginNOW();
 
             try {
-            user.update();
+            user.doupdate();
             } catch (Exception ex) {
                 com.gmt2001.Console.err.printStackTrace(ex);
             }
@@ -370,10 +493,10 @@ public final class PanelUserHandler {
             return PanelMessage.Error.setResponse("Invalid password!");
         }
 
-        user.setPassword(newPassword);
+        user.changePassword(newPassword);
 
         try {
-            user.update();
+            user.doupdate();
         } catch (Exception ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
@@ -442,7 +565,7 @@ public final class PanelUserHandler {
      * Only existing and {@link PanelUser#canBeEdited() editable} {@link PanelUser panel users} can be deleted
      * @param username The user's name which should be deleted
      * @return The fitting {@link PanelMessage panel message}
-     * @see PanelUser#delete() User deletion
+     * @see PanelUser#dodelete() User deletion
      * @see PanelUser#LookupByUsername(String) exists
      */
     public static PanelMessage deleteUser(String username) {
@@ -456,7 +579,7 @@ public final class PanelUserHandler {
         }
 
         try {
-            user.delete();
+            user.dodelete();
         } catch (Exception ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
@@ -522,7 +645,7 @@ public final class PanelUserHandler {
         }
 
         if(newUsername != null && !currentUsername.equals(newUsername)){
-            if (PanelUser.LookupByUsername(newUsername) != null) {
+            if (PanelUser.UserExists(newUsername)) {
                 return PanelMessage.UserAlreadyExists;
             }
             user.changeUsername(newUsername);
@@ -543,7 +666,7 @@ public final class PanelUserHandler {
         }
 
         try {
-            user.update();
+            user.doupdate();
         } catch (Exception ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
@@ -589,7 +712,7 @@ public final class PanelUserHandler {
         String password = user.generateNewPassword();
 
         try {
-            user.update();
+            user.doupdate();
         } catch (Exception ex) {
             com.gmt2001.Console.err.printStackTrace(ex);
             return PanelMessage.SaveError;
@@ -687,12 +810,21 @@ public final class PanelUserHandler {
      * Gets a permissions map which includes full permission to all available {@link PANEL_SECTIONS panel sections}
      */
     public static Map<String, Permission> getFullAccessPermissions() {
+        return getAccessPermissions(true);
+    }
+
+    /**
+     * Gets a permissions map which includes permission to all available {@link PANEL_SECTIONS panel sections}
+     *
+     * @param full {@code true} for {@link Permission#READ_WRITE}; otherwise {@link Permission#READ_ONLY}
+     */
+    public static Map<String, Permission> getAccessPermissions(boolean full) {
         Map<String, Permission> permissions = new HashMap<>();
         for (String section : PANEL_SECTIONS) {
             if (!PhantomBot.instance().hasDiscordToken() && section.equalsIgnoreCase("discord")) {
                 continue;
             }
-            permissions.put(section, Permission.READ_WRITE);
+            permissions.put(section, full ? Permission.READ_WRITE : Permission.READ_ONLY);
         }
         return permissions;
     }
@@ -747,7 +879,7 @@ public final class PanelUserHandler {
         }
         boolean isWriteAction = true;
         if (PANEL_SECTION_SCRIPTS.get("loyalty").contains(script) && args.length > 0 &&
-            args[0].equalsIgnoreCase("redeemable-get-managed") || args[0].equalsIgnoreCase("redeemable-reload-managed")) {
+            (args[0].equalsIgnoreCase("redeemable-get-managed") || args[0].equalsIgnoreCase("redeemable-reload-managed"))) {
             isWriteAction = false;
         }
         boolean res = PANEL_SECTION_SCRIPTS.containsKey(section) && PANEL_SECTION_SCRIPTS.get(section).contains(script) && checkPanelUserSectionAccess(user, section, isWriteAction);

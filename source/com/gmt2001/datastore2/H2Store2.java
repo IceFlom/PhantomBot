@@ -164,6 +164,7 @@ public final class H2Store2 extends Datastore2 {
 
         try {
             com.gmt2001.Console.out.print("Saving a backup to " + backupfile.toString() + "...");
+            Files.createDirectories(Paths.get("./dbbackup/"));
             Files.copy(dbfile, backupfile, StandardCopyOption.REPLACE_EXISTING);
             com.gmt2001.Console.out.println("done");
         } catch (IOException e) {
@@ -286,7 +287,7 @@ public final class H2Store2 extends Datastore2 {
     }
 
     @Override
-    public DataType<?> longTextDataType() {
+    public DataType<String> longTextDataType() {
         return LONGTEXT;
     }
 

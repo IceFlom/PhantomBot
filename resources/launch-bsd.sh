@@ -20,21 +20,22 @@
 # PhantomBot Launcher - BSD
 #
 # Please run the following to launch the bot, the chmod is required only once.
-# % chmod +x launch.sh
-# % ./launch.sh
+# % chmod +x launch-bsd.sh
+# % ./launch-bsd.sh
 #
 # You can also specify a custom path to the Java executable as the first parameter, using java=PATH
-# ex: ./launch.sh java=/usr/local/jdk-17/bin/java
+# ex: ./launch-bsd.sh java=/usr/local/jdk-17/bin/java
 #
+
+# Required Java major version
+javarequired=17
 
 unset DISPLAY
 
-tmp=""
-
-JAVA=$(which java 2>/dev/null)
+JAVA=$(which /usr/local/*$javarequired*/bin/java 2>/dev/null)
 
 if [ "$JAVA" -eq "" ]; then
-    JAVA=$(which /usr/local/*17*/bin/java)
+    JAVA=$(which java)
 fi
 
 if [ -e "$1" ]; then
@@ -60,36 +61,38 @@ fi
 
 jvermaj=$($JAVA --version | awk 'FNR == 1 { print $2 }' | cut -d . -f 1)
 
-if [ $jvermaj -lt 17 ]; then
-    echo "PhantomBot requires Java 17 or later to run."
+if [ $jvermaj -lt $javarequired ]; then
+    echo "PhantomBot requires Java $javarequired or later to run."
     echo
 
     osdist=$(uname)
 
     if  [[ "$osdist" == *"OpenBSD"* ]]; then
-        echo "Please install the package jdk and select the version that gives you jdk-17"
+        echo "Please install the package jdk and select the version that gives you jdk-$javarequired"
         echo
 
         echo "The command to do this is:"
         echo "   pkg_add jdk"
         echo
-        echo "When you issue the pkg_add command, select the option that starts with java-17"
+        echo "When you issue the pkg_add command, select the option that starts with java-$javarequired"
     elif  [[ "$osdist" == *"FreeBSD"* ]]; then
-        echo "Please install the package openjdk17"
+        echo "Please install the package openjdk$javarequired"
         echo
 
         echo "The command to do this is:"
-        echo "   sudo pkg install openjdk17"
+        echo "   sudo pkg install openjdk$javarequired"
     else
-        echo "Unknown OS detected, please identify and install the appropriate Java 17 package on your system"
+        echo "Unknown OS detected, please identify and install the appropriate Java $javarequired package on your system"
         echo "The name is generally something starting with JDK or OpenJDK"
     fi
 
     echo
     echo "If you have already installed it, try specifying the path to the java executable as a parameter to this script"
-    echo "Example: ./launch.sh java=/usr/local/jdk-17/bin/java"
+    echo "Example: ./launch-bsd.sh java=/usr/local/jdk-$javarequired/bin/java"
 
     exit 1
 fi
 
-${JAVA} --add-exports java.base/sun.security.x509=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED ${tmp} -Duser.language=en -Djava.security.policy=config/security -Dinteractive -Xms256m -XX:+UseG1GC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar PhantomBot.jar "$@"
+touch java.opt.custom
+
+${JAVA} @java.opt -Dinteractive @java.opt.custom -jar PhantomBot.jar "$@"

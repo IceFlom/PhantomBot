@@ -54,6 +54,14 @@ exportpoints - This command exports points and time to a CSV file.
 
 &nbsp;
 
+### importpoints
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+importpoints - This command imports time and points from a csv file in format (Username,Seconds,Points)
+
+&nbsp;
+
 ### createcmdlist
 
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
@@ -291,6 +299,14 @@ ytsetup - Sets up YouTube API Key
 Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
 
 dumpheap - Creates a heap dump
+
+&nbsp;
+
+### dumpthreads
+
+Defined in source file: _./source/tv/phantombot/console/ConsoleEventHandler.java_
+
+dumpthreads - Creates a thread dump
 
 &nbsp;
 

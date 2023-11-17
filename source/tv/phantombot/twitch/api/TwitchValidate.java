@@ -16,11 +16,12 @@
  */
 package tv.phantombot.twitch.api;
 
-import com.gmt2001.ExecutorService;
 import com.gmt2001.HttpRequest;
 import com.gmt2001.httpclient.HttpClient;
 import com.gmt2001.httpclient.HttpClientResponse;
 import com.gmt2001.httpclient.URIUtil;
+import com.gmt2001.util.concurrent.ExecutorService;
+
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 
@@ -332,7 +333,9 @@ public class TwitchValidate {
                         com.gmt2001.Console.debug.println(requestObj.toString(4));
                     } else {
                         lastFail = true;
-                        PhantomBot.instance().getAuthFlow().refresh(tokenType == 1, tokenType == 0);
+                        if (PhantomBot.instance() != null) {
+                            PhantomBot.instance().getAuthFlow().refresh(tokenType == 1, tokenType == 0);
+                        }
                     }
                     return;
                 }

@@ -99,9 +99,12 @@ $(function () {
 
         for (let i in permissions) {
             userPermissionTable.DataTable().row.add(getPermissionTableRow(permissions[i].section, permissions[i].permission));
-            let index = availableSections.indexOf(permissions[i].section.toLowerCase());
-            if (index >= 0) {
-                availableSections.splice(index, 1);
+            if (!(permissions[i].section === 'dashboard' && permissions[i].permission === 'Read Only') //Do not remove the dashboard from the available sections if the default ("Read Only") is currently assinged
+                && !($('#user-canManageUsers').is(':checked') && permissions[i].section === 'settings' && permissions[i].permission === 'Read Only')) { //Do not remove settings from the available sections if it's set to "Read Only" and the user should manage panel users
+                let index = availableSections.indexOf(permissions[i].section.toLowerCase());
+                if (index >= 0) {
+                    availableSections.splice(index, 1);
+                }
             }
         }
 
@@ -115,6 +118,7 @@ $(function () {
                 'autoWidth': false,
                 'lengthChange': false,
                 'bPaginate': true,
+                'pageLength': 6,
                 'data': [],
                 'columnDefs': [
                     {'className': 'default-table', 'orderable': true, 'targets': [0, 1]},
@@ -286,7 +290,9 @@ $(function () {
                 tableData.push([
                     user.username,
                     getPermissionShortString(user.permission),
+                    user.lastLogin,
                     lastLogon,
+                    user.creationDate,
                     helpers.getDateStringFromDate(new Date(parseInt(user.creationDate))),
                     $('<div/>')
                     .append($('<i/>',
@@ -334,17 +340,19 @@ $(function () {
                 'lengthChange': false,
                 'data': tableData,
                 'columnDefs': [
-                    {'className': 'default-table', 'orderable': false, 'targets': [4, 5]},
+                    {'className': 'default-table', 'orderable': false, 'targets': [6, 7]},
                     {'width': '31%', 'targets': 0},
                     {'width': '15%', 'searchable': false, 'targets': 1},
-                    {'width': '18%', 'searchable': false, 'targets': [2, 3]},
-                    {'width': '125px', 'searchable': false, 'targets': [4, 5]}
+                    {'width': '18%', 'searchable': false, 'targets': [3, 5]},
+                    {'width': '125px', 'searchable': false, 'targets': [6, 7]}
                 ],
                 'columns': [
                     {'title': 'Username'},
                     {'title': 'Permissions'},
-                    {'title': 'Last login'},
-                    {'title': 'Creation date'},
+                    {'visible': false},
+                    {'title': 'Last login', 'orderData': 2},
+                    {'visible': false},
+                    {'title': 'Creation date', 'orderData': 4},
                     {'title': 'Status'},
                     {'title': 'Actions'}
                 ]

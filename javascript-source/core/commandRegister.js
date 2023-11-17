@@ -143,13 +143,39 @@
      *
      * @param {String} alias
      */
-    function registerChatAlias(alias) {
+    function registerChatAlias(alias, target, script) {
+        let full = target !== undefined && target !== null && script !== undefined && script !== null;
         alias = $.jsString(alias).toLowerCase();
         _aliasesLock.lock();
         try {
+            if (full) {
+                if ($.commandExists(alias) || !$.commandExists(target.split(' ')[0]) || $.inidb.exists('aliases', alias)) {
+                    return;
+                }
+                $.registerChatCommand(script, alias);
+                $.inidb.set('aliases', alias, target);
+            }
+
             if (!aliasExists(alias)) {
                 aliases[alias] = true;
             }
+        } finally {
+            _aliasesLock.unlock();
+        }
+    }
+
+    /*
+     * @function unregisterChatAlias
+     *
+     * @param {String} alias
+     */
+    function unregisterChatAlias(alias) {
+        alias = $.jsString(alias).toLowerCase();
+        _aliasesLock.lock();
+        try {
+            $.unregisterChatCommand(alias);
+            $.inidb.del('aliases', alias);
+            delete aliases[alias];
         } finally {
             _aliasesLock.unlock();
         }
@@ -664,6 +690,7 @@
     $.getCommandScript = getCommandScript;
     $.aliasExists = aliasExists;
     $.registerChatAlias = registerChatAlias;
+    $.unregisterChatAlias = unregisterChatAlias;
     $.tempUnRegisterChatCommand = tempUnRegisterChatCommand;
     $.getSubCommandFromArguments = getSubCommandFromArguments;
     $.listCommands = listCommands;
@@ -674,13 +701,13 @@
     $.getCommandRestrictionByName = getCommandRestrictionByName;
 
     $.bind('webPanelSocketUpdate', function (event) {
-        if (event.getScript().equalsIgnoreCase('./core/commandRegister.js')) {
+        if ($.equalsIgnoreCase(event.getScript(), './core/commandRegister.js')) {
             var args = event.getArgs(),
                 eventName = args[0] + '',
                 command = args[1] + '',
                 commandLower = command.toLowerCase() + '';
             if (eventName === 'enable') {
-                let tempDisabled = $.inidb.OptString('tempDisabledCommandScript', '', commandLower);
+                let tempDisabled = $.optIniDbString('tempDisabledCommandScript', commandLower);
                 if (tempDisabled.isPresent()) {
                     $.registerChatCommand(tempDisabled.get(), commandLower);
                 }

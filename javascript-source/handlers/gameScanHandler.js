@@ -25,7 +25,7 @@
             return;
         }
 
-        let gamesObj = $.inidb.OptString('pastgames', '', 'gamesList'),
+        let gamesObj = $.optIniDbString('pastgames', 'gamesList'),
                 date = $.jsString($.logging.getLogDateString()).replace(/-/g, '.'),
                 game = $.jsString(event.getGameTitle()).replace(/\s/g, '-').toLowerCase();
 
@@ -44,7 +44,7 @@
      * @event twitchOnline
      */
     $.bind('twitchOnline', function(event) {
-        let gamesObj = $.inidb.OptString('pastgames', '', 'gamesList'),
+        let gamesObj = $.optIniDbString('pastgames', 'gamesList'),
             date = $.jsString($.logging.getLogDateString()).replace(/-/g, '.'),
             game = $.jsString($.getGame($.channelName)).replace(/\s/g, '-').toLowerCase();
 
@@ -65,7 +65,7 @@
      * @param {String} gameName
      */
     function gameLookUp(gameName) {
-        let gamesObj = $.inidb.OptString('pastgames', '', 'gamesList'),
+        let gamesObj = $.optIniDbString('pastgames', 'gamesList'),
             game = $.jsString(gameName).replace(/\s/g, '-').toLowerCase();
 
         gamesObj = gamesObj.isPresent() ? JSON.parse(gamesObj.get()) : {};
@@ -74,7 +74,7 @@
             $.say($.lang.get('gamescanhandler.gamescan.notplayed', $.viewer.getByLogin($.channelName).name(), gameName));
         } else {
             if (gamesObj[game].length > 10) {
-                $.say($.lang.get('gamescanhandler.gamescan.hasplayeddates', $.viewer.getByLogin($.channelName).name(), gameName, gamesObj[game].slice(10).join(', '), (gamesObj[game].length - 10)));
+                $.say($.lang.get('gamescanhandler.gamescan.hasplayeddates', $.viewer.getByLogin($.channelName).name(), gameName, gamesObj[game].slice(-10).join(', '), (gamesObj[game].length - 10)));
             } else {
                 $.say($.lang.get('gamescanhandler.gamescan.hasplayed', $.viewer.getByLogin($.channelName).name(), gameName, gamesObj[game].join(', ')));
             }
@@ -90,7 +90,7 @@
         /**
          * @commandpath gamescan [game name] - Scan for a recently played game and list the date in which the broadcaster played it.
          */
-        if (command.equalsIgnoreCase('gamescan')) {
+        if ($.equalsIgnoreCase(command, 'gamescan')) {
             if (action === undefined) {
                 $.say($.whisperPrefix(sender) + $.lang.get('gamescanhandler.gamescan.usage'));
                 return;
