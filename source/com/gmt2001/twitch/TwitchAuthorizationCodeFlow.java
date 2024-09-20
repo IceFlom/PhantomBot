@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,8 +109,8 @@ public final class TwitchAuthorizationCodeFlow {
 
         if (changed) {
             refreshTransaction.commit();
-            com.gmt2001.Console.debug.println("Saved oauth=" + CaselessProperties.instance().getProperty("oauth") + " refresh=" + CaselessProperties.instance().getProperty("refresh") + " oauthexpires=" + CaselessProperties.instance().getProperty("oauthexpires"));
-            com.gmt2001.Console.debug.println("Saved apioauth=" + CaselessProperties.instance().getProperty("apioauth") + " apirefresh=" + CaselessProperties.instance().getProperty("apirefresh") + " apiexpires=" + CaselessProperties.instance().getProperty("apiexpires"));
+            com.gmt2001.Console.debug.println("Saved oauth=" + CaselessProperties.instance().getProperty("oauth") + " refresh=" + CaselessProperties.instance().getProperty("refresh") + " oauthexpires=" + CaselessProperties.instance().getProperty("oauthexpires"), "Saved new oauth");
+            com.gmt2001.Console.debug.println("Saved apioauth=" + CaselessProperties.instance().getProperty("apioauth") + " apirefresh=" + CaselessProperties.instance().getProperty("apirefresh") + " apiexpires=" + CaselessProperties.instance().getProperty("apiexpires"), "Saved new apioauth");
             TwitchValidate.instance().updateChatToken(CaselessProperties.instance().getProperty("oauth"));
             TwitchValidate.instance().updateAPIToken(CaselessProperties.instance().getProperty("apioauth"));
         }
@@ -137,7 +137,7 @@ public final class TwitchAuthorizationCodeFlow {
                 this.lastBotRefresh = Instant.now();
 
                 com.gmt2001.Console.out.println("Refreshed the bot token");
-                com.gmt2001.Console.debug.println("New oauth=" + result.getString("access_token") + " refresh=" + result.getString("refresh_token") + " oauthexpires=" + c.getTimeInMillis() + "");
+                com.gmt2001.Console.debug.println("New oauth=" + result.getString("access_token") + " refresh=" + result.getString("refresh_token") + " oauthexpires=" + c.getTimeInMillis() + "", "Got new oauth");
                 changed = true;
             }
         } else {
@@ -168,7 +168,7 @@ public final class TwitchAuthorizationCodeFlow {
                 this.lastBroadcasterRefresh = Instant.now();
 
                 com.gmt2001.Console.out.println("Refreshed the broadcaster token");
-                com.gmt2001.Console.debug.println("New apioauth=" + result.getString("access_token") + " apirefresh=" + result.getString("refresh_token") + " apiexpires=" + c.getTimeInMillis() + "");
+                com.gmt2001.Console.debug.println("New apioauth=" + result.getString("access_token") + " apirefresh=" + result.getString("refresh_token") + " apiexpires=" + c.getTimeInMillis() + "", "Got new apioauth");
                 changed = true;
             }
         } else {
@@ -238,7 +238,7 @@ public final class TwitchAuthorizationCodeFlow {
                 PhantomBot.instance().getAuthFlow().startup(CaselessProperties.instance().getProperty("clientid"), CaselessProperties.instance().getProperty("clientsecret"));
             }
 
-            com.gmt2001.Console.debug.println(new String(data));
+            com.gmt2001.Console.debug.println(new String(data), "Try save idsecret");
         } else if ((req.uri().startsWith("/oauth/authorize") || req.uri().startsWith("/oauth/broadcaster/authorize")) && req.method() == HttpMethod.POST) {
             QueryStringDecoder qsd = new QueryStringDecoder(req.content().toString(Charset.defaultCharset()), false);
             if (!qsd.parameters().containsKey("code") || !qsd.parameters().containsKey("type") || !qsd.parameters().containsKey("redirect_uri")
@@ -278,9 +278,9 @@ public final class TwitchAuthorizationCodeFlow {
                     }
 
                     if (qsd.parameters().get("type").get(0).equals("bot")) {
-                        com.gmt2001.Console.debug.println("New oauth=" + result.getString("access_token") + " refresh=" + result.getString("refresh_token") + " oauthexpires=" + c.getTimeInMillis() + "");
+                        com.gmt2001.Console.debug.println("New oauth=" + result.getString("access_token") + " refresh=" + result.getString("refresh_token") + " oauthexpires=" + c.getTimeInMillis() + "", "New oauth");
                     } else {
-                        com.gmt2001.Console.debug.println("New apioauth=" + result.getString("access_token") + " apirefresh=" + result.getString("refresh_token") + " apiexpires=" + c.getTimeInMillis() + "");
+                        com.gmt2001.Console.debug.println("New apioauth=" + result.getString("access_token") + " apirefresh=" + result.getString("refresh_token") + " apiexpires=" + c.getTimeInMillis() + "", "New apioauth");
                     }
 
                     newTransaction.commit();
@@ -291,15 +291,15 @@ public final class TwitchAuthorizationCodeFlow {
                     EventBus.instance().postAsync(new TwitchOAuthReauthorizedEvent(!qsd.parameters().get("type").get(0).equals("bot")));
 
                     if (qsd.parameters().get("type").get(0).equals("bot")) {
-                        com.gmt2001.Console.debug.println("Saved oauth=" + CaselessProperties.instance().getProperty("oauth") + " refresh=" + CaselessProperties.instance().getProperty("refresh") + " oauthexpires=" + CaselessProperties.instance().getProperty("oauthexpires"));
+                        com.gmt2001.Console.debug.println("Saved oauth=" + CaselessProperties.instance().getProperty("oauth") + " refresh=" + CaselessProperties.instance().getProperty("refresh") + " oauthexpires=" + CaselessProperties.instance().getProperty("oauthexpires"), "Saved oauth");
                     } else {
-                        com.gmt2001.Console.debug.println("Saved apioauth=" + CaselessProperties.instance().getProperty("apioauth") + " apirefresh=" + CaselessProperties.instance().getProperty("apirefresh") + " apiexpires=" + CaselessProperties.instance().getProperty("apiexpires"));
+                        com.gmt2001.Console.debug.println("Saved apioauth=" + CaselessProperties.instance().getProperty("apioauth") + " apirefresh=" + CaselessProperties.instance().getProperty("apirefresh") + " apiexpires=" + CaselessProperties.instance().getProperty("apiexpires"), "Saved apioauth");
                     }
                     data = CaselessProperties.instance().getProperty("clientid").getBytes();
                 }
             }
 
-            com.gmt2001.Console.debug.println(new String(data));
+            com.gmt2001.Console.debug.println(new String(data), "Try save oauth");
         }
         return data;
     }

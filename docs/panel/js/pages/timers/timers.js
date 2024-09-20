@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@
         const idPrefix = modalGroupData === null ? 'add-' : 'edit-';
         const title = modalGroupData === null ? 'Add Group' : 'Edit Group',
                 name = modalGroupData === null ? '' : modalGroupData.name,
-                noticeToggle = modalGroupData === null ? 'Yes' : (modalGroupData.noticeToggle === true ? 'Yes' : 'No'),
-                noticeOfflineToggle = modalGroupData === null ? 'No' : (modalGroupData.noticeOfflineToggle === true ? 'Yes' : 'No'),
+                noticeToggle = modalGroupData === null ? 'Yes' : (helpers.isTrue(modalGroupData.noticeToggle) ? 'Yes' : 'No'),
+                noticeOfflineToggle = modalGroupData === null ? 'No' : (helpers.isTrue(modalGroupData.noticeOfflineToggle) ? 'Yes' : 'No'),
                 intervalMin = modalGroupData === null ? '10' : modalGroupData.intervalMin,
                 intervalMax = modalGroupData === null ? '' : (intervalMin === modalGroupData.intervalMax ? '' : modalGroupData.intervalMax),
                 reqMessages = modalGroupData === null ? '0' : modalGroupData.reqMessages,
-                shuffle = modalGroupData === null ? 'No' : (modalGroupData.shuffle === true ? 'Yes' : 'No');
+                shuffle = modalGroupData === null ? 'No' : (helpers.isTrue(modalGroupData.shuffle) ? 'Yes' : 'No');
 
         helpers.getModal(idPrefix + 'group-modal', title, 'Save',
                 $('<form/>', {'role': 'form'})

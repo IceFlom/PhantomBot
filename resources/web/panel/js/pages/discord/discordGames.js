@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,13 +31,13 @@ $(function () {
 
         for (i = 0; i < keys.length; i++) {
             // Handle the status of the buttons.
-            if (results[keys[i]] === 'false') {
+            if (!helpers.isTrue(results[keys[i]])) {
                 module = keys[i].substring(keys[i].lastIndexOf('/') + 1).replace('.js', '');
 
                 // Handle the switch.
-                $('#discord_' + module + 'Toggle').prop('checked', false);
+                $('#' + module + 'Toggle').prop('checked', false);
                 // Handle the settings button.
-                $('#discord_' + module + 'Settings').prop('disabled', true);
+                $('#' + module + 'Settings').prop('disabled', true);
             }
         }
     });

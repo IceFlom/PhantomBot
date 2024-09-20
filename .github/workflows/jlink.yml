@@ -62,7 +62,7 @@ jobs:
     - name: Set up JDK
       if: matrix.qemu == false
       id: setup-java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: ${{ matrix.java-distribution }}
         java-version: ${{ matrix.java-version }}
@@ -99,7 +99,7 @@ jobs:
         chmod +x $SCRIPT
         /bin/bash $SCRIPT
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.folder }}
         path: resources/${{ matrix.folder }}/**
@@ -115,7 +115,7 @@ jobs:
       with:
         token: ${{ secrets.GH_TOKEN }}
     - name: Download Artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: resources
     - name: Commit Changes

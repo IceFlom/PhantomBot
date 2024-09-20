@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ public class WsYTHandler implements WsFrameHandler {
 
     private static final AttributeKey<Boolean> ATTR_IS_PLAYER = AttributeKey.valueOf("isPlayer");
     private static final AttributeKey<Instant> ATTR_LAST_PONG = AttributeKey.valueOf("lastPong");
+    private static final AttributeKey<Boolean> ATTR_CLOSE_ATTACHED = AttributeKey.valueOf("closeAttached");
     private static final String[] ALLOWED_DB_QUERY_TABLES = new String[]{"modules", "ytSettings", "yt_playlists_registry"};
     private static final String[] ALLOWED_DB_UPDATE_TABLES = new String[]{"ytSettings"};
     private final WsAuthenticationHandler authHandler;
@@ -110,13 +111,17 @@ public class WsYTHandler implements WsFrameHandler {
     public void handleFrame(ChannelHandlerContext ctx, WebSocketFrame frame) {
         ctx.channel().attr(ATTR_IS_PLAYER).setIfAbsent(Boolean.FALSE);
         ctx.channel().attr(ATTR_LAST_PONG).setIfAbsent(Instant.now());
+        ctx.channel().attr(ATTR_CLOSE_ATTACHED).setIfAbsent(Boolean.FALSE);
 
-        ctx.channel().closeFuture().addListener((ChannelFutureListener) (ChannelFuture f) -> {
-            if (f.channel().attr(ATTR_IS_PLAYER).get()) {
-                clientConnected = false;
-                EventBus.instance().postAsync(new YTPlayerDisconnectEvent());
-            }
-        });
+        if (ctx.channel().attr(ATTR_CLOSE_ATTACHED).get() == Boolean.FALSE) {
+            ctx.channel().attr(ATTR_CLOSE_ATTACHED).set(Boolean.TRUE);
+            ctx.channel().closeFuture().addListener((ChannelFutureListener) (ChannelFuture f) -> {
+                if (f.channel().attr(ATTR_IS_PLAYER).get()) {
+                    clientConnected = false;
+                    EventBus.instance().postAsync(new YTPlayerDisconnectEvent());
+                }
+            });
+        }
 
         if (frame instanceof TextWebSocketFrame tframe) {
             PanelUser user = ctx.channel().attr(PanelUserAuthenticationHandler.ATTR_AUTH_USER).get();

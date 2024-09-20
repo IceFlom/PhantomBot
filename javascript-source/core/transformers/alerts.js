@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@
      */
     function playsound(args) {
         let match;
-        if ((match = args.args.match(/^([a-zA-Z0-9_\-\s\,\(\)\'\"\~]+)([|]([.0-9_]{0,5}))?$/))) {
+        if ((match = args.args.match(/^([a-zA-Z0-9_\-\s\,\(\)\'\"\~\.]+)([|]([.0-9_]{0,5}))?$/))) {
             if (!$.audioHookExists(match[1])) {
                 if (match[1].includes('.')) {
                     match[1] = match[1].substring(0, match[1].lastIndexOf('.'));

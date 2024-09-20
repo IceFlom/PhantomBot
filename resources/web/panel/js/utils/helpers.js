@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1132,7 +1132,25 @@ $(function () {
      * @return {Number}
      */
     helpers.getGroupIdByName = function (name, asString) {
-        let idx = permGroupNames.indexOf(name);
+        name = name.trim().toLowerCase();
+
+        if (name.includes('everybody') || name.includes('everyone')) {
+            name = 'viewer';
+        }
+
+        if (name.endsWith('s')) {
+            name = name.substring(0, name.length - 1);
+        }
+
+        let idx = -1;
+
+        for (let x in permGroupNames) {
+            if (permGroupNames[x].toLowerCase().includes(name)) {
+                idx = x;
+                break;
+            }
+        }
+
         return (asString ? idx.toString() : parseInt(idx));
     };
 

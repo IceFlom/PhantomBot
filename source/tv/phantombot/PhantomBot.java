@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -85,7 +86,6 @@ import tv.phantombot.event.EventBus;
 import tv.phantombot.event.Listener;
 import tv.phantombot.event.command.CommandEvent;
 import tv.phantombot.event.irc.complete.IrcJoinCompleteEvent;
-import tv.phantombot.event.irc.message.IrcChannelMessageEvent;
 import tv.phantombot.event.jvm.PropertiesLoadedEvent;
 import tv.phantombot.event.jvm.PropertiesReloadedEvent;
 import tv.phantombot.event.jvm.ShutdownEvent;
@@ -104,7 +104,6 @@ import tv.phantombot.script.ScriptManager;
 import tv.phantombot.twitch.api.Helix;
 import tv.phantombot.twitch.api.TwitchValidate;
 import tv.phantombot.twitch.irc.TwitchSession;
-import tv.phantombot.twitch.pubsub.TwitchPubSub;
 import tv.phantombot.ytplayer.WsYTHandler;
 
 public final class PhantomBot implements Listener {
@@ -146,7 +145,6 @@ public final class PhantomBot implements Listener {
     private SecureRandom random;
     private boolean joined = false;
     private TwitchMessageInterface tmi;
-    private TwitchPubSub pubSubEdge;
 
     // Error codes
     // [...] by convention, a nonzero status code indicates abnormal termination. (see System.exit() JavaDoc)
@@ -341,7 +339,7 @@ public final class PhantomBot implements Listener {
         Datastore2.init();
         String oldds = CaselessProperties.instance().getProperty("datastore", "h2store").toLowerCase();
         if (!oldds.startsWith("sqlite")) {
-            if (DataStore.instance().GetFileList().length == 0 && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
+            if (Datastore2.instance() != null && DataStore.instance().GetFileList().length == 0 && SqliteStore.hasDatabase(CaselessProperties.instance().getProperty("datastoreconfig", ""))
                 && SqliteStore.isAvailable(CaselessProperties.instance().getProperty("datastoreconfig", ""))
                 && SqliteStore.instance().GetFileList().length > 0) {
                     if (oldds.startsWith("mysql")) {
@@ -408,20 +406,23 @@ public final class PhantomBot implements Listener {
                     com.gmt2001.Console.warn.println("Detected new installation, starting setup process...");
                     com.gmt2001.Console.warn.println();
                     ConfigurationManager.doSetup();
-                } else {
-                    com.gmt2001.Console.warn.println();
-                    com.gmt2001.Console.warn.println("Setup not completed yet. Please set the channel to join");
-                    com.gmt2001.Console.warn.println("Scroll up in the console to see instructions and logins");
                 }
-            } else {
-                com.gmt2001.Console.warn.println();
-                com.gmt2001.Console.warn.println("Channel to join is not set");
-                com.gmt2001.Console.warn.println("Please go the the bots built-in setup page and setup the Admin section");
-                com.gmt2001.Console.warn.println("The default URL is http://localhost:" + CaselessProperties.instance().getPropertyAsInt("baseport", 25000) + "/setup/");
-                com.gmt2001.Console.warn.println();
             }
+            com.gmt2001.Console.warn.println();
+            com.gmt2001.Console.warn.println("Channel to join is not set");
+            com.gmt2001.Console.warn
+                    .println("Please go the the bots built-in setup page and set the Channel in the Admin section");
+            com.gmt2001.Console.warn.println("The default URL is http://localhost:"
+                    + CaselessProperties.instance().getPropertyAsInt("baseport", 25000) + "/setup/");
+            com.gmt2001.Console.warn.println();
+            com.gmt2001.Console.warn.println("The current panel username is: "
+                    + CaselessProperties.instance().getProperty("paneluser", "panel"));
+            com.gmt2001.Console.warn.println(
+                    "The current panel password is: " + CaselessProperties.instance().getProperty("panelpassword", ""));
+            com.gmt2001.Console.warn.println();
             if (!this.initChatBackoff.GetIsBackingOff()) {
-                com.gmt2001.Console.warn.println("Will check again in " + (this.initChatBackoff.GetNextInterval() / 1000) + " seconds");
+                com.gmt2001.Console.warn
+                        .println("Will check again in " + (this.initChatBackoff.GetNextInterval() / 1000) + " seconds");
                 com.gmt2001.Console.warn.println();
                 this.initChatBackoff.BackoffAsync(() -> {
                     this.initChat();
@@ -429,12 +430,41 @@ public final class PhantomBot implements Listener {
             }
         } else if (!TwitchValidate.instance().isChatValid()) {
             com.gmt2001.Console.warn.println();
-            com.gmt2001.Console.warn.println("OAuth was invalid, not starting TMI (Chat)");
-            com.gmt2001.Console.warn.println("Please go the the bots built-in oauth page and setup a new Bot (Chat) token");
-            com.gmt2001.Console.warn.println("The default URL is http://localhost:" + CaselessProperties.instance().getPropertyAsInt("baseport", 25000) + "/oauth/");
+            com.gmt2001.Console.warn.println("The Bot (Chat) OAuth is not set or is invalid");
+            com.gmt2001.Console.warn
+                    .println("Please go the the bots built-in oauth page and setup a new Bot (Chat) token");
+            com.gmt2001.Console.warn.println("The default URL is http://localhost:"
+                    + CaselessProperties.instance().getPropertyAsInt("baseport", 25000) + "/oauth/");
+            com.gmt2001.Console.warn.println();
+            com.gmt2001.Console.warn.println("The current panel username is: "
+                    + CaselessProperties.instance().getProperty("paneluser", "panel"));
+            com.gmt2001.Console.warn.println(
+                    "The current panel password is: " + CaselessProperties.instance().getProperty("panelpassword", ""));
             com.gmt2001.Console.warn.println();
             if (!this.initChatBackoff.GetIsBackingOff()) {
-                com.gmt2001.Console.warn.println("Will check again in " + (this.initChatBackoff.GetNextInterval() / 1000) + " seconds");
+                com.gmt2001.Console.warn
+                        .println("Will check again in " + (this.initChatBackoff.GetNextInterval() / 1000) + " seconds");
+                com.gmt2001.Console.warn.println();
+                this.initChatBackoff.BackoffAsync(() -> {
+                    this.initChat();
+                });
+            }
+        } else if (!TwitchValidate.instance().isAPIValid()) {
+            com.gmt2001.Console.warn.println();
+            com.gmt2001.Console.warn.println("The Broadcaster (API) OAuth is not set or is invalid");
+            com.gmt2001.Console.warn
+                    .println("Please go the the bots built-in oauth page and setup a new Broadcaster (API) token");
+            com.gmt2001.Console.warn.println("The default URL is http://localhost:"
+                    + CaselessProperties.instance().getPropertyAsInt("baseport", 25000) + "/oauth/");
+            com.gmt2001.Console.warn.println();
+            com.gmt2001.Console.warn.println("The current panel username is: "
+                    + CaselessProperties.instance().getProperty("paneluser", "panel"));
+            com.gmt2001.Console.warn.println(
+                    "The current panel password is: " + CaselessProperties.instance().getProperty("panelpassword", ""));
+            com.gmt2001.Console.warn.println();
+            if (!this.initChatBackoff.GetIsBackingOff()) {
+                com.gmt2001.Console.warn
+                        .println("Will check again in " + (this.initChatBackoff.GetNextInterval() / 1000) + " seconds");
                 com.gmt2001.Console.warn.println();
                 this.initChatBackoff.BackoffAsync(() -> {
                     this.initChat();
@@ -480,19 +510,13 @@ public final class PhantomBot implements Listener {
         if (this.tmi != null) {
             this.tmi.reconnect();
         }
-        if (this.pubSubEdge != null) {
-            this.pubSubEdge.reconnect();
-        }
+        EventSub.instance().reconnect();
     }
 
     public void reloadProperties() {
         this.checkPanelLogin();
 
         Helix.instance().setOAuth(CaselessProperties.instance().getProperty("apioauth", ""));
-
-        if (this.pubSubEdge != null) {
-            this.pubSubEdge.setOAuth(CaselessProperties.instance().getProperty("apioauth", ""));
-        }
 
         if (this.httpAuthenticatedHandler != null) {
             this.httpAuthenticatedHandler.updateAuth(CaselessProperties.instance().getProperty("webauth"), this.getPanelOAuth().replace("oauth:", ""));
@@ -974,10 +998,6 @@ public final class PhantomBot implements Listener {
             this.tmi.shutdown();
         }
 
-        if (this.pubSubEdge != null) {
-            this.pubSubEdge.shutdown();
-        }
-
         EventSub.instance().shutdown();
 
         /* Shutdown all caches */
@@ -1078,15 +1098,10 @@ public final class PhantomBot implements Listener {
 
         com.gmt2001.Console.debug.println("TwitchValidate.hasAPIScope(channel:moderate)=" + (TwitchValidate.instance().hasAPIScope("channel:moderate") ? "t" : "f"));
         com.gmt2001.Console.debug.println("TwitchValidate.hasAPIScope(channel:read:redemption)=" + (TwitchValidate.instance().hasAPIScope("channel:read:redemptions") ? "t" : "f"));
-        com.gmt2001.Console.debug.println("StartPubSub=" + (CaselessProperties.instance().getProperty("apioauth", "").length() > 0 && (TwitchValidate.instance().hasAPIScope("channel:moderate") || TwitchValidate.instance().hasAPIScope("channel:read:redemptions")) ? "t" : "f"));
-        /* Start a pubsub instance here. */
-        if (CaselessProperties.instance().getProperty("apioauth", "").length() > 0 && (TwitchValidate.instance().hasAPIScope("channel:moderate") || TwitchValidate.instance().hasAPIScope("channel:read:redemptions"))) {
-            this.pubSubEdge = new TwitchPubSub(TwitchAPIv5.instance().getChannelId(this.getChannelName()), TwitchAPIv5.instance().getChannelId(this.getBotName()), CaselessProperties.instance().getProperty("apioauth", ""));
-        }
 
         /* Load the caches for each channels */
         this.twitchTeamCache = TwitchTeamsCache.instance(this.getChannelName());
-        this.emotesCache = EmotesCache.instance(this.getChannelName());
+        this.emotesCache = EmotesCache.instance();
         this.followersCache = FollowersCache.instance();
         this.viewerListCache = ViewerListCache.instance(this.getChannelName());
 
@@ -1100,18 +1115,6 @@ public final class PhantomBot implements Listener {
         Script.global.defineProperty("followers", this.followersCache, 0);
         Script.global.defineProperty("usernameCache", this.viewerListCache, 0);
         EventSub.instance();
-    }
-
-    /**
-     * messages from Twitch chat
-     *
-     * @param event
-     */
-    @Handler
-    public void ircChannelMessage(IrcChannelMessageEvent event) {
-        if (this.pubSubEdge != null) {
-            this.pubSubEdge.ircChannelMessageEvent(event);
-        }
     }
 
     /**
@@ -1159,8 +1162,8 @@ public final class PhantomBot implements Listener {
     public static void main(String[] args) throws IOException {
         System.setProperty("io.netty.noUnsafe", "true");
 
-        if (Float.parseFloat(System.getProperty("java.specification.version")) < (float) 17) {
-            System.out.println("Detected Java " + System.getProperty("java.version") + ". " + "PhantomBot requires Java 17 or later.");
+        if (Float.parseFloat(System.getProperty("java.specification.version")) < (float) 17 || Float.parseFloat(System.getProperty("java.specification.version")) >= (float) 20) {
+            System.out.println("Detected Java " + System.getProperty("java.version") + ". " + "PhantomBot requires Java 17, 18, or 19.");
             PhantomBot.exitError();
         }
 
@@ -1181,6 +1184,31 @@ public final class PhantomBot implements Listener {
         }
 
         CaselessProperties startProperties = ConfigurationManager.getConfiguration();
+
+        if (startProperties.containsKey(ConfigurationManager.PROP_IS_PTERODACTYL)
+            && !CaselessCommandLineArguments.instance().getPropertyAsBoolean(ConfigurationManager.PROP_PTERODACTYL_FIX, false)) {
+                com.gmt2001.Console.warn.println("Found pterodactyl installation. The eggs have incorrect launch parameters. Restarting with the correct launch parameters");
+                com.gmt2001.Console.warn.println();
+            List<List<String>> commands = List.of(
+                List.of("chmod", "u+x", Paths.get(Reflect.GetExecutionPath(), "launch-service.sh").toString()),
+                List.of(Paths.get(Reflect.GetExecutionPath(), "launch-service.sh").toString(), ConfigurationManager.PROP_PTERODACTYL_FIX)
+            );
+            File dir = Paths.get(Reflect.GetExecutionPath()).toFile();
+
+            int lastExit = 1;
+            try {
+                for (List<String> cmd : commands) {
+                    ProcessBuilder pb = new ProcessBuilder(cmd);
+                    lastExit = pb.directory(dir).inheritIO().start().waitFor();
+                }
+            } catch (Exception ex) {
+                com.gmt2001.Console.err.printStackTrace(ex, Map.of("_____report", false));
+                System.exit(1);
+            }
+
+            System.exit(lastExit);
+            return;
+        }
 
         setStaticFields(startProperties);
 
@@ -1516,25 +1544,23 @@ public final class PhantomBot implements Listener {
     }
 
     public static ZoneId getTimeZoneId() {
-        ZoneId zoneId = ZoneId.of(getTimeZone());
+        try {
+            ZoneId zoneId = ZoneId.of(getTimeZone());
 
-        if (zoneId == null) {
+            if (zoneId == null) {
+                return ZoneId.systemDefault();
+            }
+
+            return zoneId;
+        } catch (DateTimeException ex) {
+            com.gmt2001.Console.err.printStackTrace(ex);
+            com.gmt2001.Console.err.println("Invalid TimeZone. Please make sure your TimeZone ID is formatted according to the 'TZ identifier' column on this Wikipedia page: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones");
             return ZoneId.systemDefault();
         }
-
-        return zoneId;
     }
 
     public static boolean isInExitState() {
         return isInExitState;
-    }
-
-    public TwitchPubSub getPubSub() {
-        return this.pubSubEdge;
-    }
-
-    public void setPubSub(TwitchPubSub pubSub) {
-        this.pubSubEdge = pubSub;
     }
 
     public void setSession(TwitchSession session) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,7 +83,8 @@ public final class PrivMsgTMIProcessor extends AbstractTMIProcessor {
                 return;
             }
             if (item.tags().containsKey("subscriber") && item.tags().get("subscriber").equals("1")) {
-                EventBus.instance().postAsync(new IrcPrivateMessageEvent(this.session(), "jtv", "SPECIALUSER " + item.nick() + " subscriber", item.tags()));
+                EventBus.instance().postAsync(new IrcPrivateMessageEvent(this.session(), "jtv",
+                        "SPECIALUSER " + item.nick() + " subscriber", item.tags()));
             }
 
             if (item.tags().containsKey("bits")) {
@@ -94,30 +95,38 @@ public final class PrivMsgTMIProcessor extends AbstractTMIProcessor {
                 EventBus.instance().postAsync(CommandEvent.asCommand(item.nick(), fmessage, item.tags()));
             }
 
-            EventBus.instance().postAsync(new IrcChannelMessageEvent(this.session(), item.nick(), fmessage, item.tags(), item));
+            EventBus.instance()
+                    .postAsync(new IrcChannelMessageEvent(this.session(), item.nick(), fmessage, item.tags(), item));
         }).subscribe();
 
         modEvent.completedMono().doFinally(sig -> {
             if (sig == SignalType.ON_COMPLETE) {
                 IrcModerationEvent.ModerationAction action = modEvent.action();
 
-                switch (action.action()) {
-                    case UnBan:
-                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/unban " + item.nick());
-                        break;
-                    case Delete:
-                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/delete " + item.tags().get("id"));
-                        break;
-                    case ClearChat:
-                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/clear");
-                        break;
-                    case Timeout:
-                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/timeout " + item.nick() + " " + action.time() + (action.reason() != null ? " " + action.reason() : null));
-                        break;
-                    case Ban:
-                        TMISlashCommands.checkAndProcessCommands(this.channel(), "/ban " + item.nick() + (action.reason() != null ? " " + action.reason() : null));
-                        break;
-                    default:
+                try {
+                    switch (action.action()) {
+                        case UnBan:
+                            TMISlashCommands.checkAndProcessCommands(this.channel(), "/unban " + item.nick());
+                            break;
+                        case Delete:
+                            TMISlashCommands.checkAndProcessCommands(this.channel(),
+                                    "/delete " + item.tags().get("id"));
+                            break;
+                        case ClearChat:
+                            TMISlashCommands.checkAndProcessCommands(this.channel(), "/clear");
+                            break;
+                        case Timeout:
+                            TMISlashCommands.checkAndProcessCommands(this.channel(), "/timeout " + item.nick() + " "
+                                    + action.time() + (action.reason() != null ? " " + action.reason() : null));
+                            break;
+                        case Ban:
+                            TMISlashCommands.checkAndProcessCommands(this.channel(),
+                                    "/ban " + item.nick() + (action.reason() != null ? " " + action.reason() : null));
+                            break;
+                        default:
+                    }
+                } catch (Exception ex) {
+                    com.gmt2001.Console.err.printStackTrace(ex);
                 }
 
                 if (action.action() != Actions.None && action.warning() != null && !action.warning().isBlank()) {

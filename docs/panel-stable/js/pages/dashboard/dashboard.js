@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,8 @@ $(function () {
         // Update event toggle.
         $('#toggle-reverse-events').prop('checked', helpers.isReverseSortEvents);
 
-        // Disable isntant commercials if the module is disabled
-        if (e['./systems/commercialSystem.js'] !== 'true') {
+        // Disable instant commercials if the module is disabled
+        if (!helpers.isTrue(e['./systems/commercialSystem.js'])) {
             $('#grp-instant-commercial').addClass('hidden');
         } else {
             $('#instant-commercial-length').select2({

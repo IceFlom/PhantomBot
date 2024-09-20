@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -312,6 +312,10 @@
      * the values of the inner array represent the value of the row-column pair at that index as a js string
      */
     function sql(query, replacements) {
+        if (replacements === undefined || replacements === null) {
+            replacements = [];
+        }
+
         let result = $.inidb.query(query, replacements);
 
         let ret = [];

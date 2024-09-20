@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,7 +139,8 @@
 
         var msg = JSON.stringify({
             'start_poll': 'true',
-            'data': JSON.stringify(objOBS)
+            'title': question,
+            'options': objOBS
         });
         $.alertspollssocket.sendJSONToAll(msg);
 
@@ -179,7 +180,8 @@
 
             var msg = JSON.stringify({
                 'start_poll': 'true',
-                'data': JSON.stringify(objOBS)
+                'title': poll.question,
+                'options': objOBS
             });
             $.alertspollssocket.sendJSONToAll(msg);
         }
@@ -231,7 +233,8 @@
 
             var msg = JSON.stringify({
                 'new_vote': 'true',
-                'data': JSON.stringify(objOBS)
+                'title': poll.question,
+                'options': objOBS
             });
         } finally {
             _pollLock.unlock();
@@ -419,7 +422,8 @@
             if (poll.pollRunning) {
                 var msg = JSON.stringify({
                     'start_poll': 'true',
-                    'data': JSON.stringify(objOBS)
+                    'title': poll.question,
+                    'options': objOBS
                 });
                 $.alertspollssocket.sendJSONToAll(msg);
             }

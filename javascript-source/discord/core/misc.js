@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -196,6 +196,20 @@
      */
     function setRole(role, username) {
         $.discordAPI.addRole(role, username);
+    }
+
+    /**
+     * @function getUserById Gets a Discord user by their Discord User ID, if they are a member of the Discord server
+     *
+     * @param {string} userId The Discord User ID to search for
+     * @return {Packages.discord4j.core.object.entity.User} `null` if the user is not found on the Discord server; otherwise, the user object
+     * @export $.discord
+     */
+    function getUserById(userId) {
+        try {
+            return $.discordAPI.getUserByIdAsync(Packages.java.lang.Long.parseUnsignedLong(userId)).block();
+        } catch (ex) {}
+        return null;
     }
 
     function sanitizeChannelName(channel) {
@@ -452,6 +466,7 @@
 
     /* Export the function to the $.discord api. */
     /* There are the same functions twice in here - that's normal and wanted. */
+    $.discord.getUserById = getUserById;
     $.discord.getUserMention = getUserMention;
     $.discord.userMention = getUserMention;
     $.discord.removeGame = removeGame;

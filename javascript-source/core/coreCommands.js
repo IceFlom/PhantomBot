@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@
             /*
              * @commandpath shoutoutapitoggle - Toggles if the /shoutout API is also sent along with the normal !shoutout response
              */
-        } else if ($.equalsIgnoreCase(command, 'shoutoutapi')) {
+        } else if ($.equalsIgnoreCase(command, 'shoutoutapitoggle')) {
             shoutoutApi = !shoutoutApi;
             $.setIniDbBoolean('settings', 'shoutoutapi', shoutoutApi);
             $.say($.whisperPrefix(sender) + $.lang.get('corecommands.shoutoutapi.' + (shoutoutApi ? 'enable' : 'disable')));

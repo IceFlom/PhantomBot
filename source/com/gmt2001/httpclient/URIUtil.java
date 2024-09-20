@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.util.regex.Pattern;
 
 /**
  * Assists with creating a {@link URI} by automatically encoding characters that {@link URI} finds unacceptable
@@ -75,7 +76,7 @@ public final class URIUtil {
                 }
 
                 try {
-                    return create(uri.substring(0, ex.getIndex()) + uri.substring(ex.getIndex()).replaceAll(c, e), ex.getIndex());
+                    return create(uri.substring(0, ex.getIndex()) + uri.substring(ex.getIndex()).replaceAll(Pattern.quote(c), e), ex.getIndex());
                 } catch (URISyntaxException ex3) {
                     throw ex;
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,15 +18,15 @@
 /* global Packages */
 
 (function() {
-    var whisperMode = $.getSetIniDbBoolean('settings', 'whisperMode', false),
-        ScriptEventManager = Packages.tv.phantombot.script.ScriptEventManager,
-        CommandEvent = Packages.tv.phantombot.event.command.CommandEvent;
+    let whisperMode = $.getSetIniDbBoolean('settings', 'whisperMode', false),
+        allowNonModWhispers = $.getSetIniDbBoolean('settings', 'allowNonModWhispers', false);
 
     /**
      * @function reloadWhispers
      */
     function reloadWhispers() {
         whisperMode = $.getIniDbBoolean('settings', 'whisperMode');
+        allowNonModWhispers = $.getIniDbBoolean('settings', 'allowNonModWhispers');
     }
 
     /**
@@ -90,7 +90,7 @@
             return;
         }
 
-        if (message.startsWith('!') && $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod) && $.userExists(sender)) {
+        if (message.startsWith('!') && (allowNonModWhispers || $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod)) && $.userExists(sender)) {
             message = message.substring(1);
             if (message.includes(' ')) {
                 split = message.indexOf(' ');
@@ -100,7 +100,7 @@
                 command = message;
             }
 
-            ScriptEventManager.instance().onEvent(new CommandEvent(sender, command, arguments));
+            $.command.run(sender, command, arguments);
             $.log.file('whispers', '' + sender + ': ' + message);
         }
     });
@@ -120,6 +120,14 @@
             $.setIniDbBoolean('settings', 'whisperMode', whisperMode);
             $.say(whisperPrefix(sender) + (whisperMode ? $.lang.get('whisper.whispers.enabled') : $.lang.get('whisper.whispers.disabled')));
         }
+        /**
+         * @commandpath togglenonmodwhispers - Toggle allowing non-mods to send commands via whisper
+         */
+         else if ($.equalsIgnoreCase(command, 'togglenonmodwhispers')) {
+            allowNonModWhispers = !allowNonModWhispers;
+            $.setIniDbBoolean('settings', 'allowNonModWhispers', allowNonModWhispers);
+            $.say(whisperPrefix(sender) + (allowNonModWhispers ? $.lang.get('whisper.allowNonModWhispers.enabled') : $.lang.get('whisper.allowNonModWhispers.disabled')));
+        }
     });
 
     /**
@@ -127,6 +135,7 @@
      */
     $.bind('initReady', function() {
         $.registerChatCommand('./core/whisper.js', 'togglewhispermode', $.PERMISSION.Admin);
+        $.registerChatCommand('./core/whisper.js', 'togglenonmodwhispers', $.PERMISSION.Admin);
     });
 
     /** Export functions to API */

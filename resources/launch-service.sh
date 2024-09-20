@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+# Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,5 +44,7 @@ SCRIPT_PATH="$( pwd; )";
 popd  > '/dev/null'
 
 pushd "$SCRIPT_PATH"
+
+chm=$(chmod u+x ./launch.sh 2>/dev/null)
 
 ./launch.sh --daemon "$@"

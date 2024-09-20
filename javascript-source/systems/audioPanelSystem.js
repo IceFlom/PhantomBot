@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -226,6 +226,12 @@
                 }
 
                 if (!audioHookExists(audioHook)) {
+                    if (audioHook.includes('.')) {
+                        audioHook = audioHook.substring(0, audioHook.lastIndexOf('.'));
+                    }
+                }
+
+                if (!audioHookExists(audioHook)) {
                     $.returnCommandCost(sender, command, isMod);
                     return;
                 }
@@ -297,6 +303,12 @@
                         $.inidb.set('audioCommands', subAction.toLowerCase(), actionArgs);
                         $.registerChatCommand('./systems/audioPanelSystem.js', subAction.toLowerCase(), $.PERMISSION.Viewer);
                         return;
+                    }
+
+                    if (!audioHookExists(actionArgs)) {
+                        if (actionArgs.includes('.')) {
+                            actionArgs = actionArgs.substring(0, actionArgs.lastIndexOf('.'));
+                        }
                     }
 
                     if (!audioHookExists(actionArgs)) {

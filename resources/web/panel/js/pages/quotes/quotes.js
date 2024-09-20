@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -214,7 +214,7 @@ $(function () {
                     // Quote input.
                     .append(helpers.getInputGroup('quote-msg', 'text', 'Quote Response', '', helpers.getDefaultIfNullOrUndefined(e.settings, '[(id)] "(quote)", by (user) ((date))'),
                             'Message said in chat when someone uses the quote command. Tags: (id), (quote), (user), (game) and (date)'))
-                    .append(helpers.getDropdownGroup('quote-twitch-names-toggle', 'Force Twitch Names', (e['quoteTwitchNamesToggle'] !== 'false' ? 'Yes' : 'No'), ['Yes', 'No'],
+                    .append(helpers.getDropdownGroup('quote-twitch-names-toggle', 'Force Twitch Names', (helpers.isTrue(e['quoteTwitchNamesToggle']) ? 'Yes' : 'No'), ['Yes', 'No'],
                             'If names for quotes should be validated against Twitch usernames. If not, names can be anything.')),
                     function () {// Callback once we click the save button.
                         let quoteMsg = $('#quote-msg'),

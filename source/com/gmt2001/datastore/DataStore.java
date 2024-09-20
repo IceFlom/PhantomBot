@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,11 +40,14 @@ import org.jooq.SelectWhereStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
 import org.jooq.exception.DataAccessException;
+import org.jooq.exception.TooManyRowsException;
 import org.jooq.impl.SQLDataType;
 
 import com.gmt2001.datastore2.Datastore2;
 import com.gmt2001.datastore2.H2Store2;
 import com.gmt2001.datastore2.SQLiteStore2;
+
+import tv.phantombot.PhantomBot;
 
 /**
  * Provides access to the database in a key-value store style
@@ -97,7 +102,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @return an {@link Optional} which contains the matching {@link Table}, if found
      */
     public Optional<Table<?>> findTable(String fName) {
-        return Datastore2.instance().tables().stream().filter(t -> t.getName().equalsIgnoreCase("phantombot_" + fName)).findFirst();
+        return Datastore2.instance().tables().stream().filter(t -> t.getName().equalsIgnoreCase("phantombot_" + fName) || t.getName().equalsIgnoreCase(fName)).findFirst();
     }
 
     /**
@@ -128,7 +133,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @return an array of table names
      */
     public String[] GetFileList() {
-        return dsl().meta().getTables().stream().filter(t -> t.getName().toLowerCase().startsWith("phantombot_"))
+        return Datastore2.instance().meta().getTables().stream().filter(t -> t.getName().toLowerCase().startsWith("phantombot_"))
             .map(t -> t.getName().replaceFirst("(?i)phantombot_", "")).collect(Collectors.toList()).toArray(new String[0]);
     }
 
@@ -236,7 +241,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
             }
             SelectWhereStep<Record1<String>> w = dsl().select(field("variable", tbl)).from(tbl);
             SelectConnectByStep<Record1<String>> c = w;
-            if (section == null) {
+            if (section != null) {
                 if (like == null) {
                     c = w.where(field("section", tbl).eq(section));
                 } else {
@@ -663,7 +668,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @return an {@link Optional} that may contain a {@link SectionVariableValueRecord} if the row exists
      */
     public Optional<SectionVariableValueRecord> OptRecord(String fName, String section, String key) {
-        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName, false);
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName);
 
         if (table == null) {
             return Optional.empty();
@@ -681,11 +686,38 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @return an {@link Optional} that may contain a {@link SectionVariableValueRecord} if the row exists
      */
     public Optional<SectionVariableValueRecord> OptRecord(SectionVariableValueTable table, String section, String key) {
+        return this.OptRecord(table, section, key, false);
+    }
+
+    /**
+     * Returns the record for the given table, section, and key
+     * <p>
+     * If a JOOQ constraint failure occurs due to duplicate (SECTION, VARIABLE), a backup is created, duplicates are dropped, and the SQL constraint is added
+     *
+     * @param table the table to search
+     * @param section a section name. {@code ""} (empty string) for the default section; {@code null} for all sections
+     * @param key the value of the {@code variable} column to retrieve
+     * @param isRetry if {@code false}, a {@link TooManyRowsException} triggers dropping duplicate data; otherwise, the exception is re-thrown up the stack
+     * @return an {@link Optional} that may contain a {@link SectionVariableValueRecord} if the row exists
+     */
+    private Optional<SectionVariableValueRecord> OptRecord(SectionVariableValueTable table, String section, String key, boolean isRetry) {
         Optional<SectionVariableValueRecord> res;
-        if (section == null) {
-            res = dsl().fetchOptional(table, table.VARIABLE.eq(key));
-        } else {
-            res = dsl().fetchOptional(table, table.SECTION.eq(section), table.VARIABLE.eq(key));
+
+        try {
+            if (section == null) {
+                res = dsl().fetchOptional(table, table.VARIABLE.eq(key));
+            } else {
+                res = dsl().fetchOptional(table, table.SECTION.eq(section), table.VARIABLE.eq(key));
+            }
+        } catch (TooManyRowsException ex) {
+            if (isRetry) {
+                throw ex;
+            } else {
+                String timestamp = LocalDateTime.now(PhantomBot.getTimeZoneId()).format(DateTimeFormatter.ofPattern("ddMMyyyy.hhmmss"));
+                this.backupDB("before_duplicate_drop_" + table.getName() + "_" + timestamp);
+                table.dropDuplicateData();
+                return this.OptRecord(table, section, key, true);
+            }
         }
 
         return res.map(r -> r.with(table));
@@ -836,7 +868,7 @@ public sealed class DataStore permits H2Store, MySQLStore, MariaDBStore, SqliteS
      * @param values the new values to set the {@code value} column to
      */
     public void SetBatchString(String fName, String section, String[] keys, String[] values) {
-        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName, false);
+        SectionVariableValueTable table = SectionVariableValueTable.instance("phantombot_" + fName);
 
         if (table != null) {
             dsl().batched(c -> {

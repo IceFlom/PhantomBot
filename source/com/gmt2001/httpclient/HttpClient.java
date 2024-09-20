@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ public final class HttpClient {
      */
     public static HttpClientResponse request(HttpMethod method, URI url, HttpHeaders requestHeaders, String requestBody) {
         reactor.netty.http.client.HttpClient client = reactor.netty.http.client.HttpClient.create();
-        if (url.getScheme().equals("https")) {
+        if (url.getScheme() != null && url.getScheme().equals("https")) {
             client = client.secure();
         }
 

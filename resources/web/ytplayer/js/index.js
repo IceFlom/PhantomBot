@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ $(function() {
 
         // Check if the player is disabled right away.
         player.dbQuery('get_module_status', 'modules', (data) => {
-            if (data['./systems/youtubePlayer.js'] == 'false') {
+            if (!helpers.isTrue(data['./systems/youtubePlayer.js'])) {
                 helpers.getErrorModal('Module Disabled', 'The YouTube player module is disabled, please go and enable it.', () => {
                     window.location.reload();
                 }).modal('toggle');

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -258,16 +258,15 @@
          * from what should be URLs.  We do not wish to do this at the non-URL level
          * as someone might be searching for a song using an ampersand.
          */
-        if (searchQuery.includes('watch?v=')) {
-            searchQuery = searchQuery.split('=', 2)[1];
+        if (searchQuery.includes('/watch') && searchQuery.includes('v=')) {
+            searchQuery = searchQuery.substring(searchQuery.indexOf('v=') + 2);
             if (searchQuery.includes('&')) {
-                searchQuery = searchQuery.split('&', 2)[0];
+                searchQuery = searchQuery.substring(0, searchQuery.indexOf('&'));
             }
-        }
-        if (searchQuery.startsWith('https://youtu.be/')) {
-            searchQuery = searchQuery.split('/', 4)[3];
-            if (searchQuery.includes('&')) {
-                searchQuery = searchQuery.split('&', 2)[0];
+        } else if (searchQuery.startsWith('https://youtu.be/')) {
+            searchQuery = searchQuery.substring(17);
+            if (searchQuery.includes('?')) {
+                searchQuery = searchQuery.substring(0, searchQuery.indexOf('?'));
             }
         }
 
@@ -495,7 +494,7 @@
 
             for (i = 0; i < keyList.length; i++) {
                 if ($.getIniDbString(playListDbId, keyList[i]).equals(videoId)) {
-                    if ($.getIniDbString(playListDbId, keyList[i]) == currentVideo.getVideoId()) {
+                    if (currentVideo !== null && $.getIniDbString(playListDbId, keyList[i]) == currentVideo.getVideoId()) {
                         isCurrent = true;
                     }
                     $.inidb.del(playListDbId, keyList[i]);
@@ -913,14 +912,16 @@
          * the text constantly in a loop.
          */
         this.updateCurrentSongFile = function(youtubeVideo) {
-            var writer = new Packages.java.io.OutputStreamWriter(new Packages.java.io.FileOutputStream(baseFileOutputPath + 'currentsong.txt'), 'UTF-8');
-
+            var writer = null;
             try {
+                writer = new Packages.java.io.OutputStreamWriter(new Packages.java.io.FileOutputStream(baseFileOutputPath + 'currentsong.txt'), 'UTF-8');
                 writer.write(youtubeVideo.getVideoTitle());
             } catch (ex) {
                 $.log.error('Failed to update current song file: ' + ex.toString());
             } finally {
-                writer.close();
+                if (writer !== null) {
+                    writer.close();
+                }
             }
         };
 

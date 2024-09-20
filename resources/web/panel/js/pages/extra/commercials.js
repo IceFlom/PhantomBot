@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ $(run = function () {
             return;
         }
 
-        if (e['commercialtimer'] === 'true') {
+        if (helpers.isTrue(e['commercialtimer'])) {
             $('#commercials-autotimer-on').html($('<i/>', {
                 'class': 'fa fa-check'
             })).append('&nbsp; Update Autotimer');

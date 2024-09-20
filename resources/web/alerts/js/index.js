@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -432,7 +432,7 @@ $(function () {
         }
 
         // scaling of the emote (by width)
-        const size = 112;
+        const size = getOptionSetting('flyingEmoteSize', 112);
 
         const browserSafeId = emoteId.replace(/\W/g, '');
 

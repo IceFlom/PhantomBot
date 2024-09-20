@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -222,7 +222,11 @@ public final class TwitchMessageInterface extends SubmissionPublisher<TMIMessage
     private void redirectSlashCommandsAndSendPrivMessage(String channel, String message, String replyToId) {
         boolean res = false;
         if (message.startsWith("/") || message.startsWith(".")) {
-            res = TMISlashCommands.checkAndProcessCommands(channel, message);
+            try {
+                res = TMISlashCommands.checkAndProcessCommands(channel, message);
+            } catch (Exception ex) {
+                com.gmt2001.Console.err.printStackTrace(ex);
+            }
         }
 
         if (!res && this.rateLimiter.takeToken()) {

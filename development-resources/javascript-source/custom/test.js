@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -155,6 +155,26 @@
             $.inidb.del('group', args[0].toLowerCase());
         }
 
+        // Get user from Twitch API by User ID and pretty-print to console
+        if (command.equalsIgnoreCase('getuserbyid')) {
+            if (args.length < 1) {
+                $.say('Usage: !getuserbyid userid');
+                return;
+            }
+            let data = $.helix.getUsers(Packages.java.util.List.of($.javaString(args[0])), null);
+			$.consoleLn(data.toString(4));
+        }
+
+        // Get user from Twitch API by User Login Name and pretty-print to console
+        if (command.equalsIgnoreCase('getuserbyname')) {
+            if (args.length < 1) {
+                $.say('Usage: !getuserbyname userlogin');
+                return;
+            }
+            let data = $.helix.getUsers(null, Packages.java.util.List.of($.javaString(args[0])));
+			$.consoleLn(data.toString(4));
+        }
+
         // Throws an IllegalStateException to test exception catching/logging in init.js
         if (command.equalsIgnoreCase('testexception')) {
             throw new Packages.java.lang.IllegalStateException("This is a test");
@@ -289,6 +309,36 @@
         }
     });
 
+    // Test some EventSub subscriptions
+    $.bind('eventSubWelcome', function (event) {
+        if (!event.isReconnect()) {
+            let Test = Packages.com.gmt2001.twitch.eventsub.subscriptions.Test;
+
+			let type1 = 'automod.message.hold';
+            let newSubscription1 = new Test(type1, '1', [['broadcaster_user_id', $.viewer.broadcaster().id()], ['moderator_user_id', $.viewer.broadcaster().id()]]);
+			try {
+				newSubscription1.create().block();
+				$.consoleLn('Registered ' + type1);
+			} catch (ex) {
+				$.log.error(ex);
+			}
+
+			let type2 = 'automod.message.update';
+            let newSubscription2 = new Test(type2, '1', [['broadcaster_user_id', $.viewer.broadcaster().id()], ['moderator_user_id', $.viewer.broadcaster().id()]]);
+			try {
+				newSubscription2.create().block();
+				$.consoleLn('Registered ' + type2);
+			} catch (ex) {
+				$.log.error(ex);
+			}
+        }
+    });
+
+    // Capture tested EventSub subscriptions and use JSONObject.toString(indent) to pretty-print it to console
+    $.bind('eventSubTest', function (event) {
+        $.consoleLn(event.event().payload().toString(4));
+    });
+
     $.bind('initReady', function () {
         $.registerChatCommand('./custom/test.js', 'testhelp', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'testcmd', $.PERMISSION.Admin);
@@ -304,6 +354,8 @@
         $.registerChatCommand('./custom/test.js', 'setdonator', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'setregular', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'setviewer', $.PERMISSION.Admin);
+        $.registerChatCommand('./custom/test.js', 'getuserbyid', $.PERMISSION.Admin);
+        $.registerChatCommand('./custom/test.js', 'getuserbyname', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'testexception', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'testtimeout', $.PERMISSION.Admin);
         $.registerChatCommand('./custom/test.js', 'testinterval', $.PERMISSION.Admin);

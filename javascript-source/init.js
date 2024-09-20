@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -474,6 +474,10 @@
         if (hookName === 'command') {
             i = getHookIndex($.getCommandScript(event.getCommand()), hookName);
 
+            if (hook.handlers[i] === undefined || hook.handlers[i] === null) {
+                return;
+            }
+
             try {
                 hook.handlers[i].handler(event);
             } catch (ex) {
@@ -648,10 +652,10 @@
                         handleException('command', e, true);
                         return;
                     }
-                    let command = event.getCommand(),
-                            args = event.getArgs(),
-                            subCommand = $.getSubCommandFromArguments(command, args),
-                            isMod = $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod);
+                    let command = event.getCommand();
+                    let args = event.getArgs();
+                    let subCommand = $.getSubCommandFromArguments(command, args);
+                    let isMod = $.checkUserPermission(sender, event.getTags(), $.PERMISSION.Mod);
 
                     if (isReady === false && ($.equalsIgnoreCase(command, 'pbcore') || $.equalsIgnoreCase(command, $.botName)) && args[0].equalsIgnoreCase('moderate')) {
                         Packages.tv.phantombot.PhantomBot.instance().getSession().getModerationStatus();

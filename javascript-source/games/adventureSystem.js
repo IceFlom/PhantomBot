@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
         warningMessage = $.getSetIniDbBoolean('adventureSettings', 'warningMessage', false),
         coolDownAnnounce = $.getSetIniDbBoolean('adventureSettings', 'coolDownAnnounce', false),
         startPermission = $.getSetIniDbNumber('adventureSettings', 'startPermission', $.PERMISSION.Viewer),
+        odds = $.getSetIniDbNumber('adventureSettings', 'odds', 50),
         currentAdventure = {},
         stories = [],
         lastStory,
@@ -43,7 +44,8 @@
         enterMessage = $.getIniDbBoolean('adventureSettings', 'enterMessage');
         warningMessage = $.getIniDbBoolean('adventureSettings', 'warningMessage');
         coolDownAnnounce = $.getIniDbBoolean('adventureSettings', 'coolDownAnnounce');
-        startPermission = $.getSetIniDbNumber('adventureSettings', 'startPermission', $.PERMISSION.Viewer);
+        odds = $.getIniDbNumber('adventureSettings', 'odds');
+        startPermission = $.getIniDbNumber('adventureSettings', 'startPermission');
     }
 
     /**
@@ -104,6 +106,7 @@
             stories.push({
                 game: ($.lang.exists(prefix + '.' + storyId + '.game') ? $.lang.get(prefix + '.' + storyId + '.game') : null),
                 title: $.lang.get(prefix + '.' + storyId + '.title'),
+                odds: $.lang.exists(prefix + '.' + storyId + '.odds') ? parseInt($.lang.get(prefix + '.' + storyId + '.odds')) : null,
                 lines: lines
             });
 
@@ -191,11 +194,15 @@
     function calculateResult() {
         _currentAdventureLock.lock();
         try {
+            let lOdds = currentAdventure.story.odds;
+            if (lOdds === undefined || lOdds === null) {
+                lOdds = odds;
+            }
             for (let i in currentAdventure.users) {
-                if ($.randRange(0, 20) > 5) {
-                    currentAdventure.survivors.push(currentAdventure.users[i]);
-                } else {
+                if ($.randRange(1, 100) > lOdds) {
                     currentAdventure.caught.push(currentAdventure.users[i]);
+                } else {
+                    currentAdventure.survivors.push(currentAdventure.users[i]);
                 }
             }
         } finally {
@@ -321,25 +328,15 @@
         let game = $.getGame($.channelName);
 
         for (let i in stories) {
-            if (stories[i].game !== null) {
-                if ($.equalsIgnoreCase(game, stories[i].game)) {
-                    temp.push({
-                        title: stories[i].title,
-                        lines: stories[i].lines
-                    });
-                }
-            } else {
-                temp.push({
-                    title: stories[i].title,
-                    lines: stories[i].lines
-                });
+            if (stories[i].game === null || $.equalsIgnoreCase(game, stories[i].game)) {
+                temp.push(stories[i]);
             }
         }
 
         if (lastStory !== undefined && lastStory.title !== undefined) {
             do {
                 story = $.randElement(temp);
-            } while (story.title === lastStory.title);
+            } while (story.title === lastStory.title && temp.length > 1);
         } else {
             story = $.randElement(temp);
         }
@@ -591,6 +588,27 @@
                     }
 
                     $.inidb.set('adventureSettings', 'coolDownAnnounce', coolDownAnnounce);
+                }
+
+                /**
+                 * @commandpath adventure set odds [value] - Set the odds of players surviving adventures
+                 */
+                if ($.equalsIgnoreCase(actionArg1, 'odds')) {
+                    if (isNaN(actionArg2)) {
+                        $.say($.whisperPrefix(sender) + $.lang.get('adventuresystem.set.usage'));
+                        return;
+                    }
+
+                    let tmp = parseInt(actionArg2);
+                    if (tmp < 0 || tmp > 100) {
+                        $.say($.whisperPrefix(sender) + $.lang.get('adventuresystem.set.usage.odds'));
+                        return;
+                    }
+
+                    odds = tmp;
+                    $.setIniDbNumber('adventureSettings', 'odds', odds);
+                    // Pretty up the output
+                    actionArg2 = actionArg2 + '%';
                 }
 
                 $.say($.whisperPrefix(sender) + $.lang.get('adventuresystem.set.success', actionArg1, actionArg2));

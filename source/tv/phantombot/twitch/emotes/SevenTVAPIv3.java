@@ -1,7 +1,7 @@
 /* astyle --style=java --indent=spaces=4 */
 
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ import java.util.stream.StreamSupport;
  */
 public class SevenTVAPIv3 implements EmoteProvider {
 
-    public static final String PROVIDER_NAME = "7tv";
+    public static final String PROVIDER_NAME = "sevenTv";
     private static SevenTVAPIv3 instance;
     private static final String APIURL = "https://7tv.io/v3";
 
@@ -73,9 +73,18 @@ public class SevenTVAPIv3 implements EmoteProvider {
     @Override
     public List<EmoteEntry> getGlobalEmotes() throws EmoteApiRequestFailedException {
         HttpClientResponse response = readJsonFromUrl(APIURL + "/emote-sets/global");
+        if (response.responseCode().code() == 404) {
+            return Collections.emptyList();
+        }
         checkResponseForError(response);
         try {
-            return mapEmotesFromData(response.json().getJSONArray("emotes"));
+            JSONObject json = response.json();
+
+            if (!json.has("emotes")) {
+                return Collections.emptyList();
+            }
+
+            return mapEmotesFromData(json.getJSONArray("emotes"));
         } catch (Exception ex) {
             throw new EmoteApiRequestFailedException("Could not process returned json", ex);
         }
@@ -89,7 +98,13 @@ public class SevenTVAPIv3 implements EmoteProvider {
         }
         checkResponseForError(response);
         try {
-            return mapEmotesFromData(response.json().getJSONObject("emote_set").getJSONArray("emotes"));
+            JSONObject json = response.json();
+
+            if (!json.has("emote_set") || !json.getJSONObject("emote_set").has("emotes")) {
+                return Collections.emptyList();
+            }
+
+            return mapEmotesFromData(json.getJSONObject("emote_set").getJSONArray("emotes"));
         } catch (Exception ex) {
             throw new EmoteApiRequestFailedException("Could not process returned json", ex);
         }

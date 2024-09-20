@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,21 @@
 /* global Packages */
 
 (function () {
+    let accept_json = Packages.io.netty.handler.codec.http.HttpHeaderValues.APPLICATION_JSON.toString();
     /*
      * @function getCustomAPIValue
      *
      * @param {string} url
      * @returns {string}
      */
-    function getCustomAPIValue(url) {
-        let res = $.customAPI.get(url);
+    function getCustomAPIValue(url, accept) {
+        let res;
+
+        if (accept !== undefined && accept !== null) {
+            res = $.customAPI.get(url, accept);
+        } else {
+            res = $.customAPI.get(url);
+        }
 
         if (res.content !== null) {
             $.consoleDebug(res.toString());
@@ -116,7 +123,7 @@
 
             let result = '';
             try {
-                response = getCustomAPIValue(match[1]);
+                response = getCustomAPIValue(match[1], accept_json);
             } catch (ex) {
                 return {result: $.lang.get('customcommands.customapijson.err')};
             }

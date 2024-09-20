@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -205,6 +205,24 @@ $(function () {
                             });
                     }
                 }).modal('toggle');
+    });
+
+    // Browser source button on click.
+    $('#copy-poll-obs').on('click', function() {
+        helpers.getModal('poll-obs', 'OBS Browser Source', 'Copy', $('<form/>', {
+            'role': 'form'
+        })
+            // Append options.
+            .append(helpers.getInputGroup('poll-obs-copy', 'text', 'Browser Source URL', '', window.location.protocol + '//' + window.location.host + '/obs/poll-chart',
+                'Copy Browser Source URL for OBS.', true)),
+            function() {
+                // Copy to user clipboard
+                $('#poll-obs-copy').prop('disabled', false);
+                $('#poll-obs-copy').select();
+                document.execCommand('copy');
+
+                $('#poll-obs').modal('toggle');
+            }).modal('toggle');
     });
 
     // Module toggle.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +16,18 @@
  */
 package com.gmt2001.wsclient;
 
+import java.net.URI;
+import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.SSLException;
+
+import org.json.JSONObject;
+
 import com.gmt2001.dns.CompositeAddressResolverGroup;
 import com.gmt2001.dns.EventLoopDetector;
 import com.gmt2001.wspinger.WSClientPinger;
 import com.gmt2001.wspinger.WSPinger;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -27,12 +35,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketCloseStatus;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.resolver.DefaultAddressResolverGroup;
-import java.net.URI;
-import java.util.concurrent.TimeUnit;
-import javax.net.ssl.SSLException;
-import org.json.JSONObject;
 import tv.phantombot.CaselessProperties;
 
 /**
@@ -40,7 +43,7 @@ import tv.phantombot.CaselessProperties;
  *
  * @author gmt2001
  */
-public class WSClient {
+public final class WSClient {
 
     /**
      * The URI to connect to
@@ -127,7 +130,7 @@ public class WSClient {
             this.handler = handler;
             this.pinger = pinger;
             if ("wss".equalsIgnoreCase(scheme)) {
-                this.sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                this.sslCtx = SslContextBuilder.forClient().build();
             } else {
                 this.sslCtx = null;
             }

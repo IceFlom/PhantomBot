@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ import org.jooq.ConnectionProvider;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
 import org.jooq.ExecutorProvider;
+import org.jooq.Meta;
 import org.jooq.RecordListener;
 import org.jooq.SQLDialect;
 import org.jooq.Table;
@@ -332,6 +333,15 @@ public abstract class Datastore2 {
     }
 
     /**
+     * Allows the driver to perform operations to prepare a meta object for use, such as selecting the schema
+     * 
+     * @return A {@link Meta} object for the current database
+     */
+    public Meta meta() {
+        return this.dslContext().meta();
+    }
+
+    /**
      * Retrieves a {@link Connection} from the connection pool
      *
      * <p>
@@ -388,7 +398,7 @@ public abstract class Datastore2 {
      * Instantiates {@link #tableMono} with the latest list of available tables in the database
      */
     private void tableMono() {
-        this.tableMono = Mono.<List<Table<?>>>create(emitter -> emitter.success(this.dslContext().meta().getTables())).cache();
+        this.tableMono = Mono.<List<Table<?>>>create(emitter -> emitter.success(this.meta().getTables())).cache();
     }
 
     /**

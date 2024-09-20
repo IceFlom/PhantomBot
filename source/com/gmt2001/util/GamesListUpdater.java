@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -179,13 +179,13 @@ public final class GamesListUpdater {
             debug("Processing indexes...");
             for (int i = 0; i < indexesToUpdate.length(); i++) {
                 if (force) {
-                    com.gmt2001.Console.out.println("Updating from index " + indexesToUpdate.getInt(i) + "...");
+                    com.gmt2001.Console.out.println("Updating list of Twitch-supported games from index " + indexesToUpdate.getInt(i) + "...");
                 }
                 UpdateFromIndex(data, indexesToUpdate.getInt(i), force);
             }
 
             if (force) {
-                com.gmt2001.Console.out.println("Updating from manual index...");
+                com.gmt2001.Console.out.println("Updating list of Twitch-supported games from manual index...");
             }
             UpdateFromIndex(data, -1, force);
 

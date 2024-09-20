@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023 phantombot.github.io/PhantomBot
+ * Copyright (C) 2016-2024 phantombot.github.io/PhantomBot
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,7 +92,13 @@ public class HttpServerPageHandler extends SimpleChannelInboundHandler<FullHttpR
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
         if (!req.decoderResult().isSuccess()) {
             com.gmt2001.Console.debug.println("400 DECODER");
-            com.gmt2001.Console.err.printStackTrace(req.decoderResult().cause());
+            Throwable cause = req.decoderResult().cause();
+            if (cause.getMessage().contains("Content-Length value is not a number")) {
+                com.gmt2001.Console.warn.println("Unable to decode oversized POST/PUT payload");
+                com.gmt2001.Console.warn.println(cause.getMessage() + " is greater than " + Long.MAX_VALUE);
+            } else {
+                com.gmt2001.Console.err.printStackTrace(cause);
+            }
             sendHttpResponse(ctx, req, prepareHttpResponse(HttpResponseStatus.BAD_REQUEST));
             RequestLogger.log(ctx);
             return;
